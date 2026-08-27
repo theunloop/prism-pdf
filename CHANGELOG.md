@@ -9,6 +9,8 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-27
+
 ### Added
 
 - **Prebuilt `prismpdf` CLI binaries on every release**, one archive per platform: Windows
@@ -18,6 +20,12 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   builds keep the same 2.17 floor as the shared libraries. These archives carry **no ABI
   guarantee** and no binding consumes them; they are listed in `docs/native-artifacts.md` only
   because they share the release and its checksum file.
+- **The release workflow publishes to crates.io**, in a `crates` job that runs after every native
+  leg has built. Order comes from `scripts/publish_order.py` (derived from the dependency graph);
+  an already-published version is skipped, so a partial run can be re-run to completion. Needs a
+  `CARGO_REGISTRY_TOKEN` repository secret.
+- `scripts/workspace_version.py` — bumps `[workspace.package].version` and every internal
+  requirement together, and `--check`s that they agree. Wired into CI and into the release guard.
 
 ### Changed
 
@@ -33,18 +41,12 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 - Internal dependencies in `[workspace.dependencies]` now carry a `version` requirement alongside
   their `path`. `cargo publish` rejects a dependency without one.
 
-### Added
-
-- **The release workflow publishes to crates.io**, in a `crates` job that runs after every native
-  leg has built. Order comes from `scripts/publish_order.py` (derived from the dependency graph);
-  an already-published version is skipped, so a partial run can be re-run to completion. Needs a
-  `CARGO_REGISTRY_TOKEN` repository secret.
-- `scripts/workspace_version.py` — bumps `[workspace.package].version` and every internal
-  requirement together, and `--check`s that they agree. Wired into CI and into the release guard.
-
 ### Removed
 
 - **The vendored `hayro-ccitt` / `hayro-jbig2` forks and the `[patch.crates-io]` section.** The
   fork carried a one-line MSRV shim, and a patch section does not travel with a published crate —
   anyone depending on `prismpdf-filters` would have resolved the unpatched upstream anyway. Both
   now resolve from crates.io unmodified.
+
+[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/theunloop/prism-pdf/releases/tag/v0.4.0
