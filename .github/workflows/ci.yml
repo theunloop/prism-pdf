@@ -111,10 +111,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
+      # Two target dirs: the fuzz targets build into `fuzz/target`, but the seed-corpus step
+      # below runs an example from the root workspace, which builds into `./target`. Caching
+      # only `fuzz` leaves that a cold full-workspace build on every run.
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: fuzz
-      - run: cargo install cargo-fuzz --locked
+          workspaces: |
+            .
+            fuzz
+      # A prebuilt binary. `cargo install cargo-fuzz --locked` compiles it from source, on
+      # nightly, every run.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
       # Real PDFs to seed the whole-document targets so a smoke run reaches the deep parsers
       # (content/fonts/images), not just the header/xref rejection path.
       - name: Generate a seed corpus
