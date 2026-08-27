@@ -119,11 +119,13 @@ jobs:
           workspaces: |
             .
             fuzz
-      # A prebuilt binary. `cargo install cargo-fuzz --locked` compiles it from source, on
-      # nightly, every run.
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-fuzz
+      # Built from source on the runner's own toolchain, not fetched prebuilt. cargo-fuzz
+      # defaults `--target` to the triple it was itself compiled for, and the prebuilt binary
+      # `taiki-e/install-action` ships is `x86_64-unknown-linux-musl`. That made the smoke run
+      # below build every target for musl, which fails twice over: the target is not installed,
+      # and a statically linked libc is incompatible with `-Zsanitizer=address`. Compiling here
+      # keeps the default target `x86_64-unknown-linux-gnu`, which the sanitizers need.
+      - run: cargo install cargo-fuzz --locked
       # Real PDFs to seed the whole-document targets so a smoke run reaches the deep parsers
       # (content/fonts/images), not just the header/xref rejection path.
       - name: Generate a seed corpus
