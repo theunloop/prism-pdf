@@ -47,6 +47,14 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   fork carried a one-line MSRV shim, and a patch section does not travel with a published crate —
   anyone depending on `prismpdf-filters` would have resolved the unpatched upstream anyway. Both
   now resolve from crates.io unmodified.
+- **tvOS, watchOS and visionOS slices, devices and simulators alike.**
+  `PrismPDF.xcframework` now carries four libraries — macOS, Mac Catalyst, iOS/iPadOS device and
+  iOS/iPadOS Simulator — instead of ten. Both Intel simulator targets in the dropped set
+  (`x86_64-apple-tvos`, `x86_64-apple-watchos-sim`) are tier-3 Rust targets with no `rust-std`
+  distributed on stable, so `rustup target add` fails outright and no stable toolchain could
+  produce them at all; the rest went with them rather than ship a framework whose coverage varies
+  by architecture. The four surviving variants are unchanged and still carry both architectures
+  wherever Apple has two.
 
 ### Fixed
 
@@ -54,8 +62,8 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   target specified in MACOSX_DEPLOYMENT_TARGET: cannot parse integer from empty string`. A leg
   that declares no `macos_target` interpolated to the empty string, and GitHub exports that as a
   variable that is set-and-empty rather than absent, so rustc parsed the value instead of ignoring
-  it. It reached even the iOS and tvOS legs because a build script compiles for the macOS *host*.
-  The deployment-target variables are now exported only for the legs that declare them.
+  it. It reached even the iOS legs because a build script compiles for the macOS *host*. The
+  deployment-target variables are now exported only for the legs that declare them.
 - **Every Android leg failed to build**, aborting with `cargo-ndk panicked! … unknown package:
   21`. cargo-ndk 4.0 freed lowercase `-p` for cargo's own `--package` passthrough and moved the
   API level to `-P`/`--platform`; the install was unpinned, so that release arrived on its own and

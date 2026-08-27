@@ -95,7 +95,7 @@ before pushing rather than retagging after.
 ## Published artifacts
 
 Pushing a `v*` tag builds prebuilt shared `pdf-ffi` libraries for thirteen non-Apple targets and a
-multi-platform Apple XCFramework (macOS, Mac Catalyst, iOS, tvOS, visionOS and watchOS), then
+multi-platform Apple XCFramework (macOS, Mac Catalyst, iOS and iPadOS), then
 publishes them with the C header, the conformance corpus and checksums. The same tag also builds
 the `prismpdf` CLI for ten desktop targets (Windows, Linux glibc and musl, macOS; x64 and arm64
 throughout) and attaches one archive per platform, so shell users are not required to have a Rust

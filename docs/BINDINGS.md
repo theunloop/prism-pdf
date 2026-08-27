@@ -24,9 +24,9 @@ When this guide and those disagree, those win — fix this guide.
   signature) that a binding cannot fix after the fact. Verify the published SHA-256 and package the
   binaries *inside* whatever you ship — never fetch at a consumer's runtime. Do not cross-compile
   this repository yourself.
-- **Apple platforms are the exception to "link a shared library".** iOS, iPadOS, Mac Catalyst,
-  tvOS, visionOS and watchOS link the engine into the signed application from
-  `PrismPDF.xcframework`; macOS is included too, so an Apple binding can use one binary target.
+- **Apple platforms are the exception to "link a shared library".** iOS, iPadOS and Mac Catalyst
+  link the engine into the signed application from `PrismPDF.xcframework`; macOS is included too,
+  so an Apple binding can use one binary target.
   The framework carries the header and module map for `import CPrismPDF`. This is aimed at an Apple
   binding written in Swift, where static linking is the native idiom. A binding in a managed runtime
   can also consume it, but it pays for it: entry points resolve against the app binary rather than

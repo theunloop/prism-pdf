@@ -142,14 +142,6 @@ jobs:
           - { rid: apple-ios-arm64, os: macos-latest, target: aarch64-apple-ios, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphoneos, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
           - { rid: apple-iossimulator-arm64, os: macos-latest, target: aarch64-apple-ios-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphonesimulator, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
           - { rid: apple-iossimulator-x64, os: macos-latest, target: x86_64-apple-ios, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphonesimulator, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-tvos-arm64, os: macos-latest, target: aarch64-apple-tvos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: appletvos, tvos_target: "13.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-tvossimulator-arm64, os: macos-latest, target: aarch64-apple-tvos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: appletvsimulator, tvos_target: "13.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-tvossimulator-x64, os: macos-latest, target: x86_64-apple-tvos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: appletvsimulator, tvos_target: "13.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-visionos-arm64, os: macos-latest, target: aarch64-apple-visionos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: xros, xros_target: "1.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-visionossimulator-arm64, os: macos-latest, target: aarch64-apple-visionos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: xrsimulator, xros_target: "1.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-watchos-arm64, os: macos-latest, target: aarch64-apple-watchos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: watchos, watchos_target: "7.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-watchossimulator-arm64, os: macos-latest, target: aarch64-apple-watchos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: watchsimulator, watchos_target: "7.0", strip: "none", lto: "off", group: appleslice }
-          - { rid: apple-watchossimulator-x64, os: macos-latest, target: x86_64-apple-watchos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: watchsimulator, watchos_target: "7.0", strip: "none", lto: "off", group: appleslice }
 
     steps:
       - uses: actions/checkout@v4
@@ -191,7 +183,7 @@ jobs:
       # key the leg does not set yields the empty string, and GitHub exports that as a variable
       # that is *set and empty* rather than absent; rustc then parses the value instead of
       # ignoring it and aborts with "cannot parse integer from empty string". This took out every
-      # Apple leg except macOS, and the reason it reaches even the iOS/tvOS/watchOS legs is that a
+      # Apple leg except macOS, and the reason it reaches even the iOS legs is that a
       # build script compiles for the macOS *host* -- so MACOSX_DEPLOYMENT_TARGET is read whatever
       # `--target` says.
       - name: Resolve the deployment targets
@@ -199,12 +191,9 @@ jobs:
         env:
           MACOSX: ${{ matrix.macos_target }}
           IPHONEOS: ${{ matrix.ios_target }}
-          TVOS: ${{ matrix.tvos_target }}
-          WATCHOS: ${{ matrix.watchos_target }}
-          XROS: ${{ matrix.xros_target }}
         run: |
           set -euo pipefail
-          for platform in MACOSX IPHONEOS TVOS WATCHOS XROS; do
+          for platform in MACOSX IPHONEOS; do
             value="${!platform}"
             if [ -n "$value" ]; then
               echo "${platform}_DEPLOYMENT_TARGET=$value" >> "$GITHUB_ENV"
@@ -293,12 +282,6 @@ jobs:
           universal assembled/ios-simulator.a \
             slices/appleslice-apple-iossimulator-arm64/libpdf_ffi.a \
             slices/appleslice-apple-iossimulator-x64/libpdf_ffi.a
-          universal assembled/tvos-simulator.a \
-            slices/appleslice-apple-tvossimulator-arm64/libpdf_ffi.a \
-            slices/appleslice-apple-tvossimulator-x64/libpdf_ffi.a
-          universal assembled/watchos-simulator.a \
-            slices/appleslice-apple-watchossimulator-arm64/libpdf_ffi.a \
-            slices/appleslice-apple-watchossimulator-x64/libpdf_ffi.a
 
           # The headers directory is what makes the framework usable from Swift and Objective-C:
           # the modulemap names the low-level module `CPrismPDF` and points it at the same header
@@ -310,12 +293,6 @@ jobs:
             -library assembled/catalyst.a -headers headers \
             -library slices/appleslice-apple-ios-arm64/libpdf_ffi.a -headers headers \
             -library assembled/ios-simulator.a -headers headers \
-            -library slices/appleslice-apple-tvos-arm64/libpdf_ffi.a -headers headers \
-            -library assembled/tvos-simulator.a -headers headers \
-            -library slices/appleslice-apple-visionos-arm64/libpdf_ffi.a -headers headers \
-            -library slices/appleslice-apple-visionossimulator-arm64/libpdf_ffi.a -headers headers \
-            -library slices/appleslice-apple-watchos-arm64/libpdf_ffi.a -headers headers \
-            -library assembled/watchos-simulator.a -headers headers \
             -output PrismPDF.xcframework
 
           zip -qry "prism-pdf-xcframework-v${VERSION}.zip" PrismPDF.xcframework
@@ -344,12 +321,6 @@ jobs:
           link macosx           arm64-apple-ios14.0-macabi      assembled/catalyst.a
           link iphoneos         arm64-apple-ios13.0             slices/appleslice-apple-ios-arm64/libpdf_ffi.a
           link iphonesimulator  arm64-apple-ios13.0-simulator   assembled/ios-simulator.a
-          link appletvos        arm64-apple-tvos13.0            slices/appleslice-apple-tvos-arm64/libpdf_ffi.a
-          link appletvsimulator arm64-apple-tvos13.0-simulator  assembled/tvos-simulator.a
-          link xros             arm64-apple-xros1.0             slices/appleslice-apple-visionos-arm64/libpdf_ffi.a
-          link xrsimulator      arm64-apple-xros1.0-simulator   slices/appleslice-apple-visionossimulator-arm64/libpdf_ffi.a
-          link watchos          arm64-apple-watchos7.0          slices/appleslice-apple-watchos-arm64/libpdf_ffi.a
-          link watchsimulator   arm64-apple-watchos7.0-simulator assembled/watchos-simulator.a
 
       - uses: actions/upload-artifact@v4
         with:

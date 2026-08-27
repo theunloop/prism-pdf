@@ -79,12 +79,6 @@ correct platform/environment/architecture slice at build time.
 | Mac Catalyst | `aarch64-apple-ios-macabi`, `x86_64-apple-ios-macabi` | 14.0 |
 | iOS / iPadOS device | `aarch64-apple-ios` | 13.0 |
 | iOS / iPadOS Simulator | `aarch64-apple-ios-sim`, `x86_64-apple-ios` | 13.0 |
-| tvOS device | `aarch64-apple-tvos` | 13.0 |
-| tvOS Simulator | `aarch64-apple-tvos-sim`, `x86_64-apple-tvos` | 13.0 |
-| visionOS device | `aarch64-apple-visionos` | 1.0 |
-| visionOS Simulator | `aarch64-apple-visionos-sim` | 1.0 |
-| watchOS device | `aarch64-apple-watchos` | 7.0 |
-| watchOS Simulator | `aarch64-apple-watchos-sim`, `x86_64-apple-watchos-sim` | 7.0 |
 
 The framework carries `prismpdf.h` and `module.modulemap`. Its C module is **`CPrismPDF`**, leaving
 the `PrismPDF` product name available to a dedicated Swift wrapper. Swift and Objective-C therefore
