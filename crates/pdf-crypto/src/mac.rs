@@ -124,8 +124,8 @@ pub fn pdf_mac_wrap_kdf(file_key: &[u8], salt: &[u8]) -> Option<[u8; 32]> {
 /// The RFC 3394 default initial value (the "integrity check register").
 const KW_IV: [u8; 8] = [0xA6; 8];
 
-/// Copy a length-8 slice into an array. The key-wrap loops feed only `chunks_exact(8)` output,
-/// so the source is always 8 bytes; bytes beyond 8 (if any) are ignored.
+/// Copy a length-8 slice into an array. Its one caller passes the 8-byte IV prefix of a
+/// length-checked ciphertext, so the source is always at least 8 bytes; the rest is ignored.
 fn eight(c: &[u8]) -> [u8; 8] {
     let mut a = [0u8; 8];
     a.copy_from_slice(&c[..8]);
@@ -140,7 +140,7 @@ fn aes256_key_wrap(kek: &[u8; 32], plaintext: &[u8]) -> Option<Vec<u8>> {
     }
     let cipher = Aes256::new(GenericArray::from_slice(kek));
     let mut a = KW_IV;
-    let mut r: Vec<[u8; 8]> = plaintext.chunks_exact(8).map(eight).collect();
+    let mut r: Vec<[u8; 8]> = plaintext.as_chunks::<8>().0.to_vec();
     for j in 0..6u64 {
         for (i, ri) in r.iter_mut().enumerate() {
             let mut block = [0u8; 16];
@@ -174,7 +174,7 @@ fn aes256_key_unwrap(kek: &[u8; 32], ciphertext: &[u8]) -> Option<Vec<u8>> {
     let n = ciphertext.len() / 8 - 1;
     let cipher = Aes256::new(GenericArray::from_slice(kek));
     let mut a = eight(&ciphertext[..8]);
-    let mut r: Vec<[u8; 8]> = ciphertext[8..].chunks_exact(8).map(eight).collect();
+    let mut r: Vec<[u8; 8]> = ciphertext[8..].as_chunks::<8>().0.to_vec();
     for j in (0..6u64).rev() {
         for i in (0..n).rev() {
             let t = n as u64 * j + i as u64 + 1;

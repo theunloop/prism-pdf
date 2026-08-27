@@ -149,8 +149,8 @@ fn cid_to_unicode<E>(
     let mut output = HashMap::new();
     match cid_to_gid_map(font, resolve, decode)? {
         Some(map) => {
-            for (cid, gid) in map.chunks_exact(2).enumerate() {
-                let gid = u16::from_be_bytes([gid[0], gid[1]]);
+            for (cid, gid) in map.as_chunks::<2>().0.iter().enumerate() {
+                let gid = u16::from_be_bytes(*gid);
                 if let Some(&character) = glyph_text.get(&gid) {
                     output.insert(cid as u32, character);
                 }

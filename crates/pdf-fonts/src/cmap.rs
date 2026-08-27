@@ -52,7 +52,7 @@ impl ToUnicode {
                 }
                 // `<src> <dst> …`: individual code → text mappings.
                 "endbfchar" => {
-                    for pair in op.operands.chunks_exact(2) {
+                    for pair in op.operands.as_chunks::<2>().0 {
                         if let [Object::String(src), Object::String(dst)] = pair {
                             width = width.max(src.as_bytes().len());
                             map.insert(code_value(src.as_bytes()), utf16be(dst.as_bytes()));
@@ -96,7 +96,7 @@ impl ToUnicode {
 
 /// Insert the entries of one or more `bfrange` triples into `map`.
 fn insert_bfrange(operands: &[Object], width: &mut usize, map: &mut BTreeMap<u32, String>) {
-    for triple in operands.chunks_exact(3) {
+    for triple in operands.as_chunks::<3>().0 {
         let (Object::String(lo), Object::String(hi)) = (&triple[0], &triple[1]) else {
             continue;
         };

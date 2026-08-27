@@ -420,8 +420,10 @@ fn build_for_downgrades_utf8_strings_below_2_0() {
         .unwrap();
     assert_eq!(&title.as_bytes()[..2], &[0xFE, 0xFF], "UTF-16BE BOM");
     let decoded: Vec<u16> = title.as_bytes()[2..]
-        .chunks_exact(2)
-        .map(|c| u16::from_be_bytes([c[0], c[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&c| u16::from_be_bytes(c))
         .collect();
     assert_eq!(String::from_utf16(&decoded).unwrap(), "Café — résumé");
 

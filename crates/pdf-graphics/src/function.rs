@@ -370,7 +370,13 @@ fn pairs(v: &[f64]) -> Option<Vec<(f64, f64)>> {
     if !v.len().is_multiple_of(2) {
         return None;
     }
-    Some(v.chunks_exact(2).map(|c| (c[0], c[1])).collect())
+    Some(
+        v.as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&[lo, hi]| (lo, hi))
+            .collect(),
+    )
 }
 
 fn linear_index(coord: &[usize], size: &[usize]) -> usize {

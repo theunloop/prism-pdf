@@ -128,10 +128,12 @@ mod tests {
     /// Hex-decode, ignoring whitespace (test fixtures only).
     fn unhex(s: &str) -> Vec<u8> {
         let h: Vec<u8> = s.bytes().filter(u8::is_ascii_hexdigit).collect();
-        h.chunks_exact(2)
-            .map(|c| {
-                let hi = (c[0] as char).to_digit(16).unwrap();
-                let lo = (c[1] as char).to_digit(16).unwrap();
+        h.as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&[hi, lo]| {
+                let hi = (hi as char).to_digit(16).unwrap();
+                let lo = (lo as char).to_digit(16).unwrap();
                 (hi * 16 + lo) as u8
             })
             .collect()

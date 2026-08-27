@@ -79,7 +79,8 @@ impl Document {
         if let Some(names) = node.get(&Name::from("Names"))
             && let Ok(Object::Array(arr)) = self.resolve(names)
         {
-            for pair in arr.iter().collect::<Vec<_>>().chunks_exact(2) {
+            let flat: Vec<_> = arr.iter().collect();
+            for pair in flat.as_chunks::<2>().0 {
                 if out.len() >= MAX_NAME_TREE_ENTRIES {
                     return;
                 }

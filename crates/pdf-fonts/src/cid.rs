@@ -118,7 +118,7 @@ impl CMap {
 
     /// `<lo> <hi> …` pairs from `endcodespacerange`.
     fn add_codespaces(&mut self, operands: &[Object]) {
-        for pair in operands.chunks_exact(2) {
+        for pair in operands.as_chunks::<2>().0 {
             if let [Object::String(lo), Object::String(hi)] = pair {
                 let (low, high) = (lo.as_bytes(), hi.as_bytes());
                 let len = low.len();
@@ -135,7 +135,7 @@ impl CMap {
 
     /// `<code> cid …` pairs from `endcidchar`.
     fn add_cidchars(&mut self, operands: &[Object]) {
-        for pair in operands.chunks_exact(2) {
+        for pair in operands.as_chunks::<2>().0 {
             if let [Object::String(code), cid] = pair
                 && let Some(cid) = as_cid(cid)
             {
@@ -146,7 +146,7 @@ impl CMap {
 
     /// `<lo> <hi> cid …` triples from `endcidrange`.
     fn add_cidranges(&mut self, operands: &[Object]) {
-        for triple in operands.chunks_exact(3) {
+        for triple in operands.as_chunks::<3>().0 {
             if let [Object::String(lo), Object::String(hi), cid] = triple
                 && let Some(base_cid) = as_cid(cid)
             {
