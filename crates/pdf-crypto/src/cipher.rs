@@ -69,7 +69,7 @@ pub fn aes256_cbc_decrypt(key: &[u8], data: &[u8]) -> Option<Vec<u8>> {
 /// unwrap the file key from `/UE`/`/OE`). `data` must be a whole number of 16-byte blocks.
 #[must_use]
 pub fn aes256_cbc_decrypt_nopad(key: &[u8], iv: &[u8], data: &[u8]) -> Option<Vec<u8>> {
-    if key.len() != 32 || iv.len() != 16 || data.is_empty() || data.len() % 16 != 0 {
+    if key.len() != 32 || iv.len() != 16 || data.is_empty() || !data.len().is_multiple_of(16) {
         return None;
     }
     let decryptor = Decryptor::<Aes256>::new_from_slices(key, iv).ok()?;
@@ -95,7 +95,7 @@ pub fn aes128_cbc_encrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Vec<u8> {
 /// step of the hardened password hash). `data` must be a whole number of 16-byte blocks.
 #[must_use]
 pub fn aes128_cbc_encrypt_nopad(key: &[u8], iv: &[u8], data: &[u8]) -> Vec<u8> {
-    if key.len() != 16 || iv.len() != 16 || data.len() % 16 != 0 {
+    if key.len() != 16 || iv.len() != 16 || !data.len().is_multiple_of(16) {
         return Vec::new();
     }
     let Ok(encryptor) = Encryptor::<Aes128>::new_from_slices(key, iv) else {
@@ -124,7 +124,7 @@ pub fn aes256_cbc_encrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Vec<u8> {
 /// blocks. Returns the empty vector on a length mismatch.
 #[must_use]
 pub fn aes256_cbc_encrypt_nopad(key: &[u8], iv: &[u8], data: &[u8]) -> Vec<u8> {
-    if key.len() != 32 || iv.len() != 16 || data.is_empty() || data.len() % 16 != 0 {
+    if key.len() != 32 || iv.len() != 16 || data.is_empty() || !data.len().is_multiple_of(16) {
         return Vec::new();
     }
     let Ok(encryptor) = Encryptor::<Aes256>::new_from_slices(key, iv) else {

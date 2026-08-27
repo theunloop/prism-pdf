@@ -74,10 +74,10 @@ pub fn extract_image(
     let data = match terminal_codec(dict) {
         Some(Filter::Jpx) => {
             // §7.4.9: a JPX image may omit /BitsPerComponent — recover it from the codestream.
-            if bpc_in_dict.is_none() {
-                if let Ok(info) = jpx_info(stream.raw()) {
-                    bits_per_component = info.bit_depth;
-                }
+            if bpc_in_dict.is_none()
+                && let Ok(info) = jpx_info(stream.raw())
+            {
+                bits_per_component = info.bit_depth;
             }
             ImageData::Jpeg2000(stream.raw().to_vec())
         }

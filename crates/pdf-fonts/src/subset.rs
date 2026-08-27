@@ -49,10 +49,10 @@ pub fn glyphs_for_text(program: &[u8], text: &str) -> Option<Vec<u16>> {
     let face = Face::parse(program, 0).ok()?;
     let mut gids = vec![0u16];
     for ch in text.chars() {
-        if let Some(glyph) = face.glyph_index(ch) {
-            if !gids.contains(&glyph.0) {
-                gids.push(glyph.0);
-            }
+        if let Some(glyph) = face.glyph_index(ch)
+            && !gids.contains(&glyph.0)
+        {
+            gids.push(glyph.0);
         }
     }
     Some(gids)

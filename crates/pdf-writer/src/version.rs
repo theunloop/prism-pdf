@@ -139,28 +139,28 @@ fn scan_dict(out: &mut Vec<VersionRequirement>, d: &Dictionary) {
         }
         // A GoTo action carrying a structure destination (/SD, §12.3.2.3) is PDF 2.0. The action
         // dictionary is nested in the annotation's /A, so inspect it from the Annot object.
-        if ty.as_bytes() == b"Annot" {
-            if let Some(Object::Dictionary(action)) = d.get(&Name::from("A")) {
-                if action.get(&Name::from("SD")).is_some() {
-                    found(out, (2, 0), "structure destination (/SD, §12.3.2.3)");
-                }
-                // The GoToDp (go to document part) action is new in PDF 2.0 (§12.6.4.5).
-                if action.get_name(&Name::from("S")).map(Name::as_bytes) == Some(b"GoToDp") {
-                    found(out, (2, 0), "GoToDp action (§12.6.4.5)");
-                }
+        if ty.as_bytes() == b"Annot"
+            && let Some(Object::Dictionary(action)) = d.get(&Name::from("A"))
+        {
+            if action.get(&Name::from("SD")).is_some() {
+                found(out, (2, 0), "structure destination (/SD, §12.3.2.3)");
+            }
+            // The GoToDp (go to document part) action is new in PDF 2.0 (§12.6.4.5).
+            if action.get_name(&Name::from("S")).map(Name::as_bytes) == Some(b"GoToDp") {
+                found(out, (2, 0), "GoToDp action (§12.6.4.5)");
             }
         }
         // Structure attributes (§14.8.5) carried in a StructElem's /A: the table-header /Scope key
         // is PDF 1.5 (Table 349); the PrintField attribute owner is PDF 1.7 (§14.8.5.6).
-        if ty.as_bytes() == b"StructElem" {
-            if let Some(a) = d.get(&Name::from("A")) {
-                for attr in attr_dicts_of(a) {
-                    if attr.get(&Name::from("Scope")).is_some() {
-                        found(out, (1, 5), "table-header /Scope attribute (Table 349)");
-                    }
-                    if attr.get_name(&Name::from("O")).map(Name::as_bytes) == Some(b"PrintField") {
-                        found(out, (1, 7), "PrintField attribute owner (§14.8.5.6)");
-                    }
+        if ty.as_bytes() == b"StructElem"
+            && let Some(a) = d.get(&Name::from("A"))
+        {
+            for attr in attr_dicts_of(a) {
+                if attr.get(&Name::from("Scope")).is_some() {
+                    found(out, (1, 5), "table-header /Scope attribute (Table 349)");
+                }
+                if attr.get_name(&Name::from("O")).map(Name::as_bytes) == Some(b"PrintField") {
+                    found(out, (1, 7), "PrintField attribute owner (§14.8.5.6)");
                 }
             }
         }

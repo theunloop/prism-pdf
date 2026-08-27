@@ -57,10 +57,10 @@ impl Document {
         }
 
         // Drop the catalog's /AcroForm so the document is no longer a form (§12.7.2).
-        if let Some(&index) = by_number.get(&root.number) {
-            if let Object::Dictionary(catalog) = &mut objects[index].1 {
-                catalog.remove(&Name::from("AcroForm"));
-            }
+        if let Some(&index) = by_number.get(&root.number)
+            && let Object::Dictionary(catalog) = &mut objects[index].1
+        {
+            catalog.remove(&Name::from("AcroForm"));
         }
 
         objects.extend(new_objects);

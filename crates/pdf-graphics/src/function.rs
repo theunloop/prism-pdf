@@ -367,7 +367,7 @@ fn num_array(dict: &Dictionary, key: &str) -> Option<Vec<f64>> {
 
 /// Group a flat `[lo0 hi0 lo1 hi1 …]` array into pairs; `None` if its length is odd.
 fn pairs(v: &[f64]) -> Option<Vec<(f64, f64)>> {
-    if v.len() % 2 != 0 {
+    if !v.len().is_multiple_of(2) {
         return None;
     }
     Some(v.chunks_exact(2).map(|c| (c[0], c[1])).collect())

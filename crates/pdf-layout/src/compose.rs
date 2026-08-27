@@ -952,10 +952,10 @@ fn draw_repeating(
     context: &mut DrawCtx<'_>,
     size: Size,
 ) -> Result<(), ComposeError> {
-    if let Some(node) = node {
-        if size != Size::default() {
-            node.draw(context, size)?;
-        }
+    if let Some(node) = node
+        && size != Size::default()
+    {
+        node.draw(context, size)?;
     }
     Ok(())
 }

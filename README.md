@@ -40,7 +40,7 @@ A pure-Rust PDF engine that **reads, manipulates, and generates** PDFs — with 
 
 ## Install
 
-Prism PDF targets Rust **1.87+** (edition 2024). Depend on the facade crate `prismpdf`, which
+Prism PDF targets Rust **1.88+** (edition 2024). Depend on the facade crate `prismpdf`, which
 re-exports the engine behind one import surface:
 
 ```toml
@@ -87,7 +87,7 @@ curl -fsSLO "${BASE}/SHA256SUMS-v${VERSION}.txt"
 sha256sum --ignore-missing -c "SHA256SUMS-v${VERSION}.txt"
 tar xzf "prismpdf-v${VERSION}-${RID}.tar.gz"
 
-# Or from source, which compiles the engine and needs Rust 1.87+.
+# Or from source, which compiles the engine and needs Rust 1.88+.
 cargo install prismpdf-cli
 ```
 

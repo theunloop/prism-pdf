@@ -27,7 +27,9 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   `pdf_cos` library and `crates/pdf-ffi` still builds `libpdf_ffi`, which is the artifact filename
   bindings load. The one exception is the facade — its library is now `prismpdf`, so Rust
   consumers write `use prismpdf::Document` instead of `use pdf::Document`.
-- **MSRV raised to 1.87** (from 1.85), which is where `usize::is_multiple_of` is stable.
+- **MSRV raised to 1.88** (from 1.85). 1.87 is where `usize::is_multiple_of` is stable, which
+  removed the reason for the vendored `hayro-ccitt` fork; 1.88 is where `let` chains are stable,
+  which every published `hayro-jbig2` with the `Decoder`/`Image` API needs to compile.
 - Internal dependencies in `[workspace.dependencies]` now carry a `version` requirement alongside
   their `path`. `cargo publish` rejects a dependency without one.
 

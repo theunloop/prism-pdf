@@ -211,10 +211,10 @@ pub fn document_fonts(doc: &Document) -> Result<Vec<FontReport>> {
     for page in doc.pages()? {
         for (_, font_ref) in font_dict(doc, &page)?.iter() {
             // Dedupe by font object number so a font shared across pages is reported once.
-            if let Object::Reference(id) = font_ref {
-                if !seen.insert(id.number) {
-                    continue;
-                }
+            if let Object::Reference(id) = font_ref
+                && !seen.insert(id.number)
+            {
+                continue;
             }
             if let Object::Dictionary(font) = doc.resolve(font_ref)? {
                 reports.push(font_report(doc, &font)?);
@@ -248,14 +248,12 @@ fn font_descriptor(doc: &Document, font: &Dictionary) -> Result<Option<Dictionar
         };
     }
     // Type0 → /DescendantFonts [<CIDFont>] → its /FontDescriptor.
-    if let Some(descendants) = font.get(&Name::from("DescendantFonts")) {
-        if let Object::Array(array) = doc.resolve(descendants)? {
-            if let Some(first) = array.first() {
-                if let Object::Dictionary(cid_font) = doc.resolve(first)? {
-                    return font_descriptor(doc, &cid_font);
-                }
-            }
-        }
+    if let Some(descendants) = font.get(&Name::from("DescendantFonts"))
+        && let Object::Array(array) = doc.resolve(descendants)?
+        && let Some(first) = array.first()
+        && let Object::Dictionary(cid_font) = doc.resolve(first)?
+    {
+        return font_descriptor(doc, &cid_font);
     }
     Ok(None)
 }
@@ -523,10 +521,10 @@ fn collect_images(
         return Ok(());
     }
     for (_, entry) in subdict(doc, resources, "XObject")?.iter() {
-        if let Object::Reference(id) = entry {
-            if !visited.insert(id.number) {
-                continue;
-            }
+        if let Object::Reference(id) = entry
+            && !visited.insert(id.number)
+        {
+            continue;
         }
         let Object::Stream(stream) = doc.resolve(entry)? else {
             continue;

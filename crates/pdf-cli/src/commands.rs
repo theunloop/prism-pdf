@@ -697,7 +697,9 @@ mod tests {
                 Ok(())
             }
         }
-        let pdf = prismpdf::Builder::new().add_page(prismpdf::PageSpec::new("")).build();
+        let pdf = prismpdf::Builder::new()
+            .add_page(prismpdf::PageSpec::new(""))
+            .build();
         let path = std::env::temp_dir().join(format!("prismpdf-closed-{}.pdf", std::process::id()));
         std::fs::write(&path, &pdf).expect("write fixture");
         let mut sink = Closed;

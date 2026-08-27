@@ -723,10 +723,10 @@ impl SemanticNode {
     }
 
     fn tag(&self) -> Result<String, ComposeError> {
-        if let Semantic::Link { uri, description } = &self.semantic {
-            if uri.is_empty() || description.is_empty() {
-                return Err(ComposeError::InvalidGeometry);
-            }
+        if let Semantic::Link { uri, description } = &self.semantic
+            && (uri.is_empty() || description.is_empty())
+        {
+            return Err(ComposeError::InvalidGeometry);
         }
         Ok(match &self.semantic {
             Semantic::Paragraph => "P".to_string(),
@@ -804,25 +804,25 @@ impl Element for SemanticNode {
             context.content.end_marked_content();
             self.marks.push(mark);
         }
-        if context.tagged {
-            if let Semantic::Link { uri, description } = &self.semantic {
-                let bottom = context.page_height - context.origin.y - space.height;
-                let index = context.annotations.len();
-                context.annotations.push((
-                    context.page,
-                    AnnotationSpec::Link {
-                        rect: [
-                            context.origin.x,
-                            bottom,
-                            context.origin.x + space.width,
-                            bottom + space.height,
-                        ],
-                        target: LinkTarget::Uri(uri.clone()),
-                        contents: Some(description.clone()),
-                    },
-                ));
-                self.annotation_indices.push(index);
-            }
+        if context.tagged
+            && let Semantic::Link { uri, description } = &self.semantic
+        {
+            let bottom = context.page_height - context.origin.y - space.height;
+            let index = context.annotations.len();
+            context.annotations.push((
+                context.page,
+                AnnotationSpec::Link {
+                    rect: [
+                        context.origin.x,
+                        bottom,
+                        context.origin.x + space.width,
+                        bottom + space.height,
+                    ],
+                    target: LinkTarget::Uri(uri.clone()),
+                    contents: Some(description.clone()),
+                },
+            ));
+            self.annotation_indices.push(index);
         }
         Ok(())
     }
@@ -901,10 +901,10 @@ impl TableNode {
 
     fn widths(&mut self, available: Size, metrics: &Metrics) -> Result<Vec<f64>, ComposeError> {
         self.validate()?;
-        if let Some((width, resolved)) = &self.resolved_widths {
-            if (*width - available.width).abs() <= EPSILON {
-                return Ok(resolved.clone());
-            }
+        if let Some((width, resolved)) = &self.resolved_widths
+            && (*width - available.width).abs() <= EPSILON
+        {
+            return Ok(resolved.clone());
         }
         let mut fixed = 0.0;
         let mut relative = 0.0;

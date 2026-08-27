@@ -34,10 +34,11 @@ EXCEPTIONS = {
         "C ABI inspection and collection handles; frozen capability-module budget",
     ),
     "crates/pdf-ffi/src/api/composition.rs": (
-        1_363,
+        1_365,
         "C ABI composition arena and operations; frozen capability-module budget, +2 on "
         "2026-08-25 for the catch_unwind wrapper that prismpdf_composition_new was missing "
-        "(pdf-ffi's no-unwind contract, DESIGN.md §6.1)",
+        "(pdf-ffi's no-unwind contract, DESIGN.md §6.1), +2 on 2026-08-27 for the rustfmt "
+        "reflow of build_draft's return chain past the 60-col chain width. No logic added.",
     ),
     "crates/pdf-ffi/src/api/core.rs": (
         1_887,

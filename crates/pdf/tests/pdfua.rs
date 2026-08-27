@@ -52,5 +52,8 @@ fn make_pdfua_untagged_surfaces_unified_error() {
     // An untagged document fails PDF/UA; the facade reports it as the unified `prismpdf::Error`,
     // with the precise cause still matchable.
     let err = make_pdfua(&mut builder, &xmp_with_title(), "en-US");
-    assert!(matches!(err, Err(prismpdf::Error::PdfUa(PdfUaError::NotTagged))));
+    assert!(matches!(
+        err,
+        Err(prismpdf::Error::PdfUa(PdfUaError::NotTagged))
+    ));
 }

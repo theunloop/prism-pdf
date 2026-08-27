@@ -240,10 +240,10 @@ impl Document {
 
         let mut objects = self.collect_objects()?;
         for (id, object) in &mut objects {
-            if id.number == target.number {
-                if let Object::Dictionary(dict) = object {
-                    dict.insert(Name::from("Rotate"), Object::Integer(rotation));
-                }
+            if id.number == target.number
+                && let Object::Dictionary(dict) = object
+            {
+                dict.insert(Name::from("Rotate"), Object::Integer(rotation));
             }
         }
 

@@ -380,9 +380,18 @@ mod tests {
 
     #[test]
     fn ciphers_map_onto_the_engine_algorithms() {
-        assert_eq!(prismpdf::Algorithm::from(Cipher::Rc4), prismpdf::Algorithm::Rc4);
-        assert_eq!(prismpdf::Algorithm::from(Cipher::Aes128), prismpdf::Algorithm::Aes128);
-        assert_eq!(prismpdf::Algorithm::from(Cipher::Aes256), prismpdf::Algorithm::Aes256);
+        assert_eq!(
+            prismpdf::Algorithm::from(Cipher::Rc4),
+            prismpdf::Algorithm::Rc4
+        );
+        assert_eq!(
+            prismpdf::Algorithm::from(Cipher::Aes128),
+            prismpdf::Algorithm::Aes128
+        );
+        assert_eq!(
+            prismpdf::Algorithm::from(Cipher::Aes256),
+            prismpdf::Algorithm::Aes256
+        );
         assert_eq!(Cipher::default(), Cipher::Aes128);
     }
 

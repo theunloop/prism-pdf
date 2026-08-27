@@ -97,10 +97,10 @@ impl<'a> Lexer<'a> {
     /// at end of input. The binary body is never tokenised.
     pub fn read_inline_image_data(&mut self) -> Vec<u8> {
         // Exactly one whitespace byte separates ID from the sample data.
-        if let Some(&b) = self.input.get(self.pos) {
-            if is_whitespace(b) {
-                self.pos += 1;
-            }
+        if let Some(&b) = self.input.get(self.pos)
+            && is_whitespace(b)
+        {
+            self.pos += 1;
         }
         let start = self.pos;
         while self.pos + 2 <= self.input.len() {
@@ -319,16 +319,15 @@ fn classify_run(run: &[u8]) -> Token {
                 }
             }
         }
-        if well_formed && seen_digit {
-            if let Ok(text) = std::str::from_utf8(run) {
-                if !seen_dot {
-                    if let Ok(i) = text.parse::<i64>() {
-                        return Token::Integer(i);
-                    }
-                }
-                if let Ok(r) = text.parse::<f64>() {
-                    return Token::Real(r);
-                }
+        if well_formed
+            && seen_digit
+            && let Ok(text) = std::str::from_utf8(run)
+        {
+            if !seen_dot && let Ok(i) = text.parse::<i64>() {
+                return Token::Integer(i);
+            }
+            if let Ok(r) = text.parse::<f64>() {
+                return Token::Real(r);
             }
         }
     }

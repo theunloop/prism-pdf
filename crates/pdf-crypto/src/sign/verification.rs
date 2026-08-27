@@ -450,10 +450,10 @@ pub(crate) fn build_chain(
         // §4.2.1.9: pathLenConstraint caps how many *non-self-issued intermediates* may follow the
         // constrained CA in the path. `chain` already holds the links below this one; the leaf
         // itself is not an intermediate, hence the saturating subtraction.
-        if let Some(limit) = path_len_constraint(issuer) {
-            if chain.len().saturating_sub(1) > usize::from(limit) {
-                return None;
-            }
+        if let Some(limit) = path_len_constraint(issuer)
+            && chain.len().saturating_sub(1) > usize::from(limit)
+        {
+            return None;
         }
 
         // Signed directly by a trust anchor (the common case) — the anchor's own validity is still

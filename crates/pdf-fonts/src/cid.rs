@@ -136,10 +136,10 @@ impl CMap {
     /// `<code> cid …` pairs from `endcidchar`.
     fn add_cidchars(&mut self, operands: &[Object]) {
         for pair in operands.chunks_exact(2) {
-            if let [Object::String(code), cid] = pair {
-                if let Some(cid) = as_cid(cid) {
-                    self.singles.push((code_value(code.as_bytes()), cid));
-                }
+            if let [Object::String(code), cid] = pair
+                && let Some(cid) = as_cid(cid)
+            {
+                self.singles.push((code_value(code.as_bytes()), cid));
             }
         }
     }
@@ -147,12 +147,12 @@ impl CMap {
     /// `<lo> <hi> cid …` triples from `endcidrange`.
     fn add_cidranges(&mut self, operands: &[Object]) {
         for triple in operands.chunks_exact(3) {
-            if let [Object::String(lo), Object::String(hi), cid] = triple {
-                if let Some(base_cid) = as_cid(cid) {
-                    let (lo, hi) = (code_value(lo.as_bytes()), code_value(hi.as_bytes()));
-                    if lo <= hi && hi - lo <= MAX_SPAN {
-                        self.ranges.push(CidRange { lo, hi, base_cid });
-                    }
+            if let [Object::String(lo), Object::String(hi), cid] = triple
+                && let Some(base_cid) = as_cid(cid)
+            {
+                let (lo, hi) = (code_value(lo.as_bytes()), code_value(hi.as_bytes()));
+                if lo <= hi && hi - lo <= MAX_SPAN {
+                    self.ranges.push(CidRange { lo, hi, base_cid });
                 }
             }
         }

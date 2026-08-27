@@ -135,7 +135,7 @@ fn eight(c: &[u8]) -> [u8; 8] {
 /// Wrap `plaintext` (a multiple of 8 bytes, ≥ 16) under the 256-bit `kek` per RFC 3394 §2.2.1.
 fn aes256_key_wrap(kek: &[u8; 32], plaintext: &[u8]) -> Option<Vec<u8>> {
     let n = plaintext.len() / 8;
-    if plaintext.len() % 8 != 0 || n < 2 {
+    if !plaintext.len().is_multiple_of(8) || n < 2 {
         return None;
     }
     let cipher = Aes256::new(GenericArray::from_slice(kek));
@@ -168,7 +168,7 @@ fn aes256_key_wrap(kek: &[u8; 32], plaintext: &[u8]) -> Option<Vec<u8>> {
 /// Returns `None` if the integrity check (the recovered IV must equal [`KW_IV`]) fails — this is
 /// what authenticates the wrapped key.
 fn aes256_key_unwrap(kek: &[u8; 32], ciphertext: &[u8]) -> Option<Vec<u8>> {
-    if ciphertext.len() % 8 != 0 || ciphertext.len() < 24 {
+    if !ciphertext.len().is_multiple_of(8) || ciphertext.len() < 24 {
         return None;
     }
     let n = ciphertext.len() / 8 - 1;

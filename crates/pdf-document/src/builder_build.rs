@@ -471,10 +471,10 @@ impl Builder {
                 if !ns_uris.contains(&entry.ns) {
                     ns_uris.push(entry.ns.clone());
                 }
-                if let Some(target_ns) = &entry.target_ns {
-                    if !ns_uris.contains(target_ns) {
-                        ns_uris.push(target_ns.clone());
-                    }
+                if let Some(target_ns) = &entry.target_ns
+                    && !ns_uris.contains(target_ns)
+                {
+                    ns_uris.push(target_ns.clone());
                 }
             }
             let ns_ids: Vec<(String, ObjectId)> =

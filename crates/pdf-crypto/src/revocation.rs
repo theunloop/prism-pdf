@@ -163,10 +163,10 @@ fn ocsp_status(
         if at_secs < this_update {
             continue;
         }
-        if let Some(next) = &single.next_update {
-            if at_secs > next.0.to_unix_duration().as_secs() {
-                continue;
-            }
+        if let Some(next) = &single.next_update
+            && at_secs > next.0.to_unix_duration().as_secs()
+        {
+            continue;
         }
         return Some(match single.cert_status {
             CertStatus::Good(_) => RevocationStatus::Good,
@@ -198,10 +198,10 @@ fn crl_status(
     if at_secs < this_update {
         return None;
     }
-    if let Some(next) = &crl.tbs_cert_list.next_update {
-        if at_secs > next.to_unix_duration().as_secs() {
-            return None;
-        }
+    if let Some(next) = &crl.tbs_cert_list.next_update
+        && at_secs > next.to_unix_duration().as_secs()
+    {
+        return None;
     }
     let revoked = crl
         .tbs_cert_list

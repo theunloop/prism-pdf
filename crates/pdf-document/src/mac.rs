@@ -302,7 +302,7 @@ fn contents_in_byte_range_gap(data: &[u8], range: &Array) -> Option<Vec<u8>> {
 
 /// Decode an even-length ASCII hex string to bytes; `None` on any non-hex digit or odd length.
 fn hex_decode(hex: &[u8]) -> Option<Vec<u8>> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return None;
     }
     fn nibble(b: u8) -> Option<u8> {

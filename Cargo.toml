@@ -11,7 +11,7 @@ exclude = ["fuzz"]
 [workspace.package]
 version = "0.4.0"
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.88"
 # The SPDX expression, which is also what cargo-deny matches against the allow-list in deny.toml.
 # There is deliberately no `license-file`: setting both warns, and it is not needed. The MIT
 # license requires the copyright and permission notice to travel with every copy, and LICENSE.md

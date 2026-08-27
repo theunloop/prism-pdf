@@ -83,18 +83,18 @@ fn apply_differences(table: &mut [Option<char>; 256], enc: &Dictionary) {
 /// names, then a built-in glyph-list subset (§9.10.2 algorithm, abbreviated).
 fn glyph_to_char(name: &[u8]) -> Option<char> {
     // `uniXXXX` (one BMP scalar; we take the first of any sequence).
-    if let Some(hex) = name.strip_prefix(b"uni") {
-        if hex.len() >= 4 {
-            if let Some(c) = hex_scalar(&hex[..4]) {
-                return Some(c);
-            }
-        }
+    if let Some(hex) = name.strip_prefix(b"uni")
+        && hex.len() >= 4
+        && let Some(c) = hex_scalar(&hex[..4])
+    {
+        return Some(c);
     }
     // `uXXXX`..`uXXXXXX`.
-    if name.first() == Some(&b'u') && (5..=7).contains(&name.len()) {
-        if let Some(c) = hex_scalar(&name[1..]) {
-            return Some(c);
-        }
+    if name.first() == Some(&b'u')
+        && (5..=7).contains(&name.len())
+        && let Some(c) = hex_scalar(&name[1..])
+    {
+        return Some(c);
     }
     // A single printable ASCII glyph name (`A`, `z`, …) maps to itself.
     if let [b @ 0x21..=0x7E] = name {

@@ -3,7 +3,9 @@
 use std::error::Error;
 use std::path::PathBuf;
 
-use prismpdf::{Color, Composition, HorizontalAlign, PageStyle, Semantic, TextStyle, VerticalAlign};
+use prismpdf::{
+    Color, Composition, HorizontalAlign, PageStyle, Semantic, TextStyle, VerticalAlign,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let output = std::env::args_os()

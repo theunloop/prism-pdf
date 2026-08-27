@@ -56,7 +56,7 @@ and rendering remain explicitly non-blocking and stay in [`ROADMAP.md`](./ROADMA
 
 ## MSRV (minimum supported Rust version)
 
-The MSRV is pinned in the workspace (`rust-version`) and verified in CI. It is currently **1.87**
+The MSRV is pinned in the workspace (`rust-version`) and verified in CI. It is currently **1.88**
 (edition 2024). Raising the MSRV is a **minor**-version change (a `0.MINOR.0` bump while `0.x`); it is
 called out in the changelog and never done in a patch release.
 

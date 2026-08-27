@@ -360,10 +360,10 @@ impl Flow {
                 }
                 let y = self.cursor_y;
                 let left = self.style.left();
-                if j == 0 {
-                    if let Some(mark) = self.draw_run(block, &marker, left, y, emb, "Lbl") {
-                        label_marks.push(mark);
-                    }
+                if j == 0
+                    && let Some(mark) = self.draw_run(block, &marker, left, y, emb, "Lbl")
+                {
+                    label_marks.push(mark);
                 }
                 if let Some(mark) = self.draw_run(block, line, left + indent, y, emb, "LBody") {
                     body_marks.push(mark);
@@ -495,10 +495,10 @@ impl Flow {
     ) -> &mut Self {
         self.emit_image(image, width, height, Some(alt));
         let marks = self.pour_block(block, caption, "Caption");
-        if let Some(caption_elem) = Self::element_from("Caption", marks) {
-            if let Some(figure) = self.structure.last_mut().filter(|e| e.tag == "Figure") {
-                figure.push_child(caption_elem);
-            }
+        if let Some(caption_elem) = Self::element_from("Caption", marks)
+            && let Some(figure) = self.structure.last_mut().filter(|e| e.tag == "Figure")
+        {
+            figure.push_child(caption_elem);
         }
         self
     }

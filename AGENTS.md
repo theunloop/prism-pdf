@@ -20,12 +20,12 @@ Do not restate any of those here: a status claim in this file rots on the next m
   single-responsibility crates under `crates/`: `pdf-cos`, `pdf-filters`, `pdf-reader`,
   `pdf-writer`, `pdf-document` (the biggest, ~12k lines), `pdf-content`, `pdf-fonts`,
   `pdf-graphics`, `pdf-crypto`, `pdf-layout`, `pdf-standards`, the `prismpdf` facade, `pdf-ffi`, and
-  the `pdf-cli` binary. Edition 2024, MSRV 1.87, MIT licensed. External crate versions are
+  the `pdf-cli` binary. Edition 2024, MSRV 1.88, MIT licensed. External crate versions are
   centralized in `[workspace.dependencies]`; internal crates use `<crate>.workspace = true` path
   deps. **Declare only dependencies you actually use** — the `doc` CI job fails on an intra-doc
   link into a crate you do not depend on, which is what keeps the graph below honest.
 - CI (`.github/workflows/ci.yml`) runs nine jobs on every PR — `fmt`, `clippy`, `doc`, `test`,
-  `msrv` (1.87), `deny`, `fuzz` (smoke run of every target), `pdfa` (veraPDF at each sample's own
+  `msrv` (1.88), `deny`, `fuzz` (smoke run of every target), `pdfa` (veraPDF at each sample's own
   flavour + `ua1`/`ua2`), and `verify` (the M18 five-validator panel for base PDF) — eleven check
   runs, since `test` is a Linux/macOS/Windows matrix. Warnings are errors everywhere
   (`RUSTFLAGS: -D warnings`, and `RUSTDOCFLAGS: -D warnings` in `doc`).

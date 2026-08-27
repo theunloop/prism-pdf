@@ -247,7 +247,11 @@ fn author_version_matrix(out: &Path) -> Vec<PathBuf> {
     icc.add_page(PageSpec::new(
         b"/ICC cs 0.2 0.4 0.6 scn 72 400 200 100 re f".to_vec(),
     ))
-    .add_icc_based("ICC", prismpdf::OutputIntentProfile::srgb().icc().to_vec(), 3);
+    .add_icc_based(
+        "ICC",
+        prismpdf::OutputIntentProfile::srgb().icc().to_vec(),
+        3,
+    );
     put("authored-iccbased-1.4.pdf", &icc.build());
 
     // An Indexed (palette) colour space — base-PDF feature, validated by the panel (M19 Phase A).

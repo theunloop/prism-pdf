@@ -332,18 +332,17 @@ pub(crate) fn emit_draft_node(
                     CompositionDraftRowWidth::Auto => table.automatic_column(),
                 }
             }
-            if let Some(header) = header {
-                if let Some(CompositionDraftSlot {
+            if let Some(header) = header
+                && let Some(CompositionDraftSlot {
                     node: CompositionDraftNode::TableRow { cells },
                     ..
                 }) = slots.get(*header)
-                {
-                    table.header(|row| {
-                        for cell in cells {
-                            emit_draft_node(&mut row.cell(), *cell, slots);
-                        }
-                    });
-                }
+            {
+                table.header(|row| {
+                    for cell in cells {
+                        emit_draft_node(&mut row.cell(), *cell, slots);
+                    }
+                });
             }
             for row_index in rows {
                 if let Some(CompositionDraftSlot {
@@ -391,7 +390,9 @@ pub(crate) fn build_draft(arena: &CompositionArena) -> Result<Vec<u8>, prismpdf:
             }
         });
     }
-    composition.build().map(prismpdf::ComposedDocument::into_pdf)
+    composition
+        .build()
+        .map(prismpdf::ComposedDocument::into_pdf)
 }
 
 /// Create an empty declarative composition.

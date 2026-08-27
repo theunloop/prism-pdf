@@ -40,7 +40,7 @@ cargo deny check                                         # licenses + advisories
 ```
 
 CI additionally runs the test suite on Linux/macOS/Windows and a `cargo check` against the
-MSRV (Rust 1.87, edition 2024). Don't raise the MSRV casually — it's a published guarantee.
+MSRV (Rust 1.88, edition 2024). Don't raise the MSRV casually — it's a published guarantee.
 
 ## Architecture decisions
 

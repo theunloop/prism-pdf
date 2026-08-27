@@ -150,10 +150,10 @@ pub(super) fn emit_struct_elem(
         ));
     }
     // The element's structure namespace (§14.7.4, PDF 2.0): reference the shared /Namespace object.
-    if let Some(uri) = &elem.ns {
-        if let Some((_, ns_id)) = ctx.ns_ids.iter().find(|(u, _)| u == uri) {
-            d.insert(Name::from("NS"), Object::Reference(*ns_id));
-        }
+    if let Some(uri) = &elem.ns
+        && let Some((_, ns_id)) = ctx.ns_ids.iter().find(|(u, _)| u == uri)
+    {
+        d.insert(Name::from("NS"), Object::Reference(*ns_id));
     }
     // Associated files on the element (`/AF`, §14.13.6, PDF 2.0): emit each filespec, list it in the
     // name tree (via `sinks.af`) and reference it here. This is the 2.0-preferred /AF placement.
@@ -212,10 +212,10 @@ pub(super) fn attr_object(attrs: &[StructAttr], utf8: bool) -> Option<Object> {
 /// Collect the distinct structure-namespace URIs (`/NS`, §14.7.4) used anywhere in `elem`'s subtree,
 /// in first-seen order, into `out`.
 pub(super) fn collect_namespaces(elem: &StructElem, out: &mut Vec<String>) {
-    if let Some(uri) = &elem.ns {
-        if !out.contains(uri) {
-            out.push(uri.clone());
-        }
+    if let Some(uri) = &elem.ns
+        && !out.contains(uri)
+    {
+        out.push(uri.clone());
     }
     for kid in &elem.kids {
         if let StructKid::Child(child) = kid {

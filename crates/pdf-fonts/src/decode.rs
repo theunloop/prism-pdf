@@ -175,14 +175,12 @@ fn font_descriptor<E>(
             _ => None,
         });
     }
-    if let Some(descendants) = font.get(&Name::from("DescendantFonts")) {
-        if let Object::Array(array) = resolve(descendants)? {
-            if let Some(first) = array.first() {
-                if let Object::Dictionary(cid_font) = resolve(first)? {
-                    return font_descriptor(&cid_font, resolve);
-                }
-            }
-        }
+    if let Some(descendants) = font.get(&Name::from("DescendantFonts"))
+        && let Object::Array(array) = resolve(descendants)?
+        && let Some(first) = array.first()
+        && let Object::Dictionary(cid_font) = resolve(first)?
+    {
+        return font_descriptor(&cid_font, resolve);
     }
     Ok(None)
 }

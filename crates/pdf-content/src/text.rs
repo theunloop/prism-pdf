@@ -87,14 +87,13 @@ pub fn extract_text_with_forms(
             "ET" => push_newline(&mut out),
             // Invoke an XObject (§8.10): inline a form XObject's text.
             "Do" => {
-                if let Some(Object::Name(name)) = op.operands.first() {
-                    if let Some(text) = on_form(&String::from_utf8_lossy(name.as_bytes())) {
-                        if !text.is_empty() {
-                            push_newline(&mut out);
-                            out.push_str(&text);
-                            push_newline(&mut out);
-                        }
-                    }
+                if let Some(Object::Name(name)) = op.operands.first()
+                    && let Some(text) = on_form(&String::from_utf8_lossy(name.as_bytes()))
+                    && !text.is_empty()
+                {
+                    push_newline(&mut out);
+                    out.push_str(&text);
+                    push_newline(&mut out);
                 }
             }
             _ => {}

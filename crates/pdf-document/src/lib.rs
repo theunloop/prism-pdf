@@ -386,15 +386,15 @@ impl Document {
 
         // A table that parsed but cannot reach its catalog (e.g. offsets invalidated by an edit)
         // is as good as broken — rebuild and prefer the result if it is actually better.
-        if doc.catalog().is_err() {
-            if let Ok(rebuilt) = XRef::rebuild_with_limits(&doc.bytes, limits) {
-                doc.xref = rebuilt;
-                doc.open_report.recovered(OpenDiagnostic {
-                    reason: RecoveryReason::UnreachableCatalog,
-                    offset: None,
-                });
-                doc.setup_encryption(password)?; // re-arm decryption on the rebuilt table
-            }
+        if doc.catalog().is_err()
+            && let Ok(rebuilt) = XRef::rebuild_with_limits(&doc.bytes, limits)
+        {
+            doc.xref = rebuilt;
+            doc.open_report.recovered(OpenDiagnostic {
+                reason: RecoveryReason::UnreachableCatalog,
+                offset: None,
+            });
+            doc.setup_encryption(password)?; // re-arm decryption on the rebuilt table
         }
         Ok(doc)
     }
@@ -441,15 +441,15 @@ impl Document {
             security: None,
         };
         doc.setup_encryption_public_key(cert_der, key_der)?;
-        if doc.catalog().is_err() {
-            if let Ok(rebuilt) = XRef::rebuild(&doc.bytes) {
-                doc.xref = rebuilt;
-                doc.open_report.recovered(OpenDiagnostic {
-                    reason: RecoveryReason::UnreachableCatalog,
-                    offset: None,
-                });
-                doc.setup_encryption_public_key(cert_der, key_der)?;
-            }
+        if doc.catalog().is_err()
+            && let Ok(rebuilt) = XRef::rebuild(&doc.bytes)
+        {
+            doc.xref = rebuilt;
+            doc.open_report.recovered(OpenDiagnostic {
+                reason: RecoveryReason::UnreachableCatalog,
+                offset: None,
+            });
+            doc.setup_encryption_public_key(cert_der, key_der)?;
         }
         Ok(doc)
     }
@@ -483,16 +483,16 @@ impl Document {
     pub fn min_pdf_version(&self) -> Result<(u8, u8)> {
         let objects = self.live_objects()?;
         let mut v = pdf_writer::min_version(&objects);
-        if let Some(enc) = self.xref.trailer.get(&Name::from("Encrypt")) {
-            if let Ok(dict) = self.resolve_dict(enc, "Encrypt") {
-                let floor = match dict.get_integer(&Name::from("V")) {
-                    Some(5) => (2, 0),
-                    Some(4) => (1, 6),
-                    _ => (1, 4),
-                };
-                if floor > v {
-                    v = floor;
-                }
+        if let Some(enc) = self.xref.trailer.get(&Name::from("Encrypt"))
+            && let Ok(dict) = self.resolve_dict(enc, "Encrypt")
+        {
+            let floor = match dict.get_integer(&Name::from("V")) {
+                Some(5) => (2, 0),
+                Some(4) => (1, 6),
+                _ => (1, 4),
+            };
+            if floor > v {
+                v = floor;
             }
         }
         Ok(v)

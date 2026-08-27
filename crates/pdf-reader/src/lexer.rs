@@ -344,12 +344,10 @@ fn classify_run(run: &[u8], offset: usize) -> Result<Token> {
     let Ok(text) = std::str::from_utf8(run) else {
         return Err(ReaderError::new(ErrorKind::InvalidNumber, offset));
     };
-    if !seen_dot {
-        if let Ok(i) = text.parse::<i64>() {
-            return Ok(Token::Integer(i));
-        }
-        // Integer too large for i64: fall through and represent it as a real.
+    if !seen_dot && let Ok(i) = text.parse::<i64>() {
+        return Ok(Token::Integer(i));
     }
+    // Integer too large for i64: fall through and represent it as a real.
     match text.parse::<f64>() {
         Ok(r) => Ok(Token::Real(r)),
         Err(_) => Err(ReaderError::new(ErrorKind::InvalidNumber, offset)),

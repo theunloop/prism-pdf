@@ -184,12 +184,12 @@ impl Document {
     /// Resolve the `/Rect` array to four numbers (§12.5.2); a missing/short one yields zeros.
     fn rect(&self, annot: &Dictionary) -> Result<[f64; 4]> {
         let mut rect = [0.0; 4];
-        if let Some(obj) = annot.get(&Name::from("Rect")) {
-            if let Object::Array(array) = self.resolve(obj)? {
-                for (slot, item) in rect.iter_mut().zip(array.iter()) {
-                    if let Some(value) = self.resolve(item)?.as_f64() {
-                        *slot = value;
-                    }
+        if let Some(obj) = annot.get(&Name::from("Rect"))
+            && let Object::Array(array) = self.resolve(obj)?
+        {
+            for (slot, item) in rect.iter_mut().zip(array.iter()) {
+                if let Some(value) = self.resolve(item)?.as_f64() {
+                    *slot = value;
                 }
             }
         }

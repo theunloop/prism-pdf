@@ -640,11 +640,11 @@ fn append_xref_and_trailer(
     // that declares itself unencrypted while its body objects are still ciphertext — unreadable in
     // any conforming reader, not merely in ours. `trailer_extra` is emitted after this, and a
     // caller that supplies its own /Encrypt there would duplicate the key, so it must not.
-    if !trailer_extra.contains("/Encrypt") {
-        if let Some(encrypt) = find_trailer_encrypt(original) {
-            out.extend_from_slice(b" /Encrypt ");
-            out.extend_from_slice(encrypt);
-        }
+    if !trailer_extra.contains("/Encrypt")
+        && let Some(encrypt) = find_trailer_encrypt(original)
+    {
+        out.extend_from_slice(b" /Encrypt ");
+        out.extend_from_slice(encrypt);
     }
     out.extend_from_slice(trailer_extra.as_bytes());
     out.extend_from_slice(b" >>\n");

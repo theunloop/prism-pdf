@@ -163,10 +163,10 @@ impl Document {
             Object::Reference(id) => Some(*id),
             _ => None,
         };
-        if let Some(id) = id {
-            if !walk.visited.insert(id) {
-                return; // a /Kids cycle
-            }
+        if let Some(id) = id
+            && !walk.visited.insert(id)
+        {
+            return; // a /Kids cycle
         }
         let Ok(Object::Dictionary(dict)) = self.resolve(field) else {
             return;
@@ -211,11 +211,11 @@ impl Document {
     /// fill (§12.7.4.3). No-op for an inline AcroForm (rewriting the catalog is out of scope here).
     fn request_appearance_regen(&self, changes: &mut Vec<(ObjectId, Object)>) -> Result<()> {
         let catalog = self.catalog()?;
-        if let Some(Object::Reference(id)) = catalog.get(&Name::from("AcroForm")) {
-            if let Ok(Object::Dictionary(mut acroform)) = self.get(*id) {
-                acroform.insert(Name::from("NeedAppearances"), Object::Boolean(true));
-                changes.push((*id, Object::Dictionary(acroform)));
-            }
+        if let Some(Object::Reference(id)) = catalog.get(&Name::from("AcroForm"))
+            && let Ok(Object::Dictionary(mut acroform)) = self.get(*id)
+        {
+            acroform.insert(Name::from("NeedAppearances"), Object::Boolean(true));
+            changes.push((*id, Object::Dictionary(acroform)));
         }
         Ok(())
     }

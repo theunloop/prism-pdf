@@ -340,7 +340,7 @@ impl<'a> BitReader<'a> {
     }
 
     fn align_to_byte(&mut self) {
-        if self.bit_pos % 8 != 0 {
+        if !self.bit_pos.is_multiple_of(8) {
             self.bit_pos = (self.bit_pos / 8 + 1) * 8;
         }
     }

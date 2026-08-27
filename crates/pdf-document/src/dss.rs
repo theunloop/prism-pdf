@@ -199,14 +199,14 @@ impl Document {
             crls: self.read_der_streams(&dss, "CRLs"),
             vri_keys: Vec::new(),
         };
-        if let Some(vri) = dss.get(&Name::from("VRI")) {
-            if let Ok(Object::Dictionary(vri)) = self.resolve(vri) {
-                info.vri_keys = vri
-                    .iter()
-                    .filter_map(|(k, _)| k.as_str().map(str::to_string))
-                    .collect();
-                info.vri_keys.sort();
-            }
+        if let Some(vri) = dss.get(&Name::from("VRI"))
+            && let Ok(Object::Dictionary(vri)) = self.resolve(vri)
+        {
+            info.vri_keys = vri
+                .iter()
+                .filter_map(|(k, _)| k.as_str().map(str::to_string))
+                .collect();
+            info.vri_keys.sort();
         }
         Ok(Some(info))
     }

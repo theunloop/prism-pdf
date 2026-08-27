@@ -76,30 +76,30 @@ impl Document {
             return;
         }
         // Leaf entries: a flat [key1 val1 key2 val2 …] array.
-        if let Some(names) = node.get(&Name::from("Names")) {
-            if let Ok(Object::Array(arr)) = self.resolve(names) {
-                for pair in arr.iter().collect::<Vec<_>>().chunks_exact(2) {
-                    if out.len() >= MAX_NAME_TREE_ENTRIES {
-                        return;
-                    }
-                    if let Ok(Object::String(key)) = self.resolve(pair[0]) {
-                        out.push((key.as_bytes().to_vec(), pair[1].clone()));
-                    }
+        if let Some(names) = node.get(&Name::from("Names"))
+            && let Ok(Object::Array(arr)) = self.resolve(names)
+        {
+            for pair in arr.iter().collect::<Vec<_>>().chunks_exact(2) {
+                if out.len() >= MAX_NAME_TREE_ENTRIES {
+                    return;
+                }
+                if let Ok(Object::String(key)) = self.resolve(pair[0]) {
+                    out.push((key.as_bytes().to_vec(), pair[1].clone()));
                 }
             }
         }
         // Intermediate node: recurse into child nodes, guarding against reference cycles.
-        if let Some(kids) = node.get(&Name::from("Kids")) {
-            if let Ok(Object::Array(arr)) = self.resolve(kids) {
-                for kid in arr.iter() {
-                    if let Object::Reference(id) = kid {
-                        if !visited.insert(*id) {
-                            continue; // already visited — a cycle
-                        }
-                    }
-                    if let Ok(child) = self.resolve_dict(kid, "name tree node") {
-                        self.walk_name_tree(&child, visited, out, depth + 1);
-                    }
+        if let Some(kids) = node.get(&Name::from("Kids"))
+            && let Ok(Object::Array(arr)) = self.resolve(kids)
+        {
+            for kid in arr.iter() {
+                if let Object::Reference(id) = kid
+                    && !visited.insert(*id)
+                {
+                    continue; // already visited — a cycle
+                }
+                if let Ok(child) = self.resolve_dict(kid, "name tree node") {
+                    self.walk_name_tree(&child, visited, out, depth + 1);
                 }
             }
         }

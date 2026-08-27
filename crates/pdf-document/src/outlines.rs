@@ -61,10 +61,10 @@ impl Document {
             if items.len() >= MAX_OUTLINE_ITEMS {
                 break;
             }
-            if let Object::Reference(id) = &entry {
-                if !visited.insert(*id) {
-                    break; // a cycle in the /First or /Next chain
-                }
+            if let Object::Reference(id) = &entry
+                && !visited.insert(*id)
+            {
+                break; // a cycle in the /First or /Next chain
             }
             let Ok(Object::Dictionary(item)) = self.resolve(&entry) else {
                 break;

@@ -249,13 +249,13 @@ impl XRef {
             // Hybrid-reference files (§7.5.8.4): a classic trailer may point via /XRefStm to a
             // supplementary cross-reference stream that holds the compressed-object entries. It is
             // best-effort — a broken /XRefStm must not sink an otherwise-readable file.
-            if let Some(xrefstm) = section.trailer.get_integer(&Name::from("XRefStm")) {
-                if xrefstm >= 0 && seen.insert(xrefstm as usize) {
-                    if let Ok(extra) = read_xref_stream_section(input, xrefstm as usize, limits) {
-                        for (number, entry) in extra.entries {
-                            entries.entry(number).or_insert(entry);
-                        }
-                    }
+            if let Some(xrefstm) = section.trailer.get_integer(&Name::from("XRefStm"))
+                && xrefstm >= 0
+                && seen.insert(xrefstm as usize)
+                && let Ok(extra) = read_xref_stream_section(input, xrefstm as usize, limits)
+            {
+                for (number, entry) in extra.entries {
+                    entries.entry(number).or_insert(entry);
                 }
             }
 
@@ -792,10 +792,8 @@ fn scan_object_headers(input: &[u8]) -> Vec<(u32, u16, usize)> {
                 None => true,
                 Some(&b) => is_whitespace(b) || is_delimiter(b),
             };
-            if boundary_ok {
-                if let Some(header) = parse_obj_header_before(input, i) {
-                    out.push(header);
-                }
+            if boundary_ok && let Some(header) = parse_obj_header_before(input, i) {
+                out.push(header);
             }
             i += 3;
         } else {

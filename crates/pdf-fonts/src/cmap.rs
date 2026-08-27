@@ -44,10 +44,10 @@ impl ToUnicode {
             match op.operator.as_str() {
                 // `<lo> <hi> endcodespacerange`: the bound width is the code width (§9.10.3).
                 "endcodespacerange" => {
-                    if width == 0 {
-                        if let Some(Object::String(bound)) = op.operands.first() {
-                            width = bound.as_bytes().len();
-                        }
+                    if width == 0
+                        && let Some(Object::String(bound)) = op.operands.first()
+                    {
+                        width = bound.as_bytes().len();
                     }
                 }
                 // `<src> <dst> …`: individual code → text mappings.
