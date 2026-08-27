@@ -1,0 +1,21 @@
+[package]
+name = "prismpdf-cos"
+description = "COS object model (ISO 32000 §7): Object enum, dict/array/stream — no I/O."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-cos`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_cos"
+
+[lints]
+workspace = true
+
+[dependencies]
+bytes.workspace = true
+indexmap.workspace = true

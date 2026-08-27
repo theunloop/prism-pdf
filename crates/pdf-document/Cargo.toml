@@ -1,0 +1,38 @@
+[package]
+name = "prismpdf-document"
+description = "Document model: catalog, page tree, metadata, merge/split (ISO 32000 §7.7)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-document`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_document"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-cos.workspace = true
+pdf-filters.workspace = true
+pdf-reader.workspace = true
+pdf-writer.workspace = true
+pdf-crypto.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# Generate a throwaway RSA keypair + X.509 cert for the public-key handler round-trip test (§7.6.5).
+rsa = { workspace = true, features = ["sha2"] }
+x509-cert = { workspace = true, features = ["builder"] }
+sha2 = { workspace = true, features = ["oid"] }
+der = { workspace = true, features = ["alloc"] }
+rand_core = { workspace = true, features = ["getrandom"] }
+criterion.workspace = true
+
+[[bench]]
+name = "document_operations"
+harness = false

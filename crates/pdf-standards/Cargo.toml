@@ -1,0 +1,21 @@
+[package]
+name = "prismpdf-standards"
+description = "PDF/A, PDF/UA, PDF/X production & validation, XMP (ISO 32000 §14, EPIC 13)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-standards`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_standards"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-cos.workspace = true
+pdf-document.workspace = true

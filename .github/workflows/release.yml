@@ -1,0 +1,672 @@
+name: Release
+
+# Builds the versioned native artifacts every language binding consumes and publishes them to
+# GitHub Releases. The contract — what is published, which targets, which build settings, and
+# the guarantees a binding may pin against — is `docs/native-artifacts.md`; change both together.
+#
+# Bindings never compile this repository. They download one bundle for a tag, verify SHA-256, and
+# stage the per-RID libraries into their own package.
+
+on:
+  push:
+    tags: ["v*"]
+  # A dry run: builds and assembles the bundle, uploads it as a workflow artifact, publishes
+  # nothing. Use it to validate a matrix change without cutting a tag.
+  workflow_dispatch:
+
+# Unlike CI, this workflow must not set `-D warnings`: a released artifact should not fail to
+# build because a dependency emitted a warning under a newer compiler.
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------------------------
+  # The version guard. `prismpdf_version()` is `env!("CARGO_PKG_VERSION")` of `prismpdf-ffi`, so
+  # the version cargo reports for that package *is* the string every binding asserts on. Comparing
+  # it to the tag here is what makes "the ABI version equals the release tag" a checked property
+  # rather than a convention — v0.3.1 was tagged on a docs commit and shipped an ABI reporting
+  # 0.3.0, which every binding then had to document around.
+  # ---------------------------------------------------------------------------------------------
+  guard:
+    name: version guard
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      # A path dependency resolves by path, so a stale `version` requirement in
+      # [workspace.dependencies] breaks nothing until crates.io reads it — mid-publish, after
+      # earlier crates in the graph have already gone out. CI checks this too, but CI does not
+      # run on a tag push.
+      - name: Check internal version requirements
+        run: python3 scripts/workspace_version.py --check
+
+      - name: Resolve and check the version
+        id: v
+        run: |
+          set -euo pipefail
+          version="$(cargo metadata --no-deps --format-version 1 \
+            | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"] == "prismpdf-ffi"))')"
+          echo "prismpdf-ffi reports version $version"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+            if [ "$tag" != "v$version" ]; then
+              echo "::error::tag $tag does not match the workspace version $version." \
+                   "Bump [workspace.package].version in the release commit (RELEASING.md), then retag."
+              exit 1
+            fi
+          fi
+
+          if ! grep -q "^## \[$version\] - " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no released '## [$version] - YYYY-MM-DD' heading." \
+                 "A tag without a changelog entry is the shape of an accidental release."
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------------------------
+  # One leg per RID. Every leg produces exactly one shared library, built with `--profile dist`
+  # (stripped, thin-LTO; still `panic = "unwind"`, which the `catch_unwind` boundary requires).
+  #
+  # The four settings that decide whether an artifact loads on a consumer's machine and cannot be
+  # fixed afterwards by a binding — static CRT on Windows, a glibc floor, a separate musl build,
+  # and a macOS deployment target plus a signature — are all set here. See the `rustflags` and
+  # `env` columns, and `docs/native-artifacts.md` for the reasoning.
+  # ---------------------------------------------------------------------------------------------
+  natives:
+    name: ${{ matrix.rid }}
+    needs: guard
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Windows. `+crt-static` links the VC++ runtime into the DLL, so a consumer without
+          # the redistributable installed still loads it.
+          - { rid: win-x64,          os: windows-latest, target: x86_64-pc-windows-msvc,        lib: pdf_ffi.dll,       tool: cargo,    rustflags: "-C target-feature=+crt-static" }
+          - { rid: win-x86,          os: windows-latest, target: i686-pc-windows-msvc,          lib: pdf_ffi.dll,       tool: cargo,    rustflags: "-C target-feature=+crt-static" }
+          - { rid: win-arm64,        os: windows-latest, target: aarch64-pc-windows-msvc,       lib: pdf_ffi.dll,       tool: cargo,    rustflags: "-C target-feature=+crt-static" }
+
+          # --- Linux / glibc. The `.2.17` suffix is a cargo-zigbuild instruction: link against
+          # glibc 2.17 (RHEL 7 era) regardless of what the runner has installed. Without it the
+          # artifact inherits the runner's glibc and refuses to load on older distributions.
+          - { rid: linux-x64,        os: ubuntu-latest,  target: x86_64-unknown-linux-gnu.2.17,  lib: libpdf_ffi.so,     tool: zigbuild, rustflags: "" }
+          - { rid: linux-arm64,      os: ubuntu-latest,  target: aarch64-unknown-linux-gnu.2.17, lib: libpdf_ffi.so,     tool: zigbuild, rustflags: "" }
+          - { rid: linux-arm,        os: ubuntu-latest,  target: armv7-unknown-linux-gnueabihf.2.17, lib: libpdf_ffi.so, tool: zigbuild, rustflags: "" }
+
+          # --- Linux / musl. A glibc .so cannot load on Alpine, so this is a separate artifact and
+          # not a variant of the one above. `-crt-static` is required for a *cdylib*: the musl
+          # target defaults to a static libc, which is right for executables and wrong for a
+          # shared object meant to be dlopen'd by a host process.
+          - { rid: linux-musl-x64,   os: ubuntu-latest,  target: x86_64-unknown-linux-musl,     lib: libpdf_ffi.so,     tool: zigbuild, rustflags: "-C target-feature=-crt-static" }
+          - { rid: linux-musl-arm64, os: ubuntu-latest,  target: aarch64-unknown-linux-musl,    lib: libpdf_ffi.so,     tool: zigbuild, rustflags: "-C target-feature=-crt-static" }
+
+          # --- macOS. MACOSX_DEPLOYMENT_TARGET is set per leg below; the dylibs are ad-hoc signed
+          # after linking, without which arm64 macOS refuses to load them at all.
+          - { rid: osx-x64,          os: macos-latest,   target: x86_64-apple-darwin,           lib: libpdf_ffi.dylib,  tool: cargo,    rustflags: "", macos_target: "10.12" }
+          - { rid: osx-arm64,        os: macos-latest,   target: aarch64-apple-darwin,          lib: libpdf_ffi.dylib,  tool: cargo,    rustflags: "", macos_target: "11.0" }
+
+          # --- Android. cargo-ndk supplies the NDK linker and sysroot; API 21 is the floor.
+          - { rid: android-arm64,    os: ubuntu-latest,  target: aarch64-linux-android,         lib: libpdf_ffi.so,     tool: ndk,      rustflags: "", abi: arm64-v8a }
+          - { rid: android-arm,      os: ubuntu-latest,  target: armv7-linux-androideabi,       lib: libpdf_ffi.so,     tool: ndk,      rustflags: "", abi: armeabi-v7a }
+          - { rid: android-x64,      os: ubuntu-latest,  target: x86_64-linux-android,          lib: libpdf_ffi.so,     tool: ndk,      rustflags: "", abi: x86_64 }
+
+          # --- Apple static libraries. App-store Apple platforms link the engine into the signed
+          # application; the `appleslice` group routes these archives to the `xcframework` job.
+          # macOS is included as a static library as well as its normal dylib, so one Apple binding
+          # can use one XCFramework on every Apple platform.
+          #
+          # These two profile overrides are what make the archive linkable by Xcode, and both were
+          # verified by inspecting the produced `.a`:
+          #   strip: none — a static archive is an input to someone else's linker, and its symbol
+          #     table is how that linker resolves `prismpdf_*`. Stripping it is not a size
+          #     optimisation here, it is a broken artifact.
+          #   lto: off — with thin LTO a staticlib's members are LLVM *bitcode*, deferring codegen
+          #     to the consumer's linker and requiring it to speak this exact LLVM version. Xcode's
+          #     will not. With LTO off the members are native objects with the 386 `prismpdf_*`
+          #     symbols visible, which is what an Xcode link needs.
+          # Neither costs the consumer anything: the app's linker dead-strips what it does not
+          # reference, so only used code reaches the shipped binary.
+          - { rid: apple-macos-arm64, os: macos-latest, target: aarch64-apple-darwin, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: macosx, macos_target: "11.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-macos-x64, os: macos-latest, target: x86_64-apple-darwin, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: macosx, macos_target: "11.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-catalyst-arm64, os: macos-latest, target: aarch64-apple-ios-macabi, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: macosx, ios_target: "14.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-catalyst-x64, os: macos-latest, target: x86_64-apple-ios-macabi, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: macosx, ios_target: "14.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-ios-arm64, os: macos-latest, target: aarch64-apple-ios, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphoneos, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-iossimulator-arm64, os: macos-latest, target: aarch64-apple-ios-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphonesimulator, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-iossimulator-x64, os: macos-latest, target: x86_64-apple-ios, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphonesimulator, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-tvos-arm64, os: macos-latest, target: aarch64-apple-tvos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: appletvos, tvos_target: "13.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-tvossimulator-arm64, os: macos-latest, target: aarch64-apple-tvos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: appletvsimulator, tvos_target: "13.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-tvossimulator-x64, os: macos-latest, target: x86_64-apple-tvos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: appletvsimulator, tvos_target: "13.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-visionos-arm64, os: macos-latest, target: aarch64-apple-visionos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: xros, xros_target: "1.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-visionossimulator-arm64, os: macos-latest, target: aarch64-apple-visionos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: xrsimulator, xros_target: "1.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-watchos-arm64, os: macos-latest, target: aarch64-apple-watchos, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: watchos, watchos_target: "7.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-watchossimulator-arm64, os: macos-latest, target: aarch64-apple-watchos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: watchsimulator, watchos_target: "7.0", strip: "none", lto: "off", group: appleslice }
+          - { rid: apple-watchossimulator-x64, os: macos-latest, target: x86_64-apple-watchos-sim, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: watchsimulator, watchos_target: "7.0", strip: "none", lto: "off", group: appleslice }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The target triple carries a glibc suffix for the zigbuild legs; everything except
+      # `rustup target add` and the output path wants the plain triple.
+      - name: Resolve the plain target triple
+        shell: bash
+        run: echo "TRIPLE=${TARGET%%.*}" >> "$GITHUB_ENV"
+        env:
+          TARGET: ${{ matrix.target }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TRIPLE }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rid }}
+
+      - name: Install cargo-zigbuild
+        if: matrix.tool == 'zigbuild'
+        run: |
+          set -euo pipefail
+          # cargo-zigbuild locates the toolchain as an importable `ziglang` module, so a user-site
+          # install is enough and avoids PEP 668 on the runner's system python.
+          python3 -m pip install --user ziglang==0.13.0
+          cargo install cargo-zigbuild --locked
+
+      - name: Install cargo-ndk
+        if: matrix.tool == 'ndk'
+        run: cargo install cargo-ndk --locked
+
+      - name: Build
+        shell: bash
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
+          IPHONEOS_DEPLOYMENT_TARGET: ${{ matrix.ios_target }}
+          TVOS_DEPLOYMENT_TARGET: ${{ matrix.tvos_target }}
+          WATCHOS_DEPLOYMENT_TARGET: ${{ matrix.watchos_target }}
+          XROS_DEPLOYMENT_TARGET: ${{ matrix.xros_target }}
+          # Override [profile.dist] for the static Apple archive legs.
+          CARGO_PROFILE_DIST_STRIP: ${{ matrix.strip || 'symbols' }}
+          CARGO_PROFILE_DIST_LTO: ${{ matrix.lto || 'thin' }}
+        run: |
+          set -euo pipefail
+          if [ -n "${{ matrix.sdk }}" ]; then
+            export SDKROOT="$(xcrun --sdk "${{ matrix.sdk }}" --show-sdk-path)"
+          fi
+          case "${{ matrix.tool }}" in
+            cargo)    cargo build -p prismpdf-ffi --profile dist --target "${{ matrix.target }}" ;;
+            zigbuild) cargo zigbuild -p prismpdf-ffi --profile dist --target "${{ matrix.target }}" ;;
+            ndk)      cargo ndk -t "${{ matrix.abi }}" -p 21 build -p prismpdf-ffi --profile dist ;;
+          esac
+
+      # An unsigned dylib is not a load failure a binding can work around: the consumer sees the
+      # library refuse to load and has to reach for `xattr`. Ad-hoc is enough — this establishes a
+      # valid signature, it does not assert an identity.
+      # macOS only: a static archive is not a loadable image and cannot be signed — an iOS app
+      # carries the engine inside its own signed binary.
+      - name: Ad-hoc codesign (macOS)
+        if: startsWith(matrix.rid, 'osx-')
+        run: codesign --force --sign - "target/${TRIPLE}/dist/${{ matrix.lib }}"
+
+      - name: Stage the artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "staging/${{ matrix.rid }}"
+          cp "target/${TRIPLE}/dist/${{ matrix.lib }}" "staging/${{ matrix.rid }}/${{ matrix.lib }}"
+          ls -l "staging/${{ matrix.rid }}/${{ matrix.lib }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.group || 'native' }}-${{ matrix.rid }}
+          path: staging/${{ matrix.rid }}
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------------------
+  # Apple platforms. Xcode selects a slice by platform, environment, and architecture. Each
+  # platform/environment therefore gets its own archive; architectures within one environment are
+  # combined with `lipo`. Never lipo a device archive and a simulator archive together.
+  #
+  # This job exists because `xcodebuild` only runs on macOS; everything else about the release is
+  # assembled on Linux in `bundle`.
+  # ---------------------------------------------------------------------------------------------
+  xcframework:
+    name: xcframework
+    needs: [guard, natives]
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: slices
+          pattern: appleslice-*
+
+      - name: Assemble PrismPDF.xcframework
+        run: |
+          set -euo pipefail
+          mkdir -p assembled headers
+          universal() {
+            local output="$1"
+            shift
+            lipo -create "$@" -output "$output"
+            lipo -info "$output"
+          }
+          universal assembled/macos.a \
+            slices/appleslice-apple-macos-arm64/libpdf_ffi.a \
+            slices/appleslice-apple-macos-x64/libpdf_ffi.a
+          universal assembled/catalyst.a \
+            slices/appleslice-apple-catalyst-arm64/libpdf_ffi.a \
+            slices/appleslice-apple-catalyst-x64/libpdf_ffi.a
+          universal assembled/ios-simulator.a \
+            slices/appleslice-apple-iossimulator-arm64/libpdf_ffi.a \
+            slices/appleslice-apple-iossimulator-x64/libpdf_ffi.a
+          universal assembled/tvos-simulator.a \
+            slices/appleslice-apple-tvossimulator-arm64/libpdf_ffi.a \
+            slices/appleslice-apple-tvossimulator-x64/libpdf_ffi.a
+          universal assembled/watchos-simulator.a \
+            slices/appleslice-apple-watchossimulator-arm64/libpdf_ffi.a \
+            slices/appleslice-apple-watchossimulator-x64/libpdf_ffi.a
+
+          # The headers directory is what makes the framework usable from Swift and Objective-C:
+          # the modulemap names the low-level module `CPrismPDF` and points it at the same header
+          # every other binding compiles against. A P/Invoke consumer ignores both.
+          cp crates/pdf-ffi/include/prismpdf.h crates/pdf-ffi/include/module.modulemap headers/
+
+          xcodebuild -create-xcframework \
+            -library assembled/macos.a -headers headers \
+            -library assembled/catalyst.a -headers headers \
+            -library slices/appleslice-apple-ios-arm64/libpdf_ffi.a -headers headers \
+            -library assembled/ios-simulator.a -headers headers \
+            -library slices/appleslice-apple-tvos-arm64/libpdf_ffi.a -headers headers \
+            -library assembled/tvos-simulator.a -headers headers \
+            -library slices/appleslice-apple-visionos-arm64/libpdf_ffi.a -headers headers \
+            -library slices/appleslice-apple-visionossimulator-arm64/libpdf_ffi.a -headers headers \
+            -library slices/appleslice-apple-watchos-arm64/libpdf_ffi.a -headers headers \
+            -library assembled/watchos-simulator.a -headers headers \
+            -output PrismPDF.xcframework
+
+          zip -qry "prism-pdf-xcframework-v${VERSION}.zip" PrismPDF.xcframework
+          ls -l "prism-pdf-xcframework-v${VERSION}.zip"
+
+      # No binding consumes this yet, so nothing downstream would notice an archive that packages
+      # cleanly and then refuses to link — the failure mode the `strip: none` / `lto: off` overrides
+      # exist to prevent. Link a probe against every platform slice with its real Apple SDK: it is
+      # the same question an app's build asks, minus the app. Delete this once an Apple binding is
+      # building against the framework in its own CI.
+      - name: Probe that every Apple slice actually links
+        run: |
+          set -euo pipefail
+          cat > probe.c <<'PROBE'
+          #include "prismpdf.h"
+          #include <stdio.h>
+          int main(void) { printf("%s\n", prismpdf_version()); return 0; }
+          PROBE
+          link() {
+            xcrun --sdk "$1" clang -target "$2" \
+              -isysroot "$(xcrun --sdk "$1" --show-sdk-path)" \
+              -Iheaders probe.c "$3" -o "probe-$1"
+            echo "linked $2 against $3"
+          }
+          link macosx           arm64-apple-macosx11.0          assembled/macos.a
+          link macosx           arm64-apple-ios14.0-macabi      assembled/catalyst.a
+          link iphoneos         arm64-apple-ios13.0             slices/appleslice-apple-ios-arm64/libpdf_ffi.a
+          link iphonesimulator  arm64-apple-ios13.0-simulator   assembled/ios-simulator.a
+          link appletvos        arm64-apple-tvos13.0            slices/appleslice-apple-tvos-arm64/libpdf_ffi.a
+          link appletvsimulator arm64-apple-tvos13.0-simulator  assembled/tvos-simulator.a
+          link xros             arm64-apple-xros1.0             slices/appleslice-apple-visionos-arm64/libpdf_ffi.a
+          link xrsimulator      arm64-apple-xros1.0-simulator   slices/appleslice-apple-visionossimulator-arm64/libpdf_ffi.a
+          link watchos          arm64-apple-watchos7.0          slices/appleslice-apple-watchos-arm64/libpdf_ffi.a
+          link watchsimulator   arm64-apple-watchos7.0-simulator assembled/watchos-simulator.a
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xcframework
+          path: prism-pdf-xcframework-v${{ env.VERSION }}.zip
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------------------
+  # CLI executables. The native matrix above ships a library for bindings to load; this ships the
+  # `prismpdf` binary for people who just want to run it, so that `cargo install prismpdf-cli` —
+  # which needs a Rust toolchain and compiles the whole engine — is not the only way to get one.
+  #
+  # Deliberately a smaller matrix than `natives`: no Android and no Apple static slices, because
+  # nobody runs a shell binary there. Three settings differ from the library legs, all because an
+  # executable is not a `cdylib`:
+  #   musl does NOT get `-crt-static` disabled. The library legs turn it off because a cdylib
+  #     meant to be dlopen'd must not carry a static libc; for an executable the musl default is
+  #     exactly what we want — one file that runs on any distribution, Alpine included.
+  #   Windows keeps `+crt-static`, for the same reason the DLL does: no VC++ redistributable.
+  #   The archive is built on the runner that produced the binary, not in `bundle`. Artifact
+  #     upload does not preserve the executable bit, so the tar has to be made before it.
+  # ---------------------------------------------------------------------------------------------
+  cli:
+    name: cli ${{ matrix.rid }}
+    needs: guard
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Windows. win-x86 exists only to match the library matrix; a 32-bit shell binary
+          # has no real audience left and can be dropped without affecting anything else.
+          - { rid: win-x64,          os: windows-latest, target: x86_64-pc-windows-msvc,             tool: cargo,    rustflags: "-C target-feature=+crt-static", ext: ".exe", archive: zip }
+          - { rid: win-arm64,        os: windows-latest, target: aarch64-pc-windows-msvc,            tool: cargo,    rustflags: "-C target-feature=+crt-static", ext: ".exe", archive: zip }
+          - { rid: win-x86,          os: windows-latest, target: i686-pc-windows-msvc,               tool: cargo,    rustflags: "-C target-feature=+crt-static", ext: ".exe", archive: zip }
+
+          # --- Linux / glibc. Same `.2.17` zigbuild floor as the library: built on a modern runner,
+          # runs on a RHEL 7-era glibc.
+          - { rid: linux-x64,        os: ubuntu-latest,  target: x86_64-unknown-linux-gnu.2.17,      tool: zigbuild, rustflags: "", ext: "", archive: tar }
+          - { rid: linux-arm64,      os: ubuntu-latest,  target: aarch64-unknown-linux-gnu.2.17,     tool: zigbuild, rustflags: "", ext: "", archive: tar }
+          - { rid: linux-arm,        os: ubuntu-latest,  target: armv7-unknown-linux-gnueabihf.2.17, tool: zigbuild, rustflags: "", ext: "", archive: tar }
+
+          # --- Linux / musl. Statically linked, so these are the ones to reach for when the glibc
+          # floor is still too high or the target is Alpine.
+          - { rid: linux-musl-x64,   os: ubuntu-latest,  target: x86_64-unknown-linux-musl,          tool: zigbuild, rustflags: "", ext: "", archive: tar }
+          - { rid: linux-musl-arm64, os: ubuntu-latest,  target: aarch64-unknown-linux-musl,         tool: zigbuild, rustflags: "", ext: "", archive: tar }
+
+          # --- macOS. Same deployment floors as the dylibs.
+          - { rid: osx-x64,          os: macos-latest,   target: x86_64-apple-darwin,                tool: cargo,    rustflags: "", ext: "", archive: tar, macos_target: "10.12" }
+          - { rid: osx-arm64,        os: macos-latest,   target: aarch64-apple-darwin,               tool: cargo,    rustflags: "", ext: "", archive: tar, macos_target: "11.0" }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the plain target triple
+        shell: bash
+        run: echo "TRIPLE=${TARGET%%.*}" >> "$GITHUB_ENV"
+        env:
+          TARGET: ${{ matrix.target }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TRIPLE }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: cli-${{ matrix.rid }}
+
+      - name: Install cargo-zigbuild
+        if: matrix.tool == 'zigbuild'
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user ziglang==0.13.0
+          cargo install cargo-zigbuild --locked
+
+      - name: Build
+        shell: bash
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
+        run: |
+          set -euo pipefail
+          case "${{ matrix.tool }}" in
+            cargo)    cargo build -p prismpdf-cli --profile dist --target "${{ matrix.target }}" ;;
+            zigbuild) cargo zigbuild -p prismpdf-cli --profile dist --target "${{ matrix.target }}" ;;
+          esac
+
+      # An unsigned arm64 macOS executable is killed on launch, not merely warned about. Ad-hoc is
+      # enough to make it runnable; it asserts no identity, and a user still clears quarantine.
+      - name: Ad-hoc codesign (macOS)
+        if: startsWith(matrix.rid, 'osx-')
+        run: codesign --force --sign - "target/${TRIPLE}/dist/prismpdf"
+
+      # Smoke-test whatever can actually run here: a binary that builds but dies on launch is the
+      # failure this job exists to prevent, and it is free to catch on the native-architecture legs.
+      - name: Run it
+        if: matrix.rid == 'linux-x64' || matrix.rid == 'osx-arm64' || matrix.rid == 'win-x64'
+        shell: bash
+        run: "target/${TRIPLE}/dist/prismpdf${{ matrix.ext }} --version"
+
+      # The licence copy is the workspace-root file, never the per-crate symlink: a Windows
+      # checkout without symlink support materialises that one as a text file holding a path.
+      - name: Stage and archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="prismpdf-v${VERSION}-${{ matrix.rid }}"
+          mkdir -p "staging/$name"
+          cp "target/${TRIPLE}/dist/prismpdf${{ matrix.ext }}" "staging/$name/"
+          cp LICENSE.md "staging/$name/LICENSE.md"
+
+          mkdir -p out
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            ( cd staging && 7z a -tzip "../out/${name}.zip" "$name" )
+          else
+            tar czf "out/${name}.tar.gz" -C staging "$name"
+          fi
+          ls -l out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.rid }}
+          path: out/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------------------
+  # Assemble the tarballs, checksum everything, and publish. The header travels with the
+  # binaries so a binding can prove the `prismpdf.h` it vendored is the one these were built from;
+  # the corpus travels separately because it changes far less often than the engine, and shipping
+  # it as its own artifact lets a binding update one without re-downloading the other.
+  # ---------------------------------------------------------------------------------------------
+  bundle:
+    name: bundle and publish
+    needs: [guard, natives, xcframework, cli]
+    runs-on: ubuntu-latest
+    # Creating the release and uploading its assets is the only write this workflow performs.
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # `native-*` only: the Apple slices went to the xcframework job, and arrive here already
+      # assembled as a zip. They are deliberately not also loose in the natives bundle — a static
+      # archive is an order of magnitude larger than the equivalent dylib, and a consumer who does
+      # not ship an Apple platform should not download them.
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloaded
+          pattern: native-*
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: xcframework
+
+      # Already-built archives, one per platform. They are not repacked here: the executable bit
+      # lives inside the tar, and artifact upload would not have preserved it loose.
+      - uses: actions/download-artifact@v4
+        with:
+          path: cli
+          pattern: cli-*
+          merge-multiple: true
+
+      - name: Assemble
+        run: |
+          set -euo pipefail
+          root="prism-pdf-natives-v${VERSION}"
+          mkdir -p "$root"
+
+          for dir in downloaded/native-*; do
+            rid="${dir#downloaded/native-}"
+            mkdir -p "$root/$rid"
+            cp "$dir"/* "$root/$rid/"
+          done
+
+          cp crates/pdf-ffi/include/prismpdf.h "$root/prismpdf.h"
+          echo "$VERSION" > "$root/VERSION"
+          echo "$GITHUB_SHA" > "$root/COMMIT"
+
+          # Checksums *inside* the bundle: what a binding records per RID in its VENDORED.md.
+          ( cd "$root" && find . -type f ! -name SHA256SUMS -print0 \
+              | sort -z | xargs -0 sha256sum > SHA256SUMS )
+          cat "$root/SHA256SUMS"
+
+          tar czf "${root}.tar.gz" "$root"
+          tar czf "prism-pdf-corpus-v${VERSION}.tar.gz" \
+            corpus/valid corpus/malformed corpus/edge corpus/README.md
+          # Every published name carries the version. GitHub scopes assets per release, so this
+          # is no longer required to avoid collisions — but the name is what a binding pins and
+          # what lands in a download directory, and an unversioned `prismpdf.h` or `SHA256SUMS`
+          # there is indistinguishable from any other release's copy.
+          cp crates/pdf-ffi/include/prismpdf.h "prism-pdf-v${VERSION}.h"
+
+          # The CLI archives arrive built; move them next to everything else so one checksum
+          # file covers every published name.
+          mv cli/* .
+          ls -l prismpdf-v${VERSION}-*
+
+          # Checksums *of* the published files: what a binding pins in its fetch script, and what
+          # a person who downloaded a CLI archive checks it against.
+          sha256sum "${root}.tar.gz" "prism-pdf-corpus-v${VERSION}.tar.gz" \
+            "prism-pdf-xcframework-v${VERSION}.zip" "prism-pdf-v${VERSION}.h" \
+            prismpdf-v${VERSION}-* \
+            > "SHA256SUMS-v${VERSION}.txt"
+          cat "SHA256SUMS-v${VERSION}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle-v${{ env.VERSION }}
+          path: |
+            prism-pdf-natives-v${{ env.VERSION }}.tar.gz
+            prism-pdf-corpus-v${{ env.VERSION }}.tar.gz
+            prism-pdf-xcframework-v${{ env.VERSION }}.zip
+            prism-pdf-v${{ env.VERSION }}.h
+            prismpdf-v${{ env.VERSION }}-*
+            SHA256SUMS-v${{ env.VERSION }}.txt
+          if-no-files-found: error
+
+      # Published artifacts are immutable: bindings pin by SHA-256, and a silent re-upload with
+      # different bytes becomes an unreproducible build in someone else's CI days later. Re-running
+      # this workflow on an existing tag would do exactly that, so refuse up front rather than
+      # discover it afterwards. (`gh release upload` without `--clobber` would also fail, but only
+      # after some assets had already been replaced.)
+      - name: Refuse to overwrite an existing release
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          if ! gh release view "v${VERSION}" --json assets > assets.json 2>/dev/null; then
+            echo "no existing release for v${VERSION} — proceeding"
+            exit 0
+          fi
+          existing="$(python3 -c 'import json;print("\n".join(a["name"] for a in json.load(open("assets.json"))["assets"]))')"
+          for f in "prism-pdf-natives-v${VERSION}.tar.gz" "prism-pdf-corpus-v${VERSION}.tar.gz" \
+                   "prism-pdf-xcframework-v${VERSION}.zip" "prism-pdf-v${VERSION}.h" \
+                   prismpdf-v${VERSION}-* "SHA256SUMS-v${VERSION}.txt"; do
+            if grep -qxF "$f" <<< "$existing"; then
+              echo "::error::$f is already published on release v${VERSION}. Artifacts are" \
+                   "immutable — cut a new version instead of replacing one bindings may already" \
+                   "have pinned by checksum."
+              exit 1
+            fi
+          done
+
+      - name: Publish to GitHub Releases
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          files=( "prism-pdf-natives-v${VERSION}.tar.gz" "prism-pdf-corpus-v${VERSION}.tar.gz" \
+                  "prism-pdf-xcframework-v${VERSION}.zip" "prism-pdf-v${VERSION}.h" \
+                  prismpdf-v${VERSION}-* "SHA256SUMS-v${VERSION}.txt" )
+          notes="$(printf '%s\n' \
+            "Native artifacts for Prism PDF v${VERSION}, built from ${GITHUB_SHA}." \
+            "" \
+            "What each file contains, which targets it covers, and the guarantees a language" \
+            "binding may pin against: [\`docs/native-artifacts.md\`](https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/docs/native-artifacts.md)." \
+            "" \
+            "Shell users want \`prismpdf-v${VERSION}-<platform>\`: the \`prismpdf\` command-line" \
+            "tool, prebuilt, no Rust toolchain needed. The \`linux-musl-*\` builds are static and" \
+            "run anywhere, Alpine included." \
+            "" \
+            "Verify downloads against \`SHA256SUMS-v${VERSION}.txt\` before use." \
+            "" \
+            "Changes: [\`CHANGELOG.md\`](https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/CHANGELOG.md)." )"
+
+          # --verify-tag: never invent a tag. The guard job has already checked that this tag, the
+          # workspace version and the changelog agree, so a missing tag here means something is
+          # badly wrong and the release should not be created.
+          if gh release view "v${VERSION}" > /dev/null 2>&1; then
+            echo "release v${VERSION} exists (assets checked above) — uploading into it"
+            gh release upload "v${VERSION}" "${files[@]}"
+          else
+            gh release create "v${VERSION}" --verify-tag \
+              --title "Prism PDF v${VERSION}" --notes "$notes" "${files[@]}"
+          fi
+          gh release view "v${VERSION}" --json assets \
+            --jq '.assets[] | "published \(.name) (\(.size) bytes)"'
+
+  # ---------------------------------------------------------------------------------------------
+  # crates.io. The native bundle is what bindings consume; this is what a Rust application
+  # consumes, and what puts the API on docs.rs. Runs after `bundle` so a tag never reaches the
+  # registry — where nothing can be unpublished — unless every native leg built first.
+  #
+  # Every package is named `prismpdf-*`: `pdf`, `pdf-cos`, `pdf-reader`, `pdf-writer`,
+  # `pdf-content` and `pdf-cli` were already taken on crates.io by unrelated crates.
+  #
+  # There is no dry run. `cargo publish --dry-run` verifies against the registry, so every crate
+  # above the leaves would fail on internal dependencies that this run has not published yet. The
+  # gate is `guard` plus a green CI on the release commit.
+  # ---------------------------------------------------------------------------------------------
+  crates:
+    name: publish to crates.io
+    needs: [guard, bundle]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.guard.outputs.version }}
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Publish, leaf first
+        run: |
+          set -euo pipefail
+          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is not set. Add a crates.io API token with" \
+                 "publish-new and publish-update scopes as a repository secret."
+            exit 1
+          fi
+
+          # A registry only accepts a crate whose dependencies it already has, so the order is
+          # derived from the dependency graph rather than kept as a list that can rot.
+          order="$(python3 scripts/publish_order.py)"
+          echo "publish order: $(echo "$order" | tr '\n' ' ')"
+
+          for pkg in $order; do
+            # An upload cannot be undone, and a re-run after a partial failure must be able to
+            # finish the job rather than die on the crates already up there.
+            if curl -sfo /dev/null -H "User-Agent: prism-pdf release (${GITHUB_REPOSITORY})" \
+                 "https://crates.io/api/v1/crates/${pkg}/${VERSION}"; then
+              echo "$pkg $VERSION is already published — skipping"
+              continue
+            fi
+            echo "::group::publish $pkg $VERSION"
+            # cargo waits for each upload to appear in the index before returning, which is what
+            # makes the next crate's verification build able to resolve it.
+            cargo publish -p "$pkg"
+            echo "::endgroup::"
+          done
+
+      - name: Summarise
+        run: |
+          set -euo pipefail
+          for pkg in $(python3 scripts/publish_order.py); do
+            printf '%s %s: ' "$pkg" "$VERSION"
+            curl -sfo /dev/null -H "User-Agent: prism-pdf release (${GITHUB_REPOSITORY})" \
+              "https://crates.io/api/v1/crates/${pkg}/${VERSION}" && echo "published" || echo "MISSING"
+          done

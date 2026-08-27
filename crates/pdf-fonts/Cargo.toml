@@ -1,0 +1,23 @@
+[package]
+name = "prismpdf-fonts"
+description = "Fonts & text: Standard 14, TrueType/OpenType, encoding, extraction (ISO 32000 §9)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-fonts`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_fonts"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-cos.workspace = true
+pdf-content.workspace = true
+ttf-parser.workspace = true
+subsetter.workspace = true

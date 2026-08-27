@@ -1,0 +1,8 @@
+# rustfmt configuration — stable options only, so `cargo fmt` works on the
+# declared MSRV toolchain (no nightly-only keys that would break CI).
+edition = "2024"
+max_width = 100
+newline_style = "Unix"
+use_small_heuristics = "Default"
+reorder_imports = true
+reorder_modules = true

@@ -1,0 +1,37 @@
+[package]
+name = "prismpdf"
+description = "Facade crate: idiomatic Rust public API, re-exporting the engine."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+# Used only by the `gen_corpus` example to emit FlateDecode streams for the test corpus.
+flate2.workspace = true
+# PDF/A conformance-corpus harness (`tests/conformance_corpus.rs`): walk the corpus tree, parse
+# the ISO-mapped filenames, grade validate vs. expected, emit the grouped JSON report.
+walkdir.workspace = true
+regex.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+
+[dependencies]
+# Unified facade error (`prismpdf::Error`) aggregates each layer's error via `#[from]`
+# (DESIGN.md §6.1).
+thiserror.workspace = true
+pdf-cos.workspace = true
+pdf-filters.workspace = true
+pdf-reader.workspace = true
+pdf-document.workspace = true
+pdf-content.workspace = true
+pdf-fonts.workspace = true
+pdf-graphics.workspace = true
+pdf-crypto.workspace = true
+pdf-layout.workspace = true
+pdf-standards.workspace = true

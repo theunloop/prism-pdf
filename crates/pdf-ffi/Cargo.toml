@@ -1,0 +1,31 @@
+[package]
+name = "prismpdf-ffi"
+description = "C ABI (cdylib + staticlib): handle-based, no-panic boundary, cbindgen header (EPIC 10)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+# cdylib for dynamic linking (bindings), staticlib for static, rlib for Rust consumers/tests.
+# The library name is the artifact filename (`libpdf_ffi.so`, `pdf_ffi.dll`, `libpdf_ffi.a`):
+# bindings load it by name, so it does not follow the package rename.
+name = "pdf_ffi"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[features]
+# Compile `tests/c/*.c` against the generated header and link them into the test binary, so the
+# C surface is exercised by a C compiler and not only by Rust callers. Test-only, and off by
+# default so building the library needs no C toolchain; CI runs with `--all-features`.
+c-acceptance = []
+
+[dependencies]
+prismpdf.workspace = true
+
+[build-dependencies]
+cc.workspace = true

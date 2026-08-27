@@ -1,0 +1,31 @@
+[package]
+name = "prismpdf-layout"
+description = "High-level authoring: paragraphs, tables, flow/pagination (EPIC 12)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-layout`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_layout"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-document.workspace = true
+pdf-content.workspace = true
+pdf-fonts.workspace = true
+pdf-filters.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "composition"
+harness = false

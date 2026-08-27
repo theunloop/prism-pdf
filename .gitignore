@@ -1,0 +1,33 @@
+# Rust / Cargo
+/target/
+/crates/*/target/
+**/*.rs.bk
+
+# Cargo.lock is committed: this workspace ships a binary (pdf-cli).
+
+# OS cruft
+.DS_Store
+
+# Byte-compiled helper scripts under scripts/.
+__pycache__/
+
+# External third-party corpora (own licenses/provenance; curate into corpus/ deliberately)
+corpus/external/
+
+# M18 verify panel: arch-specific third-party validator binaries (fetched, not committed).
+# The harness resolves them from $PATH or here, skipping cleanly if absent. See tools/verify/README.md.
+/tools/verify/*
+!/tools/verify/README.md
+
+# AI agent configuration (per-developer tooling, not part of the engine). The one exception is
+# .claude/settings.json: it carries the commit-attribution rule from AGENTS.md, which is a property
+# of the repository, not of whoever is driving the agent.
+/.agents/
+/.claude/*
+!/.claude/settings.json
+
+# ISO/PDF specification copies. The "sponsored" ISO PDFs are free to download for your own
+# use but carry no redistribution grant, so they are read locally and never committed.
+# See docs/rfc/README.md for where to obtain each document.
+/docs/rfc/*
+!/docs/rfc/README.md

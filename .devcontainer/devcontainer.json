@@ -1,0 +1,43 @@
+{
+  "name": "Rust",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": false,
+      "upgradePackages": true
+    }
+  },
+  // The host's SSH identity, mounted read-only: `git push` works from inside the container (and
+  // from agents running in it), while the container can never rewrite or delete the host's keys.
+  // `${localEnv:HOME}${localEnv:USERPROFILE}` resolves on macOS/Linux and on Windows alike — only
+  // one of the two is ever set. `.devcontainer/ssh-setup.sh` copies the keys in with 0600 and
+  // hands them to an ssh-agent.
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh-host,type=bind,readonly"
+  ],
+  "remoteEnv": {
+    "HOST_SSH_DIR": "/home/vscode/.ssh-host"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "fill-labs.dependi"
+      ],
+      "settings": {
+        "rust-analyzer.check.command": "clippy",
+        "editor.formatOnSave": true,
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-install.sh",
+  // An ssh-agent does not survive a container restart, so re-arm the identity on every start.
+  "postStartCommand": "bash .devcontainer/ssh-setup.sh",
+  "remoteUser": "vscode"
+}

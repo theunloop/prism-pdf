@@ -1,0 +1,160 @@
+# Prism PDF — Cargo workspace (virtual manifest).
+# Layout and one-way dependency graph follow DESIGN.md §5. Crates are small and
+# single-responsibility so language bindings link only what they need.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+# The fuzz crate is its own (excluded) workspace: it pulls nightly-only
+# libfuzzer-sys and must never leak into a normal `cargo build`. See fuzz/README.md.
+exclude = ["fuzz"]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2024"
+rust-version = "1.87"
+# The SPDX expression, which is also what cargo-deny matches against the allow-list in deny.toml.
+# There is deliberately no `license-file`: setting both warns, and it is not needed. The MIT
+# license requires the copyright and permission notice to travel with every copy, and LICENSE.md
+# lives at the workspace root, so each crate carries a `LICENSE.md` symlink to it — `cargo package`
+# dereferences the symlink and writes the real file into the .crate. Do not delete those symlinks.
+license = "MIT"
+authors = ["Prism PDF contributors"]
+repository = "https://github.com/theunloop/prism-pdf"
+description = "Prism PDF — a PDF engine in Rust (read, manipulate, generate) with an FFI-first core."
+
+[workspace.dependencies]
+cc = "1.2"
+# --- Internal crates (the one-way graph lives in each crate's Cargo.toml) ---
+# Three fields, all load-bearing. `path` is what a workspace build resolves against; `version` is
+# required by `cargo publish` and must equal [workspace.package].version exactly (a prerelease
+# requirement matches only itself) — `scripts/workspace_version.py` checks and bumps both together.
+# `package` is the crates.io name: `pdf`, `pdf-cos`, `pdf-reader`, `pdf-writer`, `pdf-content` and
+# `pdf-cli` were already taken by unrelated crates, so every package is published as `prismpdf-*`.
+# The key on the left is the extern crate name, so renaming the package changed no `use` statement
+# — except for the facade, whose library is `prismpdf` because that is what consumers type.
+pdf-cos = { package = "prismpdf-cos", version = "0.4.0", path = "crates/pdf-cos" }
+pdf-filters = { package = "prismpdf-filters", version = "0.4.0", path = "crates/pdf-filters" }
+pdf-reader = { package = "prismpdf-reader", version = "0.4.0", path = "crates/pdf-reader" }
+pdf-writer = { package = "prismpdf-writer", version = "0.4.0", path = "crates/pdf-writer" }
+pdf-document = { package = "prismpdf-document", version = "0.4.0", path = "crates/pdf-document" }
+pdf-content = { package = "prismpdf-content", version = "0.4.0", path = "crates/pdf-content" }
+pdf-fonts = { package = "prismpdf-fonts", version = "0.4.0", path = "crates/pdf-fonts" }
+pdf-graphics = { package = "prismpdf-graphics", version = "0.4.0", path = "crates/pdf-graphics" }
+pdf-crypto = { package = "prismpdf-crypto", version = "0.4.0", path = "crates/pdf-crypto" }
+pdf-layout = { package = "prismpdf-layout", version = "0.4.0", path = "crates/pdf-layout" }
+pdf-standards = { package = "prismpdf-standards", version = "0.4.0", path = "crates/pdf-standards" }
+prismpdf = { version = "0.4.0", path = "crates/pdf" }
+
+# --- External crates: versions centralized here, opted into per crate (DESIGN.md §6/§7) ---
+# Reuse over reimplementation for codecs/crypto/fonts. Add features at the use site.
+thiserror = "2"
+flate2 = "1"
+# COS object model (ADR-0002/0003): Bytes = O(1)-clone payloads; IndexMap = order-preserving,
+# order-independent-equality dictionaries.
+bytes = "1"
+indexmap = "2"
+# Fonts: parse embedded TrueType/OpenType programs (DESIGN.md §6, reuse over reimplementation).
+ttf-parser = "0.25"
+# Image codecs: decode DCTDecode (JPEG) image samples (DESIGN.md §6).
+zune-jpeg = "0.4"
+# JBIG2 (§7.4.7): memory-safe, pure-Rust decoder (#![forbid(unsafe_code)]); full segment coverage
+# incl. symbol-dict/text-region. From the `hayro` PDF renderer (DESIGN.md §6, reuse over reimpl).
+hayro-jbig2 = { version = "0.3", default-features = false, features = ["std"] }
+
+# Font subsetting: rewrite a TrueType/CFF program to keep only used glyphs (§9.9, DESIGN.md §6).
+subsetter = "0.2"
+# Encryption (§7.6): standard security handler. RustCrypto for MD5/SHA-2/AES (DESIGN.md §6).
+md-5 = "0.10"
+sha1 = "0.10"
+# `oid` lets Sha256 carry its AlgorithmIdentifier OID (needed when signing X.509 test certs).
+sha2 = { version = "0.10", features = ["oid"] }
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+getrandom = "0.2"
+# Public-key security handler (§7.6.5): CMS/PKCS#7 enveloped key + X.509 recipient certs + RSA
+# (DESIGN.md §6, reuse over reimplementation). der/const-oid pin the shared ASN.1 layer.
+rsa = { version = "0.9", features = ["sha2"] }
+cms = { version = "0.2", features = ["builder"] }
+x509-cert = { version = "0.2", features = ["builder"] }
+# `derive`/`oid`: `#[derive(Sequence)]` for the RFC 3161 TSTInfo (§12.8 timestamps).
+der = { version = "0.7", features = ["alloc", "derive", "oid"] }
+const-oid = { version = "0.9", features = ["db"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+# EdDSA signatures (§12.8.3.4, PDF 2.0): Ed25519 via the RustCrypto signature stack. `pkcs8` reads
+# PKCS#8 keys / SPKI public keys; the `der`/`pkcs8` ed25519 algorithm identifiers wire into `cms`.
+ed25519-dalek = { version = "2", features = ["pkcs8"] }
+# ECDSA signatures (§12.8.3.4, PDF 2.0): NIST P-256/P-384 via RustCrypto. `ecdsa` = sign/verify,
+# `pkcs8` = key/SPKI parsing; signing is deterministic (RFC 6979), pairing SHA-256/384 per curve.
+p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
+p384 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
+p521 = { version = "0.13", features = ["ecdsa", "pkcs8", "sha512"] }
+# generic ECDSA types for curves whose crate lacks the full trait surface (p521): pkcs8 decode + SPKI encode.
+ecdsa = { version = "0.16", features = ["pkcs8", "der", "verifying", "signing"] }
+# SHA-3 digests (ISO/TS 32001): accepted in CMS signature verification (digest attr + RSA-SHA3).
+sha3 = { version = "0.10", features = ["oid"] }
+# Constant-time equality for password/hash comparisons (§7.6.4) — already in the graph beneath the
+# RustCrypto stack; named here so the comparisons can be written explicitly rather than with `==`.
+subtle = "2"
+# AES-256-GCM crypt filter (AESV4, ISO/TS 32003): authenticated encryption on the V5/R6 key.
+aes-gcm = "0.10"
+# PDF MAC integrity protection (ISO/TS 32004): HMAC-SHA256 over the document digest, keyed by an
+# HKDF-SHA256 derivation (`pdfMacWrapKdf`) of the file encryption key. RustCrypto, zero unsafe.
+hmac = "0.12"
+hkdf = "0.12"
+# OCSP (RFC 6960) response types for PAdES-LT revocation checking — same `der`/`x509-cert` family.
+x509-ocsp = "0.2"
+
+# CLI argument parsing (EPIC 15): one derive declaration drives parsing, validation and `--help`
+# for the 18 `prismpdf` subcommands. `color` is off — the tool's output is piped as often as it is
+# read, and dropping it keeps the supply-chain surface (anstream & co.) out of the graph.
+clap = { version = "4.6", default-features = false, features = [
+    "std",
+    "derive",
+    "help",
+    "usage",
+    "error-context",
+    "suggestions",
+] }
+
+# --- Dev/test tooling (EPIC 0). ---
+# Conformance-corpus harness (PDF/A test suites: Isartor / BFO / veraPDF). Data-driven test
+# runner only — never linked into the engine. `walkdir` recurses the corpus tree, `regex` parses
+# the ISO-mapped filenames, serde(+json) emits the grouped grading report.
+walkdir = "2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Performance regression baselines for the document hot paths (DESIGN.md §7).
+criterion = "0.5"
+
+# Release builds keep integer-overflow checks on. The engine's whole job is parsing hostile input
+# (DESIGN.md §3.4), where a wrapped offset or length is a logic error that safe Rust will not catch
+# for you — the wrapped value simply indexes somewhere it should not. Turning overflow into a caught
+# panic costs a few percent and, at the FFI boundary, is already contained by `catch_unwind`.
+[profile.release]
+overflow-checks = true
+
+# Benchmarks and the fuzz harness inherit the same setting through their parent profiles.
+[profile.bench]
+overflow-checks = true
+
+# The profile the release pipeline builds the published native artifacts with
+# (`docs/native-artifacts.md`). Separate from `release` on purpose: a stripped binary cannot
+# symbolicate a backtrace, and the overflow-checks panic above is a diagnostic we want legible in
+# a local `cargo build --release` or `cargo install`. Only the shipped artifacts pay that cost,
+# where the size is multiplied by every target in the matrix.
+#
+# `panic` is deliberately left at `unwind`: `pdf-ffi` contains every panic with `catch_unwind` and
+# reports it as `PrismPdfStatus_Internal` (DESIGN.md §6.1). `panic = "abort"` would turn that
+# contained error into a host-process abort, so it must never be set here.
+[profile.dist]
+inherits = "release"
+strip = "symbols"
+lto = "thin"
+codegen-units = 1
+
+[workspace.lints.clippy]
+# Untrusted-input parser: forbid panicking paths in core crates (DESIGN.md §3.4).
+# Crates opt in with `[lints] workspace = true`.
+unwrap_used = "warn"
+expect_used = "warn"

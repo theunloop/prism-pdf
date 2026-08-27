@@ -1,0 +1,26 @@
+[package]
+name = "prismpdf-reader"
+description = "Lexer/parser, xref table & streams, trailer, recovery (ISO 32000 §7.2-7.5)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-reader`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_reader"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-cos.workspace = true
+pdf-filters.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# Used only by tests to build Flate-encoded xref/object-stream fixtures.
+flate2.workspace = true

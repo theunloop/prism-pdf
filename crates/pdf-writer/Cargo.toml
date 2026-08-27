@@ -1,0 +1,24 @@
+[package]
+name = "prismpdf-writer"
+description = "Serializer: full-rewrite & incremental, xref table/stream (ISO 32000 §7.5)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-writer`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_writer"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-cos.workspace = true
+pdf-filters.workspace = true
+# File identifiers (§14.4) are computed with a message digest over the assembled body, as the
+# section prescribes — content-derived so serialization stays deterministic.
+sha2.workspace = true

@@ -1,0 +1,61 @@
+# cargo-deny — supply-chain policy. Run: `cargo deny check`
+# Enforced in CI (EPIC 0). Reuse-over-reimplementation (DESIGN.md §6) means we pull
+# real crates for codecs/crypto/fonts, so license + advisory hygiene is load-bearing.
+
+[graph]
+all-features = true
+
+[advisories]
+# Deny on any known-vulnerable or yanked dependency. Add temporary exceptions to `ignore`
+# with a comment + tracking link; never leave them undated.
+yanked = "deny"
+ignore = [
+    # RUSTSEC-2023-0071 — "Marvin Attack": a timing side-channel in `rsa`'s PKCS#1 v1.5 private-key
+    # operation. Reached only via the public-key security handler (§7.6.5), which RSA-decrypts the
+    # CMS session key when *opening* a public-key-encrypted PDF (`Document::open_with_private_key`).
+    # No fixed version exists — the pure-Rust `rsa` crate has no constant-time implementation yet.
+    #
+    # Exploitation needs a precise timing oracle over many decryptions with attacker-chosen
+    # ciphertexts. A desktop or batch tool does not offer one. A **service that accepts uploaded
+    # public-key-encrypted PDFs does**: that is exactly a repeated-decryption oracle, and since this
+    # repo's whole product is an API surface for embedders, that deployment is in scope for anyone
+    # consuming it. Operators in that position should terminate public-key decryption elsewhere, or
+    # rate-limit and jitter it, until `rsa` ships a fix.
+    # Reviewed 2026-08-25; revisit when `rsa` ships a fix.
+    # https://rustsec.org/advisories/RUSTSEC-2023-0071
+    "RUSTSEC-2023-0071",
+    # RUSTSEC-2026-0192 — ttf-parser is unmaintained, but this is not a vulnerability and no
+    # compatible drop-in replacement exists. The parser remains sandboxed behind Prism PDF's input
+    # limits and fuzz target. Reviewed 2026-08-24; migrate to skrifa before 1.0.
+    # https://rustsec.org/advisories/RUSTSEC-2026-0192
+    "RUSTSEC-2026-0192",
+]
+
+[licenses]
+# Allow-list only. Anything not listed fails the check and must be reviewed explicitly.
+#
+# Prism PDF's own crates carry `license = "MIT"`, so they match the `MIT` entry below. The rest of
+# the list is the permissive set common in the Rust ecosystem, which is what every dependency must
+# fall into — reuse-over-reimplementation (DESIGN.md §6) pulls in real crates for
+# codecs/crypto/fonts, so this stays load-bearing.
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+]
+
+[bans]
+# Duplicate versions bloat binaries and bindings; warn so we notice drift without blocking.
+multiple-versions = "warn"
+wildcards = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

@@ -1,0 +1,102 @@
+# Fuzzing harness (EPIC 0, P1). Its OWN workspace (note the empty [workspace] table) and
+# excluded from the root workspace, so the nightly-only libfuzzer-sys never enters a normal
+# `cargo build`. Run with: `cargo +nightly fuzz run lexer` (needs `cargo install cargo-fuzz`).
+[package]
+name = "prismpdf-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+pdf-cos = { package = "prismpdf-cos", path = "../crates/pdf-cos" }
+pdf-reader = { package = "prismpdf-reader", path = "../crates/pdf-reader" }
+pdf-filters = { package = "prismpdf-filters", path = "../crates/pdf-filters" }
+pdf-fonts = { package = "prismpdf-fonts", path = "../crates/pdf-fonts" }
+pdf-crypto = { package = "prismpdf-crypto", path = "../crates/pdf-crypto" }
+prismpdf = { path = "../crates/pdf" }
+# The `revocation` target needs to hand `cert_revocation` a certificate; same 0.2 line as
+# `pdf-crypto`'s, so the `Certificate` type unifies.
+x509-cert = "0.2"
+
+[[bin]]
+name = "lexer"
+path = "fuzz_targets/lexer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser"
+path = "fuzz_targets/parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "jbig2"
+path = "fuzz_targets/jbig2.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cmap"
+path = "fuzz_targets/cmap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "function"
+path = "fuzz_targets/function.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "document"
+path = "fuzz_targets/document.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ccitt"
+path = "fuzz_targets/ccitt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "lzw"
+path = "fuzz_targets/lzw.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "jpx"
+path = "fuzz_targets/jpx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cms"
+path = "fuzz_targets/cms.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "revocation"
+path = "fuzz_targets/revocation.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

@@ -1,0 +1,21 @@
+[package]
+name = "prismpdf-graphics"
+description = "Color spaces, image/form XObjects, shading, patterns (ISO 32000 §8)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+# The package is published as `prismpdf-graphics`; the library keeps the name every
+# dependent, test and bench already imports.
+name = "pdf_graphics"
+
+[lints]
+workspace = true
+
+[dependencies]
+pdf-cos.workspace = true
+pdf-filters.workspace = true
