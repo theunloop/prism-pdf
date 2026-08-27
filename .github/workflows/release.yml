@@ -179,19 +179,42 @@ jobs:
           python3 -m pip install --user ziglang==0.13.0
           cargo install cargo-zigbuild --locked
 
+      # Pinned to the major whose CLI this workflow speaks. cargo-ndk 4.0 freed lowercase `-p`
+      # for cargo's own `--package` passthrough and moved the API level to `-P`/`--platform`;
+      # because the install was unpinned, that release reached the runner on its own and turned
+      # `-p 21` into `--package 21`, which cargo-ndk reported as `unknown package: 21`.
       - name: Install cargo-ndk
         if: matrix.tool == 'ndk'
-        run: cargo install cargo-ndk --locked
+        run: cargo install cargo-ndk --locked --version '^4.1'
+
+      # Export only the deployment targets this leg actually declares. Interpolating a matrix
+      # key the leg does not set yields the empty string, and GitHub exports that as a variable
+      # that is *set and empty* rather than absent; rustc then parses the value instead of
+      # ignoring it and aborts with "cannot parse integer from empty string". This took out every
+      # Apple leg except macOS, and the reason it reaches even the iOS/tvOS/watchOS legs is that a
+      # build script compiles for the macOS *host* -- so MACOSX_DEPLOYMENT_TARGET is read whatever
+      # `--target` says.
+      - name: Resolve the deployment targets
+        shell: bash
+        env:
+          MACOSX: ${{ matrix.macos_target }}
+          IPHONEOS: ${{ matrix.ios_target }}
+          TVOS: ${{ matrix.tvos_target }}
+          WATCHOS: ${{ matrix.watchos_target }}
+          XROS: ${{ matrix.xros_target }}
+        run: |
+          set -euo pipefail
+          for platform in MACOSX IPHONEOS TVOS WATCHOS XROS; do
+            value="${!platform}"
+            if [ -n "$value" ]; then
+              echo "${platform}_DEPLOYMENT_TARGET=$value" >> "$GITHUB_ENV"
+            fi
+          done
 
       - name: Build
         shell: bash
         env:
           RUSTFLAGS: ${{ matrix.rustflags }}
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_target }}
-          IPHONEOS_DEPLOYMENT_TARGET: ${{ matrix.ios_target }}
-          TVOS_DEPLOYMENT_TARGET: ${{ matrix.tvos_target }}
-          WATCHOS_DEPLOYMENT_TARGET: ${{ matrix.watchos_target }}
-          XROS_DEPLOYMENT_TARGET: ${{ matrix.xros_target }}
           # Override [profile.dist] for the static Apple archive legs.
           CARGO_PROFILE_DIST_STRIP: ${{ matrix.strip || 'symbols' }}
           CARGO_PROFILE_DIST_LTO: ${{ matrix.lto || 'thin' }}
@@ -203,7 +226,7 @@ jobs:
           case "${{ matrix.tool }}" in
             cargo)    cargo build -p prismpdf-ffi --profile dist --target "${{ matrix.target }}" ;;
             zigbuild) cargo zigbuild -p prismpdf-ffi --profile dist --target "${{ matrix.target }}" ;;
-            ndk)      cargo ndk -t "${{ matrix.abi }}" -p 21 build -p prismpdf-ffi --profile dist ;;
+            ndk)      cargo ndk -t "${{ matrix.abi }}" --platform 21 build -p prismpdf-ffi --profile dist ;;
           esac
 
       # An unsigned dylib is not a load failure a binding can work around: the consumer sees the

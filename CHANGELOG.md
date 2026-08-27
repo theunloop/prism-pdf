@@ -48,5 +48,19 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   anyone depending on `prismpdf-filters` would have resolved the unpatched upstream anyway. Both
   now resolve from crates.io unmodified.
 
+### Fixed
+
+- **Every Apple leg except macOS failed to build**, aborting with `failed to parse deployment
+  target specified in MACOSX_DEPLOYMENT_TARGET: cannot parse integer from empty string`. A leg
+  that declares no `macos_target` interpolated to the empty string, and GitHub exports that as a
+  variable that is set-and-empty rather than absent, so rustc parsed the value instead of ignoring
+  it. It reached even the iOS and tvOS legs because a build script compiles for the macOS *host*.
+  The deployment-target variables are now exported only for the legs that declare them.
+- **Every Android leg failed to build**, aborting with `cargo-ndk panicked! … unknown package:
+  21`. cargo-ndk 4.0 freed lowercase `-p` for cargo's own `--package` passthrough and moved the
+  API level to `-P`/`--platform`; the install was unpinned, so that release arrived on its own and
+  read `-p 21` as `--package 21`. The workflow now passes `--platform 21` and pins cargo-ndk to
+  `^4.1`.
+
 [Unreleased]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/theunloop/prism-pdf/releases/tag/v0.4.0
