@@ -263,7 +263,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: slices
           pattern: appleslice-*
@@ -476,18 +476,18 @@ jobs:
       # assembled as a zip. They are deliberately not also loose in the natives bundle — a static
       # archive is an order of magnitude larger than the equivalent dylib, and a consumer who does
       # not ship an Apple platform should not download them.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: downloaded
           pattern: native-*
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: xcframework
 
       # Already-built archives, one per platform. They are not repacked here: the executable bit
       # lives inside the tar, and artifact upload would not have preserved it loose.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: cli
           pattern: cli-*
