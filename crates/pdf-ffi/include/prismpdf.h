@@ -3984,6 +3984,10 @@ PrismPdfStatus prismpdf_flow_set_tagged(PrismPdfFlow *flow, const char *lang);
  * Embed a real font program under `resource`, replacing the Standard-14 font of that name — the
  * call that makes a flowed document PDF/A-conformant.
  *
+ * Call it before pouring any text that uses `resource`: a page carries one resource entry per
+ * name, so text already drawn in the Standard-14 font of that name would be shown by the embedded
+ * one instead.
+ *
  * Returns [`PrismPdfStatus::Parse`] when the program cannot be parsed as an sfnt.
  *
  * # Safety

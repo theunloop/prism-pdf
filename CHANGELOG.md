@@ -9,6 +9,19 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Flow::embed_font` now replaces the Standard-14 font registered under the same name**, which is
+  what `prismpdf_flow_embed_font`'s doc comment has always promised. It used to add the embedded
+  program alongside the registration made by `Flow::new`, so a flow that named its resource up
+  front — the natural way to write the call — kept a non-zero
+  `BuilderFacts::standard_14_font_resources` and `make_pdfa` / `make_pdfua` refused it with
+  `UnembeddedFont`, even though every glyph came from the embedded program and the page resource
+  dictionary held only the Type0 font. The surviving registration also emitted one orphan
+  `/Type /Font` object per page, referenced by nothing. Embedding under a name `Flow::new` never
+  mentioned was the only conformant spelling; both now work. `Composition` has always replaced this
+  way, because it keys its fonts by name.
+
 ## [0.4.0] - 2026-08-27
 
 ### Added

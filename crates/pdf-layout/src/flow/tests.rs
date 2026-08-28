@@ -393,6 +393,36 @@ fn flags_notdef_when_a_glyph_is_missing() {
 }
 
 #[test]
+fn embedding_replaces_the_standard_14_registration_of_that_name() {
+    let Some(font) = dejavu() else { return };
+    // Declaring "F1" as Helvetica up front and then embedding under the same name is the natural
+    // way to write the call. The embed must drop the Standard-14 registration, or the document
+    // keeps a `standard_14_font_resources` count that `make_pdfa`/`make_pdfua` refuse on even
+    // though every glyph is drawn from the embedded program.
+    let mut flow = Flow::new(PageStyle::default(), &[("F1", StdFont::Helvetica)]);
+    assert!(flow.embed_font("F1", &font));
+    let block = TextBlock {
+        font_resource: "F1",
+        base_font: "",
+        size: 12.0,
+        leading: 14.0,
+        align: Align::Left,
+    };
+    flow.text(&block, "Привет мир");
+    let facts = flow.into_builder().facts();
+    assert_eq!(facts.standard_14_font_resources, 0);
+
+    // A name the embed never mentions keeps its Standard-14 registration.
+    let mut flow = Flow::new(
+        PageStyle::default(),
+        &[("F1", StdFont::Helvetica), ("F2", StdFont::Courier)],
+    );
+    assert!(flow.embed_font("F1", &font));
+    flow.text(&block, "Привет мир");
+    assert_eq!(flow.into_builder().facts().standard_14_font_resources, 1);
+}
+
+#[test]
 fn embeds_font_and_emits_type0() {
     let Some(font) = dejavu() else { return };
     let mut flow = Flow::new(PageStyle::default(), &[]);

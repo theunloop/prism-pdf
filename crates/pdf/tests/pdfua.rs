@@ -8,7 +8,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use prismpdf::cos::{Name, Object};
-use prismpdf::{Builder, Document, PageSpec, PdfUaError, StructElem, XmpMetadata, make_pdfua};
+use prismpdf::{
+    Align, Builder, Document, Flow, PageSpec, PageStyle, PdfUaError, StdFont, StructElem,
+    TextBlock, XmpMetadata, make_pdfua,
+};
 
 /// A minimal tagged single-page document: one `/P` marked-content sequence with a matching
 /// structure element (mirrors `pdf-standards`' own `tagged_builder`).
@@ -56,4 +59,32 @@ fn make_pdfua_untagged_surfaces_unified_error() {
         err,
         Err(prismpdf::Error::PdfUa(PdfUaError::NotTagged))
     ));
+}
+
+#[test]
+fn flow_declaring_a_font_name_up_front_is_still_pdfua_conformant() {
+    // The journey a binding writes first: name "F1" in `Flow::new`, then embed a real program
+    // under the same name. The embed replaces the Standard-14 registration, so the document has
+    // no unembedded font left and `make_pdfua` accepts it. Before that replacement the only
+    // conformant spelling was to embed under a name the constructor never mentioned.
+    let Ok(font) = std::fs::read("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") else {
+        return; // hermetic when no system font is present
+    };
+    let mut flow = Flow::new(PageStyle::default(), &[("F1", StdFont::Helvetica)]);
+    flow.tagged("en-GB");
+    assert!(flow.embed_font("F1", &font));
+    flow.text(
+        &TextBlock {
+            font_resource: "F1",
+            base_font: "",
+            size: 14.0,
+            leading: 18.0,
+            align: Align::Left,
+        },
+        "An accessible paragraph.",
+    );
+
+    let mut builder = flow.into_builder();
+    make_pdfua(&mut builder, &xmp_with_title(), "en-GB").expect("document is PDF/UA-ready");
+    assert!(Document::open(builder.build()).is_ok());
 }

@@ -201,15 +201,27 @@ impl Flow {
     }
 
     /// Register a TrueType/OpenType font (the program bytes) for embedding under `resource`, the
-    /// `/Fn` name a [`TextBlock::font_resource`] then refers to. The font is embedded as a composite
+    /// `/Fn` name a [`TextBlock::font_resource`] then refers to, **replacing any Standard-14 font
+    /// registered under that name** by [`Flow::new`]. The font is embedded as a composite
     /// (Type0/`Identity-H`) font, so [`Flow::text`] with it can show any glyph the font contains
     /// (e.g. non-Latin scripts), and the text still extracts via a generated `/ToUnicode`. Returns
     /// `false` (and registers nothing) if the bytes are not a valid font. Justified alignment falls
     /// back to left for embedded fonts.
+    ///
+    /// Call this before drawing with `resource`: a page resource dictionary (§7.8.3) has one entry
+    /// per name, so text already poured in the Standard-14 font of that name would be shown by the
+    /// embedded one instead.
     pub fn embed_font(&mut self, resource: &str, program: &[u8]) -> bool {
         let Some(info) = pdf_fonts::font_info(program) else {
             return false;
         };
+        // Drop the Standard-14 registration this name may have had. A surviving one is not
+        // harmless: the page resource dictionary would carry a single `/resource` entry (the
+        // embedded font wins, since it is inserted last), orphaning a `/Type /Font` object per
+        // page, while `BuilderFacts::standard_14_font_resources` would still count it — which is
+        // exactly what `make_pdfa` / `make_pdfua` refuse on, so an otherwise conformant flow could
+        // never pass. `Composition` keys its fonts by name and has always replaced this way.
+        self.fonts.retain(|(name, _)| name != resource);
         if !self.embedded.iter().any(|s| s.resource == resource) {
             self.embedded.push(EmbeddedSlot {
                 resource: resource.to_string(),
