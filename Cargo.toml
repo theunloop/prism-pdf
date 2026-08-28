@@ -96,7 +96,7 @@ sha3 = { version = "0.10", features = ["oid"] }
 # RustCrypto stack; named here so the comparisons can be written explicitly rather than with `==`.
 subtle = "2"
 # AES-256-GCM crypt filter (AESV4, ISO/TS 32003): authenticated encryption on the V5/R6 key.
-aes-gcm = "0.10"
+aes-gcm = "0.11"
 # PDF MAC integrity protection (ISO/TS 32004): HMAC-SHA256 over the document digest, keyed by an
 # HKDF-SHA256 derivation (`pdfMacWrapKdf`) of the file encryption key. RustCrypto, zero unsafe.
 hmac = "0.12"
