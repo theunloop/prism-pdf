@@ -19,7 +19,7 @@ A pure-Rust PDF engine that **reads, manipulates, and generates** PDFs — with 
   signatures (detached CMS, signing time, visible appearance, PAdES-B chain validation, RFC 3161
   timestamps).
 
-> Status: **0.4.0** is the latest release. The engine is feature-complete for reading,
+> Status: **0.4.1** is the latest release. The engine is feature-complete for reading,
 > manipulating, generating, and signing PDFs. Page **rendering** (§10–§11) is out of scope for the
 > v1 line. For what shipped, read [`CHANGELOG.md`](./CHANGELOG.md); what is still open is in
 > [`ROADMAP.md`](./ROADMAP.md). The `0.x` API may change in minor releases; see
@@ -78,7 +78,7 @@ per platform, so no Rust toolchain is needed — download it from
 
 ```bash
 # Prebuilt: pick the archive matching your platform, verify it, run it.
-VERSION=0.4.0; RID=linux-x64      # win-x64 | win-arm64 | win-x86 | linux-x64 | linux-arm64
+VERSION=0.4.1; RID=linux-x64      # win-x64 | win-arm64 | win-x86 | linux-x64 | linux-arm64
                                   # linux-arm | linux-musl-x64 | linux-musl-arm64
                                   # osx-x64 | osx-arm64
 BASE="https://github.com/theunloop/prism-pdf/releases/download/v${VERSION}"

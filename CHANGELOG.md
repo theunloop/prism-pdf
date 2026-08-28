@@ -9,6 +9,8 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-28
+
 ### Fixed
 
 - **`Flow::embed_font` now replaces the Standard-14 font registered under the same name**, which is
@@ -114,5 +116,6 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   read `-p 21` as `--package 21`. The workflow now passes `--platform 21` and pins cargo-ndk to
   `^4.1`.
 
-[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/theunloop/prism-pdf/releases/tag/v0.4.0

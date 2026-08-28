@@ -9,7 +9,7 @@ members = ["crates/*"]
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 rust-version = "1.88"
 # The SPDX expression, which is also what cargo-deny matches against the allow-list in deny.toml.
@@ -32,18 +32,18 @@ cc = "1.2"
 # `pdf-cli` were already taken by unrelated crates, so every package is published as `prismpdf-*`.
 # The key on the left is the extern crate name, so renaming the package changed no `use` statement
 # — except for the facade, whose library is `prismpdf` because that is what consumers type.
-pdf-cos = { package = "prismpdf-cos", version = "0.4.0", path = "crates/pdf-cos" }
-pdf-filters = { package = "prismpdf-filters", version = "0.4.0", path = "crates/pdf-filters" }
-pdf-reader = { package = "prismpdf-reader", version = "0.4.0", path = "crates/pdf-reader" }
-pdf-writer = { package = "prismpdf-writer", version = "0.4.0", path = "crates/pdf-writer" }
-pdf-document = { package = "prismpdf-document", version = "0.4.0", path = "crates/pdf-document" }
-pdf-content = { package = "prismpdf-content", version = "0.4.0", path = "crates/pdf-content" }
-pdf-fonts = { package = "prismpdf-fonts", version = "0.4.0", path = "crates/pdf-fonts" }
-pdf-graphics = { package = "prismpdf-graphics", version = "0.4.0", path = "crates/pdf-graphics" }
-pdf-crypto = { package = "prismpdf-crypto", version = "0.4.0", path = "crates/pdf-crypto" }
-pdf-layout = { package = "prismpdf-layout", version = "0.4.0", path = "crates/pdf-layout" }
-pdf-standards = { package = "prismpdf-standards", version = "0.4.0", path = "crates/pdf-standards" }
-prismpdf = { version = "0.4.0", path = "crates/pdf" }
+pdf-cos = { package = "prismpdf-cos", version = "0.4.1", path = "crates/pdf-cos" }
+pdf-filters = { package = "prismpdf-filters", version = "0.4.1", path = "crates/pdf-filters" }
+pdf-reader = { package = "prismpdf-reader", version = "0.4.1", path = "crates/pdf-reader" }
+pdf-writer = { package = "prismpdf-writer", version = "0.4.1", path = "crates/pdf-writer" }
+pdf-document = { package = "prismpdf-document", version = "0.4.1", path = "crates/pdf-document" }
+pdf-content = { package = "prismpdf-content", version = "0.4.1", path = "crates/pdf-content" }
+pdf-fonts = { package = "prismpdf-fonts", version = "0.4.1", path = "crates/pdf-fonts" }
+pdf-graphics = { package = "prismpdf-graphics", version = "0.4.1", path = "crates/pdf-graphics" }
+pdf-crypto = { package = "prismpdf-crypto", version = "0.4.1", path = "crates/pdf-crypto" }
+pdf-layout = { package = "prismpdf-layout", version = "0.4.1", path = "crates/pdf-layout" }
+pdf-standards = { package = "prismpdf-standards", version = "0.4.1", path = "crates/pdf-standards" }
+prismpdf = { version = "0.4.1", path = "crates/pdf" }
 
 # --- External crates: versions centralized here, opted into per crate (DESIGN.md §6/§7) ---
 # Reuse over reimplementation for codecs/crypto/fonts. Add features at the use site.

@@ -1046,7 +1046,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "flate2",
  "prismpdf-content",
@@ -1068,7 +1068,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-cli"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "clap",
  "prismpdf",
@@ -1076,14 +1076,14 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-content"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "prismpdf-cos",
 ]
 
 [[package]]
 name = "prismpdf-cos"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "bytes",
  "indexmap",
@@ -1091,7 +1091,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-crypto"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1121,7 +1121,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-document"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "criterion",
  "der",
@@ -1139,7 +1139,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-ffi"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "cc",
  "prismpdf",
@@ -1147,7 +1147,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-filters"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "flate2",
  "hayro-jbig2",
@@ -1158,7 +1158,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-fonts"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "prismpdf-content",
  "prismpdf-cos",
@@ -1168,7 +1168,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-graphics"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "prismpdf-cos",
  "prismpdf-filters",
@@ -1176,7 +1176,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-layout"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "criterion",
  "prismpdf-content",
@@ -1188,7 +1188,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-reader"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "flate2",
  "prismpdf-cos",
@@ -1198,7 +1198,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-standards"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "prismpdf-cos",
  "prismpdf-document",
@@ -1206,7 +1206,7 @@ dependencies = [
 
 [[package]]
 name = "prismpdf-writer"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "prismpdf-cos",
  "prismpdf-filters",

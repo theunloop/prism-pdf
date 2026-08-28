@@ -207,7 +207,7 @@ convention once (status codes, last-error, owned handle, owned string, owned byt
 failure path):
 
 ```text
-PrismPdf.version()                                 -> "0.4.0"        (static string)
+PrismPdf.version()                                 -> "0.4.1"        (static string)
 doc = Document.open(readFile("corpus/valid/…"))   (owned handle; disposal frees it)
 Document.open(garbage)                            -> PrismPdfError(status=Parse, message=…)
 Document.open(encrypted, password="wrong")        -> PrismPdfError(status=Password, …)
