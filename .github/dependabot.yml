@@ -1,0 +1,25 @@
+# Dependency updates. Cargo versions are centralized in the root [workspace.dependencies]
+# (AGENTS.md), so a Cargo PR touches one manifest; `cargo deny check` gates its license and
+# advisory status in CI like any other change.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+
+  # The fuzz crate is an excluded workspace (root Cargo.toml), so its lockfile is not covered above.
+  - package-ecosystem: cargo
+    directory: /fuzz
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -42,3 +42,7 @@ even without an obvious "exploit":
 - Failing to *parse* a malformed file is a bug, not a vulnerability, **unless** the failure mode
   is a crash/hang/OOM rather than a clean `Err`.
 - Issues that require a modified build of Prism PDF itself.
+- The RSA private key committed at `crates/pdf/examples/test-signer/key.der`. It is a
+  throwaway, self-signed keypair, published deliberately so the signed PDF/A corpus sample is
+  reproducible byte-for-byte; it protects nothing and is trusted by nothing. Secret scanners
+  flag it — see that directory's `README.md`.

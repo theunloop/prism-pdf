@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: no job here writes to the repository, and a fork's pull request must not be
+# able to. Any job that ever needs more raises it in its own `permissions:` block.
+permissions:
+  contents: read
+
 # Warnings are errors everywhere: rustc and clippy lints (incl. the workspace's
 # unwrap_used/expect_used no-panic policy, DESIGN.md §3.4) fail the build.
 env:

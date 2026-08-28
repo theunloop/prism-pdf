@@ -14,6 +14,11 @@ on:
   # nothing. Use it to validate a matrix change without cutting a tag.
   workflow_dispatch:
 
+# Read-only by default. Exactly one job (`bundle`) uploads release assets, and it raises
+# `contents: write` locally — the matrix build jobs never hold a writable token.
+permissions:
+  contents: read
+
 # Unlike CI, this workflow must not set `-D warnings`: a released artifact should not fail to
 # build because a dependency emitted a warning under a newer compiler.
 env:

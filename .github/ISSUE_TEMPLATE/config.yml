@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/theunloop/prism-pdf/security/advisories/new
+    about: >-
+      Do not open a public issue. Report privately via GitHub Security Advisories — see
+      SECURITY.md. A PDF that makes Prism PDF crash, hang, or OOM is a security report.
+  - name: Language binding (Python, WASM, Node, .NET, Go, Java, Swift)
+    url: https://github.com/theunloop/prism-pdf/blob/main/docs/BINDINGS.md
+    about: >-
+      Bindings live in their own repositories. File binding bugs there; file ABI and engine bugs
+      here.
