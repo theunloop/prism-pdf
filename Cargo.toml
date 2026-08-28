@@ -99,7 +99,7 @@ subtle = "2"
 aes-gcm = "0.10"
 # PDF MAC integrity protection (ISO/TS 32004): HMAC-SHA256 over the document digest, keyed by an
 # HKDF-SHA256 derivation (`pdfMacWrapKdf`) of the file encryption key. RustCrypto, zero unsafe.
-hmac = "0.12"
+hmac = "0.13"
 hkdf = "0.12"
 # OCSP (RFC 6960) response types for PAdES-LT revocation checking — same `der`/`x509-cert` family.
 x509-ocsp = "0.2"
