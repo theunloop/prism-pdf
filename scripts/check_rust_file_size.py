@@ -24,33 +24,40 @@ EXCEPTIONS = {
         "document facade and cohesive public API",
     ),
     "crates/pdf-ffi/src/api/authoring.rs": (
-        2_090,
+        2_092,
         "C ABI authoring surface; frozen capability-module budget, +10 on "
-        "the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit. "
-        "No logic added.",
+        "the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit, "
+        "+2 on 2026-08-28 for the `Consumes on success` ownership markers on "
+        "builder_add_page_spec and builder_add_structure_node. No logic added.",
     ),
     "crates/pdf-ffi/src/api/collections.rs": (
         1_572,
         "C ABI inspection and collection handles; frozen capability-module budget",
     ),
     "crates/pdf-ffi/src/api/composition.rs": (
-        1_365,
+        1_368,
         "C ABI composition arena and operations; frozen capability-module budget, +2 on "
         "2026-08-25 for the catch_unwind wrapper that prismpdf_composition_new was missing "
         "(pdf-ffi's no-unwind contract, DESIGN.md §6.1), +2 on 2026-08-27 for the rustfmt "
-        "reflow of build_draft's return chain past the 60-col chain width. No logic added.",
+        "reflow of build_draft's return chain past the 60-col chain width, +3 on 2026-08-28 "
+        "for the `Finalises` ownership marker on composition_build. No logic added.",
     ),
     "crates/pdf-ffi/src/api/core.rs": (
-        1_887,
+        1_889,
         "shared C ABI types, error boundary, document, object, and buffer operations, "
-        "+8 on the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit. "
+        "+8 on the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit, "
+        "+2 on 2026-08-28 for the `Consumes on success` ownership marker on edit_commit. "
         "No logic added.",
     ),
     "crates/pdf-ffi/src/api/layout.rs": (
-        1_267,
+        1_276,
         "C ABI legacy flow and layout operations; frozen capability-module budget, +3 on "
-        "the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit. "
-        "No logic added.",
+        "the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit, "
+        "+9 on 2026-08-28: the `Consumes always` markers on flow_build and "
+        "flow_into_builder, whose failure path frees the handle, and the ordering note on "
+        "flow_embed_font. These comments are the fix for a contract a binding could only "
+        "read as a double free; splitting the module to fit them would fragment the export "
+        "surface for no readability gain. No logic added.",
     ),
     "crates/pdf-ffi/src/api/security.rs": (
         1_035,
