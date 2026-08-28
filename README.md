@@ -29,8 +29,8 @@ A pure-Rust PDF engine that **reads, manipulates, and generates** PDFs — with 
 
 - **Rust applications** depend on the **`prismpdf`** facade crate — the single idiomatic import
   surface.
-- **Python, JavaScript, .NET, Go, Java and Swift applications** depend on the binding for their
-  language — see [Language bindings](#language-bindings) below.
+- **.NET applications** depend on the `PrismPdf` NuGet package; bindings for other languages are
+  planned — see [Language bindings](#language-bindings) below.
 - **C and C++ applications**, and anyone writing a new binding, consume **`pdf-ffi`** — the stable,
   handle-based C ABI (generated header `prismpdf.h`; contract in [`docs/ABI.md`](./docs/ABI.md)).
 - **Shell users** run the **`prismpdf`** binary, built from `pdf-cli` — prebuilt for Windows,
@@ -128,23 +128,25 @@ password).
 ## Language bindings
 
 Each binding lives in its own repository and links against the C ABI, so it ships only what its
-ecosystem needs and releases on its own cadence:
+ecosystem needs and releases on its own cadence. **.NET is the only binding shipping today**; the
+rest are planned and have no repository yet.
 
-| Language | Repository | Build |
-|----------|------------|-------|
-| Python | [`theunloop/prism-pdf-python`](https://github.com/theunloop/prism-pdf-python) | [![CI](https://github.com/theunloop/prism-pdf-python/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-python/actions/workflows/ci.yml) |
-| JavaScript / WASM | [`theunloop/prism-pdf-wasm`](https://github.com/theunloop/prism-pdf-wasm) | [![CI](https://github.com/theunloop/prism-pdf-wasm/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-wasm/actions/workflows/ci.yml) |
-| Node.js | [`theunloop/prism-pdf-node`](https://github.com/theunloop/prism-pdf-node) | [![CI](https://github.com/theunloop/prism-pdf-node/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-node/actions/workflows/ci.yml) |
-| .NET | [`theunloop/prism-pdf-dotnet`](https://github.com/theunloop/prism-pdf-dotnet) | [![CI](https://github.com/theunloop/prism-pdf-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-dotnet/actions/workflows/ci.yml) |
-| Go | [`theunloop/prism-pdf-go`](https://github.com/theunloop/prism-pdf-go) | [![CI](https://github.com/theunloop/prism-pdf-go/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-go/actions/workflows/ci.yml) |
-| Java / Kotlin | [`theunloop/prism-pdf-java`](https://github.com/theunloop/prism-pdf-java) | [![CI](https://github.com/theunloop/prism-pdf-java/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-java/actions/workflows/ci.yml) |
-| Swift (Apple platforms) | [`theunloop/prism-pdf-swift`](https://github.com/theunloop/prism-pdf-swift) | [![CI](https://github.com/theunloop/prism-pdf-swift/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-swift/actions/workflows/ci.yml) |
+| Language | Status | Package | Build |
+|----------|--------|---------|-------|
+| .NET | Available — [`theunloop/prism-pdf-dotnet`](https://github.com/theunloop/prism-pdf-dotnet) | [![NuGet](https://img.shields.io/nuget/v/PrismPdf?label=NuGet&color=004880)](https://www.nuget.org/packages/PrismPdf) | [![CI](https://github.com/theunloop/prism-pdf-dotnet/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf-dotnet/actions/workflows/ci.yml) |
+| Python | WIP — planned | — | — |
+| JavaScript / WASM | WIP — planned | — | — |
+| Node.js | WIP — planned | — | — |
+| Go | WIP — planned | — | — |
+| Java / Kotlin | WIP — planned | — | — |
+| Swift (Apple platforms) | WIP — planned | — | — |
 
-They share one object model and naming rules, so `doc.page_count` in Python, `doc.pageCount` in
-JavaScript and `doc.PageCount` in C# are recognisably the same call, and every binding ports the
-same conformance suite. Starting one in a new language: [`docs/BINDINGS.md`](./docs/BINDINGS.md),
-with the prebuilt native libraries described in
-[`docs/native-artifacts.md`](./docs/native-artifacts.md).
+A planned binding is a shape this repo's C ABI is designed to support, not work in progress with a
+date. Every binding shares one object model and naming rules, so `doc.page_count` in Python,
+`doc.pageCount` in JavaScript and `doc.PageCount` in C# are recognisably the same call, and each
+ports the same conformance suite. Starting one — contributions welcome — is documented in
+[`docs/BINDINGS.md`](./docs/BINDINGS.md), with the prebuilt native libraries it links against
+described in [`docs/native-artifacts.md`](./docs/native-artifacts.md).
 
 ## Architecture
 
