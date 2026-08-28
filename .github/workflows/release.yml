@@ -42,7 +42,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
 
       # A path dependency resolves by path, so a stale `version` requirement in
@@ -149,7 +149,7 @@ jobs:
           - { rid: apple-iossimulator-x64, os: macos-latest, target: x86_64-apple-ios, lib: libpdf_ffi.a, tool: cargo, rustflags: "", sdk: iphonesimulator, ios_target: "13.0", strip: "none", lto: "off", group: appleslice }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The target triple carries a glibc suffix for the zigbuild legs; everything except
       # `rustup target add` and the output path wants the plain triple.
@@ -261,7 +261,7 @@ jobs:
     env:
       VERSION: ${{ needs.guard.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v4
         with:
@@ -380,7 +380,7 @@ jobs:
           - { rid: osx-arm64,        os: macos-latest,   target: aarch64-apple-darwin,               tool: cargo,    rustflags: "", ext: "", archive: tar, macos_target: "11.0" }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Resolve the plain target triple
         shell: bash
@@ -470,7 +470,7 @@ jobs:
       VERSION: ${{ needs.guard.outputs.version }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # `native-*` only: the Apple slices went to the xcframework job, and arrive here already
       # assembled as a zip. They are deliberately not also loose in the natives bundle — a static
@@ -628,7 +628,7 @@ jobs:
       VERSION: ${{ needs.guard.outputs.version }}
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
