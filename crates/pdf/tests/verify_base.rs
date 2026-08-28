@@ -19,10 +19,13 @@
 //!
 //! It walks the corpus + an authored 1.4–2.0 matrix, runs the available panel, and writes a grouped
 //! report to `target/verify-baseline.json` (view with `cargo test -- --nocapture`). It **gates**
-//! (M18 Phase 4): every should-pass file must be panel-accepted and no file may declare a header
-//! below its content's minimum (`malformed` stays informational — see `docs/baselines/verify.md`).
-//! Set `PRISMPDF_VERIFY_REPORT_ONLY=1` to report without asserting. When no validator resolves, or no
-//! corpus exists, it skips. Run: `cargo test -p prismpdf --test verify_base -- --nocapture`.
+//! (M18 Phase 4): every should-pass file must be accepted by the panel *majority* and no file may
+//! declare a header below its content's minimum (`malformed` stays informational — see
+//! `docs/baselines/verify.md`). The gate needs at least [`GATE_QUORUM`] validators, since a
+//! majority cannot survive one member's feature gap in a smaller panel; below that it reports
+//! without asserting. Set `PRISMPDF_VERIFY_REPORT_ONLY=1` to do the same deliberately. When no
+//! validator resolves, or no corpus exists, it skips.
+//! Run: `cargo test -p prismpdf --test verify_base -- --nocapture`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::BTreeMap;
@@ -85,8 +88,12 @@ struct Validator {
 
 impl Validator {
     /// The whole panel that resolved in this environment.
+    /// Every panel member, resolved or not — the denominator the quorum is reported against.
+    const NAMES: [&'static str; 5] = ["qpdf", "mutool", "gs", "pdfinfo", "pdfcpu"];
+    const PANEL_SIZE: usize = Self::NAMES.len();
+
     fn panel() -> Vec<Validator> {
-        ["qpdf", "mutool", "gs", "pdfinfo", "pdfcpu"]
+        Self::NAMES
             .into_iter()
             .filter_map(|n| resolve(n).map(|bin| Validator { name: n, bin }))
             .collect()
@@ -493,6 +500,10 @@ fn pdfs_in(dir: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Smallest panel a *majority* verdict is meaningful for: three, so one member's feature gap
+/// leaves a 2-of-3 majority intact. See the gate at the end of the harness.
+const GATE_QUORUM: usize = 3;
+
 #[test]
 fn base_pdf_cross_validation_baseline() {
     let panel = Validator::panel();
@@ -653,6 +664,24 @@ fn base_pdf_cross_validation_baseline() {
     //   2. the producer never stamps a header below the content's minimum (M18 Phase 2).
     // Opt out for exploratory runs with PRISMPDF_VERIFY_REPORT_ONLY=1.
     if std::env::var_os("PRISMPDF_VERIFY_REPORT_ONLY").is_some() {
+        return;
+    }
+    // Assertion 1 is a *majority* verdict precisely so one member's feature gap cannot fail a valid
+    // file (pdfcpu rejects Document Parts §14.12 as "DPartRoot not supported" — its own banner says
+    // PDF 2.0 is supported on a need basis). That reasoning needs a panel big enough for a majority
+    // to survive one dissenter, which takes three: with two, a single gap is already half the vote,
+    // and with one "majority" just means "this tool is authoritative" — the opposite of the oracle
+    // this harness is built on. Below quorum the report still prints; only the gate stands down, so
+    // a partial local install reports honestly instead of failing valid output.
+    if tool_names.len() < GATE_QUORUM {
+        eprintln!(
+            "\nverify_base: REPORT ONLY — {} of {} validators resolved ({}), below the quorum of \
+             {GATE_QUORUM} a majority verdict needs. Install the rest to gate locally: \
+             apt-get install qpdf mupdf-tools ghostscript poppler-utils (see tools/verify/README.md).",
+            tool_names.len(),
+            Validator::PANEL_SIZE,
+            tool_names.join(", "),
+        );
         return;
     }
     let should_pass_failures: usize = report

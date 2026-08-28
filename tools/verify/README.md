@@ -8,6 +8,14 @@ authoritative.
 Each tool is resolved from `$PATH` first, then from this directory; missing tools are skipped
 cleanly (the harness still runs with whatever resolved, and skips entirely if none do).
 
+**Install at least three.** A file is accepted on the panel's *majority* verdict, so that one
+member's feature gap cannot fail a valid file — pdfcpu, for instance, rejects Document Parts
+(§14.12) as `"DPartRoot" not supported`, and its own banner says PDF 2.0 is supported on a need
+basis. That reasoning needs three members for a 2-of-3 majority to survive a single dissenter; with
+one resolved validator "majority" would just mean "this tool is authoritative". Below three the
+harness prints its report and the gate stands down rather than failing valid output.
+`.devcontainer/post-install.sh` installs all five, so a devcontainer gates like CI does.
+
 ## Panel
 
 | Tool | Provides | Install |

@@ -85,3 +85,50 @@ XML
 }
 
 install_verapdf || echo "WARNING: veraPDF not installed (offline?); the Rust conformance harness still runs without it."
+
+echo "==> Installing the base-PDF validator panel (M18 cross-validation oracle)"
+# veraPDF above judges PDF/A·UA·X only; plain PDF 1.4-2.0 is cross-validated by a panel of
+# independent consumers, and `verify_base` gates on their majority verdict. Below three resolved
+# validators the harness reports without asserting (a majority cannot survive one member's feature
+# gap), so a container missing these silently stops gating — install them here for the same reason
+# veraPDF is installed. Best-effort throughout: an offline container must still build and test.
+install_verify_panel() {
+  local pkgs=()
+  command -v qpdf    >/dev/null 2>&1 || pkgs+=(qpdf)
+  command -v mutool  >/dev/null 2>&1 || pkgs+=(mupdf-tools)
+  command -v gs      >/dev/null 2>&1 || pkgs+=(ghostscript)
+  command -v pdfinfo >/dev/null 2>&1 || pkgs+=(poppler-utils)
+  if [ "${#pkgs[@]}" -gt 0 ]; then
+    sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends "${pkgs[@]}" || return 1
+  fi
+
+  # pdfcpu is not packaged; fetch the release binary into the git-ignored tools/verify/, which is
+  # where the harness looks before $PATH. Pinned to the version CI uses (.github/workflows/ci.yml)
+  # so a local run and a CI run grade against the same validator.
+  if [ ! -x tools/verify/pdfcpu ]; then
+    local v=0.13.0 arch tmp
+    case "$(uname -m)" in
+      x86_64)         arch=x86_64 ;;
+      aarch64|arm64)  arch=arm64 ;;
+      *) echo "    pdfcpu: no release asset for $(uname -m); skipping"; return 0 ;;
+    esac
+    tmp="$(mktemp -d)"
+    if curl -fsSL -o "$tmp/pdfcpu.txz" \
+        "https://github.com/pdfcpu/pdfcpu/releases/download/v${v}/pdfcpu_${v}_Linux_${arch}.tar.xz" \
+       && tar xJf "$tmp/pdfcpu.txz" -C "$tmp"; then
+      mkdir -p tools/verify
+      cp "$(find "$tmp" -name pdfcpu -type f | head -1)" tools/verify/pdfcpu
+      chmod +x tools/verify/pdfcpu
+    else
+      echo "    pdfcpu: download failed (offline?); the other four still form a quorum"
+    fi
+    rm -rf "$tmp"
+  fi
+
+  local n=0
+  for t in qpdf mutool gs pdfinfo; do command -v "$t" >/dev/null 2>&1 && n=$((n + 1)); done
+  [ -x tools/verify/pdfcpu ] && n=$((n + 1))
+  echo "    panel: $n of 5 validators available (3 needed to gate)"
+}
+
+install_verify_panel || echo "WARNING: base-PDF validator panel incomplete; verify_base will report without gating."

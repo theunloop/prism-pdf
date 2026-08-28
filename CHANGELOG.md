@@ -24,6 +24,18 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ### Changed
 
+- **`verify_base` gates only with a quorum of three resolved validators.** The panel's verdict is a
+  *majority* so that one member's feature gap cannot fail a valid file, but the gate asserted that
+  verdict at any panel size. With a single validator resolved — the common local state, since
+  `pdfcpu` is the one member not in apt and `tools/verify/` is git-ignored — "majority" meant "this
+  tool is authoritative", and pdfcpu's documented refusal of Document Parts §14.12 (`"DPartRoot"
+  not supported`, on a validator whose own banner says PDF 2.0 is need-basis) failed three
+  should-pass files that the other four accept. Below quorum the harness now prints its report and
+  names the missing tools instead of asserting. CI installs all five and is unaffected.
+- **The devcontainer installs the base-PDF validator panel**, so a container gates like CI instead
+  of silently standing down. It already installed veraPDF for the PDF/A oracle; this is the same
+  step for the base-PDF one. Best-effort, like the veraPDF block: an offline container still
+  builds and tests.
 - **The C ABI names its ownership shape in each doc comment.** Calls that may claim a handle now
   carry one of three markers — `Consumes on success` (`edit_commit`, `builder_add_page_spec`,
   `builder_add_structure_node`, `struct_node_add_child`), `Consumes always` (`flow_build`,

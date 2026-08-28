@@ -91,3 +91,11 @@ panel member lacks a feature. The report shows it as non-unanimous; the gate pas
 are no version-boundary violations. The `malformed` set is informational only. CI runs it in the
 `verify` job (installs the panel, generates the corpus, runs the test); locally,
 `PRISMPDF_VERIFY_REPORT_ONLY=1` disables the assertions for exploration.
+
+**The gate needs a quorum of three resolved validators.** The majority rule above exists so one
+member's feature gap cannot fail a valid file, and that only holds where a majority survives one
+dissenter — 2 of 3. With two, a single gap is already half the vote; with one, "majority" collapses
+into "this tool is authoritative", which is the opposite of the oracle this harness is built on. A
+partial local install therefore prints the report and stands the gate down, naming what is missing,
+rather than failing output that four of five validators accept.
+`.devcontainer/post-install.sh` installs all five so a devcontainer gates like CI.
