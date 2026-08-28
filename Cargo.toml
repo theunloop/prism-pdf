@@ -68,7 +68,7 @@ md-5 = "0.10"
 sha1 = "0.10"
 # `oid` lets Sha256 carry its AlgorithmIdentifier OID (needed when signing X.509 test certs).
 sha2 = { version = "0.10", features = ["oid"] }
-aes = "0.8"
+aes = "0.9"
 cbc = { version = "0.1", features = ["alloc"] }
 getrandom = "0.2"
 # Public-key security handler (§7.6.5): CMS/PKCS#7 enveloped key + X.509 recipient certs + RSA
