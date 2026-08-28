@@ -91,7 +91,7 @@ p521 = { version = "0.13", features = ["ecdsa", "pkcs8", "sha512"] }
 # generic ECDSA types for curves whose crate lacks the full trait surface (p521): pkcs8 decode + SPKI encode.
 ecdsa = { version = "0.16", features = ["pkcs8", "der", "verifying", "signing"] }
 # SHA-3 digests (ISO/TS 32001): accepted in CMS signature verification (digest attr + RSA-SHA3).
-sha3 = { version = "0.10", features = ["oid"] }
+sha3 = { version = "0.12", features = ["oid"] }
 # Constant-time equality for password/hash comparisons (§7.6.4) — already in the graph beneath the
 # RustCrypto stack; named here so the comparisons can be written explicitly rather than with `==`.
 subtle = "2"
