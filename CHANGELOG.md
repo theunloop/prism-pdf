@@ -22,6 +22,25 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   mentioned was the only conformant spelling; both now work. `Composition` has always replaced this
   way, because it keys its fonts by name.
 
+### Changed
+
+- **The C ABI names its ownership shape in each doc comment.** Calls that may claim a handle now
+  carry one of three markers — `Consumes on success` (`edit_commit`, `builder_add_page_spec`,
+  `builder_add_structure_node`, `struct_node_add_child`), `Consumes always` (`flow_build`,
+  `flow_into_builder`) or `Finalises` (`composition_build`) — and `docs/ABI.md` tabulates them.
+  `docs/BINDINGS.md` semantic contract 3 described only the first shape while listing exports from
+  all three, so a binding author who applied it uniformly would free a flow that a failing
+  `flow_build` had already taken. Behaviour is unchanged; only the header comments and the two
+  documents moved.
+- **`docs/BINDINGS.md` name rule 6** now says the signature decides placement, never the name:
+  `measure_text` and `wrap_text` take a `PrismPdfTextBlock *` first, so rule 2 puts them on the
+  text block rather than on the top-level class, where rule 6 used to cite them as examples. The
+  rule also no longer requires that class to be spelled exactly `PrismPdf`, which C# cannot do
+  without colliding with its own namespace.
+- The `cbindgen` command in `crates/pdf-ffi/cbindgen.toml` and `docs/ABI.md` passes
+  `--crate prismpdf-ffi`; the package was renamed in 0.4.0 and the recorded command still said
+  `pdf-ffi`, which makes `cbindgen` abort.
+
 ## [0.4.0] - 2026-08-27
 
 ### Added

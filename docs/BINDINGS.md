@@ -108,9 +108,17 @@ syntax to the language.
 5. Getters with no arguments beyond the receiver become properties where the language has them
    (`document_page_count` → `doc.PageCount`). A getter returning a boolean out-param returns a
    plain boolean.
-6. Functions whose first parameter is not a handle are statics on the top-level module/class
-   (`PrismPdf.version()`, `PrismPdf.merge(...)`, `PrismPdf.measureText(...)`,
-   `PrismPdf.wrapText(...)`).
+6. Functions that take **no handle parameter at all** are statics on a top-level class named for
+   the library, subject to the language's naming constraints (`PrismPdf.version()`,
+   `PrismPdf.merge(...)` — `merge` takes an *array* of documents, not a receiver). Where the
+   language cannot spell `PrismPdf` — C#, for instance, cannot give a type the same name as its
+   enclosing namespace without ambiguity at every use site — pick the nearest name and record the
+   deviation; the placement is the rule, the spelling is not.
+
+   Rule 2 wins wherever the two could disagree: **the signature decides, never the name**.
+   `prismpdf_measure_text` and `prismpdf_wrap_text` read like module-level functions and carry no
+   `<noun>_` prefix, but both take a `PrismPdfTextBlock *` first, so they are
+   `block.measureText(text)` and `block.wrapText(text, width)` — not statics.
 7. `*_report` variants: expose the plain call, plus a `…WithReport` companion returning the
    result together with the report object — do not fold the two into one signature with an
    optional parameter, so the cheap path stays report-free in every language.
@@ -138,12 +146,18 @@ These are the behaviours that make bindings interchangeable. The underlying rule
 2. **`NotFound` on an optional getter is absence, not an error.** Map it to the language's
    absence idiom (`null`, `None`, `Optional.empty`). `NotFound` from an index lookup
    (page out of range) is still an error.
-3. **Consuming calls invalidate on success only.** `edit_commit`, `builder` page/struct commits,
-   `flow_build`, `flow_into_builder`, `composition_build` and friends take ownership of a handle
-   when they succeed and leave it with the caller when validation fails — each function's header
-   doc comment says which. The wrapper marks its handle dead only on `Ok`; use after a consuming
-   success is the language's "object disposed" error, raised by the wrapper, not by the native
-   library.
+3. **Consuming calls come in three shapes — read the export's doc comment, not this rule alone.**
+   Getting this wrong is a double free, not a compile error, so the header states the shape for
+   every export that takes a handle it may claim. The three, and what a wrapper must do:
+
+   | Marker in the doc comment | Exports | What the wrapper does |
+   |---|---|---|
+   | **Consumes on success** | `edit_commit`, `builder_add_page_spec`, `builder_add_structure_node`, `struct_node_add_child` | Mark the handle dead **after** `Ok`. A failure leaves it caller-owned and still freeable. |
+   | **Consumes always** | `flow_build`, `flow_into_builder` | Mark the handle dead **before** the call. The box is taken as the call is entered, so a failing call has already freed it and a wrapper that frees again on the error path double-frees. |
+   | **Finalises** | `composition_build` | Nothing. The handle becomes immutable on success *and* failure — later mutation or build calls return `InvalidUse` — but it is still the caller's to free. |
+
+   Use after a consuming success is the language's "object disposed" error, raised by the wrapper,
+   not by the native library.
 4. **Borrowed items must keep their owner alive.** An item wrapper from `*_list_get`, and any
    byte-payload view from it, holds a strong reference to the list wrapper so the collector
    cannot free the list while an item is reachable. Never pass a borrowed pointer to any

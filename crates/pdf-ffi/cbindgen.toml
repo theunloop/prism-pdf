@@ -1,5 +1,5 @@
 # cbindgen configuration for the Prism PDF C ABI header (EPIC 10, DESIGN.md §6.1).
-# Regenerate the header with:  cbindgen --config cbindgen.toml --crate pdf-ffi --output include/prismpdf.h
+# Regenerate the header with:  cbindgen --config cbindgen.toml --crate prismpdf-ffi --output include/prismpdf.h
 language = "C"
 include_guard = "PRISMPDF_H"
 pragma_once = false

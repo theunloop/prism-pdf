@@ -76,6 +76,18 @@ How each Rust shape crosses the boundary. These are the rules every new entry po
 | `&[(&str, &str)]` in | two parallel `const char *const *` arrays + `count` | caller's own |
 | fieldless `enum` | `#[repr(C)]` integer enum | — |
 
+### Handle-claiming calls
+
+A call that takes a handle it may claim says so in its own doc comment with one of three markers,
+and there is no fourth shape. A binding generator can check the marker mechanically; a binding
+author must not infer the shape from the call's name.
+
+| Marker | Exports | Meaning |
+|--------|---------|---------|
+| **Consumes on success** | `prismpdf_edit_commit`, `prismpdf_builder_add_page_spec`, `prismpdf_builder_add_structure_node`, `prismpdf_struct_node_add_child` | Ownership transfers only on `Ok`. A failure leaves the handle caller-owned and still freeable. |
+| **Consumes always** | `prismpdf_flow_build`, `prismpdf_flow_into_builder` | The box is taken as the call is entered, so the handle is dead on failure too. Freeing it afterwards is a double free. |
+| **Finalises** | `prismpdf_composition_build` | Not a transfer: the handle becomes immutable on success and on failure (later calls return `InvalidUse`), but freeing it stays the caller's job. |
+
 ### Collections
 
 The facade returns owned Rust vectors whose items carry `String` and `Option` fields. C has
@@ -684,7 +696,7 @@ the `pdf-ffi` crate (`crate-type = ["cdylib", "staticlib", "rlib"]`).
 ```bash
 cargo install cbindgen   # once
 cd crates/pdf-ffi
-cbindgen --config cbindgen.toml --crate pdf-ffi --output include/prismpdf.h
+cbindgen --config cbindgen.toml --crate prismpdf-ffi --output include/prismpdf.h
 ```
 
 The generated `prismpdf.h` is committed so consumers don't need `cbindgen`; regenerate it whenever

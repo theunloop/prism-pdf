@@ -594,7 +594,10 @@ pub(crate) unsafe fn flow_block_text<'a>(
     Some((unsafe { &mut (*flow).0 }, unsafe { &*block }, text))
 }
 
-/// **Consume** the flow and serialise it. The handle is dead afterwards — do not free it.
+/// Serialise the flow to PDF bytes.
+///
+/// **Consumes always.** The box is taken as the call is entered, so the handle is dead on failure
+/// too — a wrapper must mark it dead *before* the call and never free it afterwards.
 ///
 /// # Safety
 /// `flow` must come from [`prismpdf_flow_new`] and must not already be consumed;
@@ -625,7 +628,9 @@ pub unsafe extern "C" fn prismpdf_flow_build(
 /// post-processed — running a conformance pass, attaching files, adding annotations. This is the
 /// composition point between the layout API and everything else.
 ///
-/// The flow handle is dead afterwards; the returned builder must be freed.
+/// **Consumes always.** The box is taken as the call is entered, so the flow handle is dead on
+/// failure too — a wrapper must mark it dead *before* the call and never free it afterwards. The
+/// returned builder must be freed.
 ///
 /// # Safety
 /// `flow` must come from [`prismpdf_flow_new`] and must not already be consumed; `out_builder`

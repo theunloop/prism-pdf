@@ -1319,7 +1319,11 @@ pub unsafe extern "C" fn prismpdf_composition_container_set_page_break(
     guard(|| fill_slot(container, CompositionDraftNode::PageBreak))
 }
 
-/// Finalise and build the composition. The handle becomes immutable even when layout fails.
+/// Finalise and build the composition.
+///
+/// **Finalises.** The handle becomes immutable on success and on failure — later mutation or build
+/// calls return [`PrismPdfStatus::InvalidUse`] — but it is *not* consumed: freeing it stays the
+/// caller's job.
 ///
 /// # Safety
 /// `composition` must be live; byte out-pointers writable. Release success bytes with

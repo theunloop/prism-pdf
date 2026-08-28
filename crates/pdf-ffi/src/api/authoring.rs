@@ -1209,8 +1209,9 @@ pub unsafe extern "C" fn prismpdf_struct_node_add_annotation(
     })
 }
 
-/// Transfer `child` into `parent` in reading order (§14.7.4.2). Success consumes `child`; a null
-/// rejection leaves ownership unchanged.
+/// Transfer `child` into `parent` in reading order (§14.7.4.2).
+///
+/// **Consumes on success.** A null rejection leaves ownership unchanged.
 ///
 /// # Safety
 /// Both nodes must be distinct live handles.
@@ -1333,8 +1334,9 @@ pub(crate) unsafe fn builder_and_str<'a>(
     Some((unsafe { &mut (*builder).0 }, text))
 }
 
-/// Transfer one top-level raw structure element to the builder (§14.7). Success consumes `node`;
-/// a null-argument rejection leaves it caller-owned.
+/// Transfer one top-level raw structure element to the builder (§14.7).
+///
+/// **Consumes on success.** A null-argument rejection leaves `node` caller-owned.
 ///
 /// # Safety
 /// `builder` and `node` must be distinct live handles of their respective types.
@@ -1665,8 +1667,8 @@ pub unsafe extern "C" fn prismpdf_builder_add_page(
 
 /// Transfer an assembled low-level page specification to the builder (§7.7.3.3).
 ///
-/// On success `page` is consumed and must not be used or freed. On failure ownership remains with
-/// the caller. The simpler [`prismpdf_builder_add_page`] remains available for content plus
+/// **Consumes on success**: `page` must not then be used or freed. On failure ownership remains
+/// with the caller. The simpler [`prismpdf_builder_add_page`] remains available for content plus
 /// Standard-14 fonts.
 ///
 /// # Safety

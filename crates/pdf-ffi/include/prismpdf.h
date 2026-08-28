@@ -1076,8 +1076,10 @@ PrismPdfStatus prismpdf_edit_set_object(PrismPdfEdit *edit,
                                       const PrismPdfObject *value);
 
 /**
- * Commit an edit as an incremental revision or full rewrite. Success consumes `edit`; any
- * reported failure leaves it caller-owned. The returned transform report owns the output bytes.
+ * Commit an edit as an incremental revision or full rewrite. The returned transform report owns
+ * the output bytes.
+ *
+ * **Consumes on success.** A reported failure leaves `edit` caller-owned and still freeable.
  *
  * # Safety
  * `doc` must be the same live handle passed to [`prismpdf_edit_new`], `edit` must be live, and
@@ -2998,8 +3000,9 @@ PrismPdfStatus prismpdf_struct_node_add_annotation(PrismPdfStructNode *node,
                                                  uintptr_t annotation_index);
 
 /**
- * Transfer `child` into `parent` in reading order (§14.7.4.2). Success consumes `child`; a null
- * rejection leaves ownership unchanged.
+ * Transfer `child` into `parent` in reading order (§14.7.4.2).
+ *
+ * **Consumes on success.** A null rejection leaves ownership unchanged.
  *
  * # Safety
  * Both nodes must be distinct live handles.
@@ -3039,8 +3042,9 @@ PrismPdfBuilder *prismpdf_builder_new(void);
 void prismpdf_builder_free(PrismPdfBuilder *builder);
 
 /**
- * Transfer one top-level raw structure element to the builder (§14.7). Success consumes `node`;
- * a null-argument rejection leaves it caller-owned.
+ * Transfer one top-level raw structure element to the builder (§14.7).
+ *
+ * **Consumes on success.** A null-argument rejection leaves `node` caller-owned.
  *
  * # Safety
  * `builder` and `node` must be distinct live handles of their respective types.
@@ -3188,8 +3192,8 @@ PrismPdfStatus prismpdf_builder_add_page(PrismPdfBuilder *builder,
 /**
  * Transfer an assembled low-level page specification to the builder (§7.7.3.3).
  *
- * On success `page` is consumed and must not be used or freed. On failure ownership remains with
- * the caller. The simpler [`prismpdf_builder_add_page`] remains available for content plus
+ * **Consumes on success**: `page` must not then be used or freed. On failure ownership remains
+ * with the caller. The simpler [`prismpdf_builder_add_page`] remains available for content plus
  * Standard-14 fonts.
  *
  * # Safety
@@ -3950,7 +3954,10 @@ PrismPdfFlow *prismpdf_flow_new(const double *size,
 void prismpdf_flow_free(PrismPdfFlow *flow);
 
 /**
- * **Consume** the flow and serialise it. The handle is dead afterwards — do not free it.
+ * Serialise the flow to PDF bytes.
+ *
+ * **Consumes always.** The box is taken as the call is entered, so the handle is dead on failure
+ * too — a wrapper must mark it dead *before* the call and never free it afterwards.
  *
  * # Safety
  * `flow` must come from [`prismpdf_flow_new`] and must not already be consumed;
@@ -3963,7 +3970,9 @@ PrismPdfStatus prismpdf_flow_build(PrismPdfFlow *flow, uint8_t **out_data, uintp
  * post-processed — running a conformance pass, attaching files, adding annotations. This is the
  * composition point between the layout API and everything else.
  *
- * The flow handle is dead afterwards; the returned builder must be freed.
+ * **Consumes always.** The box is taken as the call is entered, so the flow handle is dead on
+ * failure too — a wrapper must mark it dead *before* the call and never free it afterwards. The
+ * returned builder must be freed.
  *
  * # Safety
  * `flow` must come from [`prismpdf_flow_new`] and must not already be consumed; `out_builder`
@@ -4561,7 +4570,11 @@ PrismPdfStatus prismpdf_composition_container_set_text(PrismPdfCompositionContai
 PrismPdfStatus prismpdf_composition_container_set_page_break(PrismPdfCompositionContainer *container);
 
 /**
- * Finalise and build the composition. The handle becomes immutable even when layout fails.
+ * Finalise and build the composition.
+ *
+ * **Finalises.** The handle becomes immutable on success and on failure — later mutation or build
+ * calls return [`PrismPdfStatus::InvalidUse`] — but it is *not* consumed: freeing it stays the
+ * caller's job.
  *
  * # Safety
  * `composition` must be live; byte out-pointers writable. Release success bytes with

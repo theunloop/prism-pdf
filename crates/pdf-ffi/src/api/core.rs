@@ -1000,8 +1000,10 @@ pub unsafe extern "C" fn prismpdf_edit_set_object(
     })
 }
 
-/// Commit an edit as an incremental revision or full rewrite. Success consumes `edit`; any
-/// reported failure leaves it caller-owned. The returned transform report owns the output bytes.
+/// Commit an edit as an incremental revision or full rewrite. The returned transform report owns
+/// the output bytes.
+///
+/// **Consumes on success.** A reported failure leaves `edit` caller-owned and still freeable.
 ///
 /// # Safety
 /// `doc` must be the same live handle passed to [`prismpdf_edit_new`], `edit` must be live, and
