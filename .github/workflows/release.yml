@@ -240,7 +240,7 @@ jobs:
           cp "target/${TRIPLE}/dist/${{ matrix.lib }}" "staging/${{ matrix.rid }}/${{ matrix.lib }}"
           ls -l "staging/${{ matrix.rid }}/${{ matrix.lib }}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.group || 'native' }}-${{ matrix.rid }}
           path: staging/${{ matrix.rid }}
@@ -327,7 +327,7 @@ jobs:
           link iphoneos         arm64-apple-ios13.0             slices/appleslice-apple-ios-arm64/libpdf_ffi.a
           link iphonesimulator  arm64-apple-ios13.0-simulator   assembled/ios-simulator.a
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: xcframework
           path: prism-pdf-xcframework-v${{ env.VERSION }}.zip
@@ -447,7 +447,7 @@ jobs:
           fi
           ls -l out/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cli-${{ matrix.rid }}
           path: out/*
@@ -536,7 +536,7 @@ jobs:
             > "SHA256SUMS-v${VERSION}.txt"
           cat "SHA256SUMS-v${VERSION}.txt"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-bundle-v${{ env.VERSION }}
           path: |
