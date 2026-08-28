@@ -18,7 +18,7 @@ page. Save each one under the filename below — that is the name `docs/spec-map
 
 | Filename | Document |
 |---|---|
-| `PDF32000_2008.pdf` | ISO 32000-1:2008 — PDF 1.7 ([free from Adobe](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf)) |
+| `PDF32000_2008.pdf` | ISO 32000-1:2008 — PDF 1.7 |
 | `ISO_32000-2_sponsored_EC3.pdf` | ISO 32000-2 — PDF 2.0 |
 | `ISO_TS_32001-2022_sponsored_EC3.pdf` | ISO/TS 32001:2022 — SHA-2 / extended digital signatures |
 | `ISO_TS_32002-2022_sponsored_EC3.pdf` | ISO/TS 32002:2022 — EdDSA signatures |
@@ -32,6 +32,26 @@ page. Save each one under the filename below — that is the name `docs/spec-map
 | `PDF20_AN001-BPC.pdf` | PDF 2.0 application note — black point compensation |
 | `PDF20_AN002-AF.pdf` | PDF 2.0 application note — associated files |
 | `PDF20_AN003-ObjectMetadataLocations.pdf` | PDF 2.0 application note — object metadata locations |
+
+## Conformance typology standards
+
+The typology families indexed at the end of [`../spec-map.md`](../spec-map.md) have their own
+documents. The ISO 19005 parts back code that already cites them by section; the others back
+roadmap work (`ROADMAP.md`). Check the sponsored-standards page first — parts not in the free
+programme must be purchased from ISO — and save under these filenames:
+
+| Filename | Document |
+|---|---|
+| `ISO_19005-1.pdf` | ISO 19005-1:2005 — PDF/A-1 |
+| `ISO_19005-2.pdf` | ISO 19005-2:2011 — PDF/A-2 |
+| `ISO_19005-3.pdf` | ISO 19005-3:2012 — PDF/A-3 |
+| `ISO_19005-4.pdf` | ISO 19005-4:2020 — PDF/A-4 (Annex A: 4f; Annex B: 4e) |
+| `ISO_15930-9.pdf` | ISO 15930-9:2020 — PDF/X-6 |
+| `ISO_16612-3.pdf` | ISO 16612-3:2020 — PDF/VT-3 |
+| `ISO_23504-1.pdf` | ISO 23504-1:2020 — PDF/R-1 |
+
+The legacy PDF/X parts (ISO 15930-1…-8) and PDF/E-1 (ISO 24517-1) appear in the spec-map for
+orientation only; obtain them only if that work is ever taken on.
 
 Do not commit them, and do not paste normative clause text into this repository: cite the section
 number instead, as `CONTRIBUTING.md` rule 4 requires.

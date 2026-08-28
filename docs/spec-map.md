@@ -1,4 +1,4 @@
-# spec-map — ISO 32000 section → crate
+# spec-map — ISO section → crate
 
 An **index**, not a status report. It answers one question: *which crate owns this clause of the
 standard?* Use it to find the code from a section number, and to pick the section number to cite
@@ -120,3 +120,36 @@ No crate owns these: rendering pages to pixels is outside the v1 scope
 | 14.11.5 | OutputIntents (PDF/A) | `pdf-standards` |
 | 14.12 | Document parts | `pdf-document` |
 | 14.13 | Associated files (`/AF`, PDF/A-3) | `pdf-document` · `pdf-standards` |
+
+## Conformance typologies — ISO family → crate
+
+The subset standards ("typologies") each pin a base PDF edition and add a rulebook on top. Same
+contract as the section tables: an index, not a status report. A `—` crate cell means no crate
+owns that part yet — those gaps are roadmap material ([`../ROADMAP.md`](../ROADMAP.md)) — and the
+documents themselves are listed in [`rfc/README.md`](rfc/README.md).
+
+| Family | Part | Flavours | Base PDF | Crate |
+|---|---|---|---|---|
+| **PDF/A** — archival (ISO 19005) | 19005-1:2005 | 1a, 1b | PDF 1.4 | `pdf-standards` |
+| | 19005-2:2011 | 2a, 2b, 2u | ISO 32000-1 | `pdf-standards` |
+| | 19005-3:2012 | 3a, 3b, 3u | ISO 32000-1 | `pdf-standards` |
+| | 19005-4:2020 | 4, 4e, 4f | ISO 32000-2 | `pdf-standards` |
+| **PDF/UA** — accessibility (ISO 14289) | 14289-1:2014 | UA-1 | ISO 32000-1 | `pdf-standards` |
+| | 14289-2:2024 | UA-2 | ISO 32000-2 | `pdf-standards` |
+| **PDF/X** — print exchange (ISO 15930) | 15930-1…-6 (2001–2003) | X-1a, X-2, X-3 | PDF 1.3 / 1.4 | — |
+| | 15930-7:2010 | X-4, X-4p | PDF 1.6 | — |
+| | 15930-8:2010 | X-5g, X-5n, X-5pg | PDF 1.6 | — |
+| | 15930-9:2020 | X-6, X-6n, X-6p | ISO 32000-2 | — |
+| **PDF/VT** — variable/transactional print (ISO 16612) | 16612-2:2010 | VT-1, VT-2 | PDF 1.6, over PDF/X-4/-5 | — |
+| | 16612-3:2020 | VT-3 | ISO 32000-2, over PDF/X-6 | — |
+| **PDF/E** — engineering (ISO 24517) | 24517-1:2008 | E-1 | PDF 1.6 | — |
+| **PDF/R** — raster scans (ISO 23504) | 23504-1:2020 | R-1 | ISO 32000-1 subset | — |
+
+Two facts here contradict most third-party summaries, deliberately: PDF/X-4/-5 and PDF/VT-1/-2
+are built on **PDF 1.6** (the Adobe reference), not on ISO 32000-1 — only PDF/X-6 and PDF/VT-3
+sit on an ISO base. And ISO 24517 has no part 2: the engineering profile continued as
+**PDF/A-4e** (ISO 19005-4 Annex B), which `pdf-standards` implements — so the PDF/E hole is
+covered by its successor, not open.
+
+Typologies on the same base stack: one file can conform to PDF/A-4, PDF/UA-2 and PDF/X-6
+simultaneously (CI already validates PDF/A flavours together with `ua1`/`ua2`).

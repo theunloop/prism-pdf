@@ -55,7 +55,9 @@ In conversation, mirror the user.
 ## The spec-map indexes ISO sections to crates
 
 `docs/spec-map.md` indexes every ISO 32000 section (§7 syntax, §8 graphics, §9 text/fonts,
-§12 interactive, §14 interchange) to the crate that owns it. It is an index into the code, **not**
+§12 interactive, §14 interchange) to the crate that owns it. It also indexes the conformance
+typology families (PDF/A, PDF/X, PDF/UA, PDF/VT, PDF/E, PDF/R) to their ISO parts and owning
+crates — unowned parts show `—` and are tracked in `ROADMAP.md`, never marked in the map. It is an index into the code, **not**
 a status report: it carries no progress markers and no roadmap. `CHANGELOG.md` remains
 authoritative for what shipped, `ROADMAP.md` for what is next.
 
