@@ -78,7 +78,7 @@ cms = { version = "0.2", features = ["builder"] }
 x509-cert = { version = "0.2", features = ["builder"] }
 # `derive`/`oid`: `#[derive(Sequence)]` for the RFC 3161 TSTInfo (§12.8 timestamps).
 der = { version = "0.7", features = ["alloc", "derive", "oid"] }
-const-oid = { version = "0.9", features = ["db"] }
+const-oid = { version = "0.10", features = ["db"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 # EdDSA signatures (§12.8.3.4, PDF 2.0): Ed25519 via the RustCrypto signature stack. `pkcs8` reads
 # PKCS#8 keys / SPKI public keys; the `der`/`pkcs8` ed25519 algorithm identifiers wire into `cms`.
