@@ -34,6 +34,7 @@ mod jbig2;
 mod jpx;
 mod lzw;
 mod run_length;
+mod trace;
 
 pub use ascii::{ascii_hex_decode, ascii85_decode};
 pub use ccitt::ccitt_fax_decode;

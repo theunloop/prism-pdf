@@ -16,10 +16,16 @@ name = "pdf_reader"
 [lints]
 workspace = true
 
+[features]
+# Runtime diagnostics (DESIGN.md §7): emit `tracing` events on the xref recovery scan. Off by
+# default so lightweight bindings pay nothing; see `src/trace.rs` for the shim contract.
+tracing = ["dep:tracing"]
+
 [dependencies]
 pdf-cos.workspace = true
 pdf-filters.workspace = true
 thiserror.workspace = true
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Used only by tests to build Flate-encoded xref/object-stream fixtures.

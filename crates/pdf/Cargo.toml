@@ -11,6 +11,12 @@ repository.workspace = true
 [lints]
 workspace = true
 
+[features]
+# Runtime diagnostics (DESIGN.md §7): forward `tracing` into every instrumented engine crate.
+# Off by default so lightweight bindings pay nothing. The engine only *emits* events — the
+# consumer installs the subscriber and picks the destination (stderr, file, host logger).
+tracing = ["pdf-reader/tracing", "pdf-filters/tracing", "pdf-document/tracing"]
+
 [dev-dependencies]
 # Used only by the `gen_corpus` example to emit FlateDecode streams for the test corpus.
 flate2.workspace = true

@@ -104,6 +104,13 @@ hkdf = "0.12"
 # OCSP (RFC 6960) response types for PAdES-LT revocation checking — same `der`/`x509-cert` family.
 x509-ocsp = "0.2"
 
+# Runtime diagnostics (DESIGN.md §7): engine crates *emit* events behind their own `tracing`
+# feature, off by default; no crate installs a subscriber — the consumer (CLI, embedder, later the
+# FFI log callback) picks the destination. `default-features = false` + `std` keeps
+# `tracing-attributes` (and its syn/quote proc-macro stack) out of the graph: the per-crate shim
+# macros use format-string style only, never `#[instrument]`.
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+
 # CLI argument parsing (EPIC 15): one derive declaration drives parsing, validation and `--help`
 # for the 18 `prismpdf` subcommands. `color` is off — the tool's output is piped as often as it is
 # read, and dropping it keeps the supply-chain surface (anstream & co.) out of the graph.

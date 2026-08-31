@@ -16,6 +16,11 @@
 //!
 //! Inner workspace crates are implementation layers. This facade and the C ABI are the supported
 //! application contracts.
+//!
+//! The optional `tracing` feature (off by default, DESIGN.md §7) makes the engine emit `tracing`
+//! events on its recovery and fallback paths — xref rebuild-by-scan, the raw-DEFLATE fallback,
+//! every open-recovery diagnostic. The engine never installs a subscriber: the application does,
+//! and thereby chooses the destination.
 
 use std::collections::HashMap;
 

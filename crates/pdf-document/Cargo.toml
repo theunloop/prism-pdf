@@ -16,6 +16,11 @@ name = "pdf_document"
 [lints]
 workspace = true
 
+[features]
+# Runtime diagnostics (DESIGN.md §7): emit a `tracing` event for every open-recovery diagnostic.
+# Off by default so lightweight bindings pay nothing; see `src/trace.rs` for the shim contract.
+tracing = ["dep:tracing"]
+
 [dependencies]
 pdf-cos.workspace = true
 pdf-filters.workspace = true
@@ -23,6 +28,7 @@ pdf-reader.workspace = true
 pdf-writer.workspace = true
 pdf-crypto.workspace = true
 thiserror.workspace = true
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 # Generate a throwaway RSA keypair + X.509 cert for the public-key handler round-trip test (§7.6.5).

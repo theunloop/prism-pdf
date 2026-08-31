@@ -9,6 +9,16 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Added
+
+- **Runtime diagnostics behind a `tracing` feature** (DESIGN.md §7). `pdf-reader`, `pdf-filters`
+  and `pdf-document` now emit `tracing` events on their recovery paths — the xref
+  rebuild-by-scan (entry count, anti-DoS truncation), the raw-DEFLATE fallback in `FlateDecode`,
+  and every `OpenReport` recovery diagnostic — and the `prismpdf` facade forwards one `tracing`
+  feature into all of them. Off by default, so nothing changes for existing consumers; the
+  engine only emits and never installs a subscriber, so the application chooses the destination.
+  Events carry offsets, object numbers and counts, never document content.
+
 ## [0.4.1] - 2026-08-28
 
 ### Fixed

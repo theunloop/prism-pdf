@@ -26,6 +26,7 @@ use pdf_cos::{Dictionary, Name, Object, ObjectId, PdfString, Stream};
 use crate::error::{ErrorKind, ReaderError, Result};
 use crate::lexer::{Lexer, Token};
 use crate::parser::{Limits, Parser};
+use crate::trace::{log_debug, log_warn};
 
 /// A parsed PDF version from the file header (§7.5.2), e.g. `1.7` or `2.0`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -305,6 +306,14 @@ impl XRef {
         //    one (incremental updates append, §7.5.6). Bound the scan against a hostile file padded
         //    with millions of fabricated `n g obj` headers (anti-DoS, DESIGN.md §3.4).
         let mut headers = scan_object_headers(input);
+        if headers.len() > limits.max_objects {
+            log_warn!(
+                "recovery scan found {} object headers; truncating to the {} allowed by limits \
+                 (anti-DoS, DESIGN.md §3.4)",
+                headers.len(),
+                limits.max_objects
+            );
+        }
         headers.truncate(limits.max_objects);
         let mut entries: BTreeMap<u32, XRefEntry> = BTreeMap::new();
         for &(number, generation, offset) in &headers {
@@ -366,6 +375,11 @@ impl XRef {
         }
 
         let trailer = recover_trailer(input, limits, catalog, xref_dict, &entries)?;
+        log_debug!(
+            "rebuilt cross-reference by full-file scan: {} entries, scanned catalog object {:?}",
+            entries.len(),
+            catalog.map(|id| id.number)
+        );
         Ok(Self {
             version,
             entries,

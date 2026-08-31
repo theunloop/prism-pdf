@@ -17,6 +17,7 @@
 mod error;
 mod lexer;
 mod parser;
+mod trace;
 mod xref;
 
 pub use error::{ErrorKind, ReaderError, Result};

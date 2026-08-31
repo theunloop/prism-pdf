@@ -12,6 +12,7 @@ use flate2::write::ZlibEncoder;
 use pdf_cos::{Dictionary, Name};
 
 use crate::error::{FilterError, Result};
+use crate::trace::log_warn;
 
 const FLATE: &str = "FlateDecode";
 
@@ -46,7 +47,14 @@ fn inflate_bounded(input: &[u8], max: usize) -> Result<Vec<u8>> {
         Ok(out) => Ok(out),
         // A size-limit hit is a hard stop, not a reason to retry with a different codec.
         Err(e @ FilterError::TooLarge { .. }) => Err(e),
-        Err(_) => read_capped(DeflateDecoder::new(input), max),
+        Err(_) => {
+            let out = read_capped(DeflateDecoder::new(input), max)?;
+            log_warn!(
+                "FlateDecode stream is raw DEFLATE (RFC 1951), not zlib (RFC 1950); \
+                 decoded via fallback (§7.4.4.2)"
+            );
+            Ok(out)
+        }
     }
 }
 
@@ -262,6 +270,79 @@ mod tests {
             flate_decode(&raw_deflate(original), None, 1 << 20).unwrap(),
             original
         );
+    }
+
+    /// The `tracing` feature's whole wiring, end to end: a shim macro call site actually reaches
+    /// an installed subscriber. One behavioural test here covers the pattern for every crate;
+    /// the no-op arm is covered by every default-feature build of this same test file.
+    #[cfg(feature = "tracing")]
+    mod tracing_events {
+        use super::*;
+        use std::fmt;
+        use std::sync::{Arc, Mutex};
+        use tracing::field::{Field, Visit};
+        use tracing::{Event, Level, Metadata, span};
+
+        /// Minimal collector: `tracing-subscriber` is deliberately not a dependency of any
+        /// engine crate (the consumer owns the subscriber), so the test hand-rolls one.
+        #[derive(Clone, Default)]
+        struct Collector(Arc<Mutex<Vec<(Level, String)>>>);
+
+        struct MessageVisitor(String);
+        impl Visit for MessageVisitor {
+            fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+                if field.name() == "message" {
+                    self.0 = format!("{value:?}");
+                }
+            }
+        }
+
+        impl tracing::Subscriber for Collector {
+            fn enabled(&self, _: &Metadata<'_>) -> bool {
+                true
+            }
+            fn new_span(&self, _: &span::Attributes<'_>) -> span::Id {
+                span::Id::from_u64(1)
+            }
+            fn record(&self, _: &span::Id, _: &span::Record<'_>) {}
+            fn record_follows_from(&self, _: &span::Id, _: &span::Id) {}
+            fn event(&self, event: &Event<'_>) {
+                let mut visitor = MessageVisitor(String::new());
+                event.record(&mut visitor);
+                self.0
+                    .lock()
+                    .unwrap()
+                    .push((*event.metadata().level(), visitor.0));
+            }
+            fn enter(&self, _: &span::Id) {}
+            fn exit(&self, _: &span::Id) {}
+        }
+
+        #[test]
+        fn raw_deflate_fallback_emits_a_warning() {
+            let collector = Collector::default();
+            let events = Arc::clone(&collector.0);
+            tracing::subscriber::with_default(collector, || {
+                flate_decode(&raw_deflate(b"event under test"), None, 1 << 20).unwrap();
+            });
+            let events = events.lock().unwrap();
+            assert!(
+                events
+                    .iter()
+                    .any(|(level, msg)| *level == Level::WARN && msg.contains("raw DEFLATE")),
+                "no raw-DEFLATE warning among: {events:?}"
+            );
+        }
+
+        #[test]
+        fn clean_zlib_emits_nothing() {
+            let collector = Collector::default();
+            let events = Arc::clone(&collector.0);
+            tracing::subscriber::with_default(collector, || {
+                flate_decode(&zlib(b"well-formed"), None, 1 << 20).unwrap();
+            });
+            assert_eq!(*events.lock().unwrap(), vec![]);
+        }
     }
 
     #[test]

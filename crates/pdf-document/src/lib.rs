@@ -28,6 +28,8 @@ use pdf_writer::{
     write_document, write_document_encrypted, write_document_xref_stream, write_incremental,
 };
 
+use crate::trace::log_warn;
+
 /// The result type returned throughout `pdf-document`.
 pub type Result<T> = std::result::Result<T, DocError>;
 
@@ -107,6 +109,7 @@ mod metadata;
 mod names;
 mod outlines;
 mod signing;
+mod trace;
 mod wrapper;
 
 pub use annotations::Annotation;
@@ -207,6 +210,11 @@ impl OpenReport {
     }
 
     fn recovered(&mut self, diagnostic: OpenDiagnostic) {
+        log_warn!(
+            "open switched to bounded recovery: {:?} (byte offset {:?})",
+            diagnostic.reason,
+            diagnostic.offset
+        );
         self.mode = OpenMode::Recovered;
         if self.diagnostics.len() < 2 {
             self.diagnostics.push(diagnostic);
