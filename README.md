@@ -1,23 +1,44 @@
-# Prism PDF
+<div align="center">
+
+<img src="./prism-pdf.jpeg" alt="Prism PDF" width="230">
+
+### The pure-Rust PDF engine. Read it, reshape it, write it — every color of PDF.
 
 [![CI](https://github.com/theunloop/prism-pdf/actions/workflows/ci.yml/badge.svg)](https://github.com/theunloop/prism-pdf/actions/workflows/ci.yml)
 [![Release](https://github.com/theunloop/prism-pdf/actions/workflows/release.yml/badge.svg)](https://github.com/theunloop/prism-pdf/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE.md)
 
-A pure-Rust PDF engine that **reads, manipulates, and generates** PDFs — with an FFI-first core, a
-`#![forbid(unsafe_code)]` parser, and recovery + anti-DoS hardening treated as first-class features
-(real PDFs are frequently malformed, and input is untrusted).
+[Install](#install) · [Quickstart](#library-quickstart) · [CLI](#cli) ·
+[Language bindings](#language-bindings) · [Architecture](#architecture)
 
-- **Read** any PDF: classic and stream cross-references, object streams, incremental updates, and
-  automatic recovery when a file is broken. Extract text (with `/ToUnicode`, encoding fallback, and
-  composite CID fonts), images, fonts, attachments, annotations, and form fields.
-- **Manipulate** losslessly: merge, split, reorder, rotate, and incrementally update — unmodelled
-  objects (annotations, outlines, structure trees) survive a round-trip.
-- **Generate** from scratch: a layout engine for text, tables, lists, images, headers/footers, and
-  bookmarks; font embedding/subsetting; tagged (logically-structured) output; and **PDF/A**
+</div>
+
+---
+
+**Prism PDF** is a complete PDF engine written in pure Rust: one library that **reads,
+manipulates, and generates** PDFs, built FFI-first so every language ecosystem gets the same
+engine — not a port. The parser is `#![forbid(unsafe_code)]`, and because real-world PDFs are
+frequently malformed and always untrusted, automatic recovery and anti-DoS hardening are
+first-class features, not afterthoughts.
+
+## Why Prism PDF?
+
+- 📖 **Reads anything.** Classic and stream cross-references, object streams, incremental
+  updates — and automatic recovery when a file is broken. Extract text (with `/ToUnicode`,
+  encoding fallback, and composite CID fonts), images, fonts, attachments, annotations, and form
+  fields.
+- ✂️ **Manipulates losslessly.** Merge, split, reorder, rotate, and incrementally update —
+  unmodelled objects (annotations, outlines, structure trees) survive a round-trip untouched.
+- 📝 **Generates beautifully.** A layout engine for text, tables, lists, images, headers/footers,
+  and bookmarks; font embedding and subsetting; tagged (logically-structured) output; **PDF/A**
   (levels B and A) and **PDF/UA** (1 and 2) output validated by veraPDF in CI.
-- **Secure**: encryption (RC4 / AES-128 / AES-256, standard and public-key handlers) and digital
-  signatures (detached CMS, signing time, visible appearance, PAdES-B chain validation, RFC 3161
-  timestamps).
+- 🔐 **Secures seriously.** Encryption (RC4 / AES-128 / AES-256, standard and public-key
+  handlers) and digital signatures (detached CMS, signing time, visible appearance, PAdES-B chain
+  validation, RFC 3161 timestamps).
+- 🦀 **Safe by construction.** Pure Rust, a `#![forbid(unsafe_code)]` parser, fuzzing, and a
+  conformance corpus — engineered for hostile input.
+- 🌍 **One engine, every language.** A stable, handle-based C ABI designed from day one so
+  idiomatic bindings share the same core — .NET ships today, more are on the way.
 
 > Status: **0.4.1** is the latest release. The engine is feature-complete for reading,
 > manipulating, generating, and signing PDFs. Page **rendering** (§10–§11) is out of scope for the
