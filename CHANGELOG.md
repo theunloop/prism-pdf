@@ -11,6 +11,15 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ### Added
 
+- **One-line CLI installers**: `scripts/install.sh` (macOS/Linux, `curl | sh`) and
+  `scripts/install.ps1` (Windows, `irm | iex`) download the prebuilt archive matching the
+  machine from GitHub Releases, verify it against the release's `SHA256SUMS-v*.txt`, and install
+  the `prismpdf` binary — to `~/.local/bin` and `%LOCALAPPDATA%\Programs\prismpdf` respectively,
+  no root or admin needed. The shell script picks the static `linux-musl-*` build on musl systems
+  and on glibc older than the 2.17 floor; both honour `PRISMPDF_VERSION` (pin a release) and
+  `PRISMPDF_INSTALL_DIR`. CI's new `install` job lints and runs both end-to-end against a real
+  release on all three desktop platforms.
+
 - **Runtime diagnostics behind a `tracing` feature** (DESIGN.md §7). `pdf-reader`, `pdf-filters`
   and `pdf-document` now emit `tracing` events on their recovery paths — the xref
   rebuild-by-scan (entry count, anti-DoS truncation), the raw-DEFLATE fallback in `FlateDecode`,

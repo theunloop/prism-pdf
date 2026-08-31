@@ -25,10 +25,11 @@ Do not restate any of those here: a status claim in this file rots on the next m
   centralized in `[workspace.dependencies]`; internal crates use `<crate>.workspace = true` path
   deps. **Declare only dependencies you actually use** — the `doc` CI job fails on an intra-doc
   link into a crate you do not depend on, which is what keeps the graph below honest.
-- CI (`.github/workflows/ci.yml`) runs nine jobs on every PR — `fmt`, `clippy`, `doc`, `test`,
-  `msrv` (1.88), `deny`, `fuzz` (smoke run of every target), `pdfa` (veraPDF at each sample's own
-  flavour + `ua1`/`ua2`), and `verify` (the M18 five-validator panel for base PDF) — eleven check
-  runs, since `test` is a Linux/macOS/Windows matrix. Warnings are errors everywhere
+- CI (`.github/workflows/ci.yml`) runs eleven jobs on every PR — `fmt`, `clippy`, `doc`, `bench`,
+  `test`, `msrv` (1.88), `deny`, `fuzz` (smoke run of every target), `pdfa` (veraPDF at each
+  sample's own flavour + `ua1`/`ua2`), `verify` (the M18 five-validator panel for base PDF), and
+  `install` (the `scripts/install.{sh,ps1}` one-liners, shellchecked and run end-to-end against a
+  real release) — fifteen check runs, since `test` and `install` are Linux/macOS/Windows matrices. Warnings are errors everywhere
   (`RUSTFLAGS: -D warnings`, and `RUSTDOCFLAGS: -D warnings` in `doc`).
 - A `v*` tag additionally runs `.github/workflows/release.yml`: it guards that the tag, the
   workspace version and the changelog agree, cross-compiles `pdf-ffi` for sixteen targets with

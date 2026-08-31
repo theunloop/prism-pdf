@@ -93,12 +93,28 @@ std::fs::write("output.pdf", doc.save()?)?;
 
 ## CLI
 
-The `prismpdf` binary exposes the engine from the shell. Every release attaches a prebuilt archive
-per platform, so no Rust toolchain is needed — download it from
-[Releases](https://github.com/theunloop/prism-pdf/releases), or build it yourself:
+The `prismpdf` binary exposes the engine from the shell. Every release attaches a prebuilt,
+checksummed archive per platform, so no Rust toolchain is needed — one line installs it:
 
 ```bash
-# Prebuilt: pick the archive matching your platform, verify it, run it.
+# macOS and Linux — detects your platform, verifies the SHA-256, installs to ~/.local/bin.
+curl -fsSL https://raw.githubusercontent.com/theunloop/prism-pdf/main/scripts/install.sh | sh
+```
+
+```powershell
+# Windows — same flow; installs to %LOCALAPPDATA%\Programs\prismpdf and updates your user PATH.
+irm https://raw.githubusercontent.com/theunloop/prism-pdf/main/scripts/install.ps1 | iex
+```
+
+Pin a release with `PRISMPDF_VERSION=0.4.1`, or change the destination with
+`PRISMPDF_INSTALL_DIR`. Prefer not to pipe a script into your shell? `cargo install prismpdf-cli`
+builds from source (Rust 1.88+), or fetch an archive by hand:
+
+<details>
+<summary>Manual download (curl + checksum verification)</summary>
+
+```bash
+# Pick the archive matching your platform, verify it, run it.
 VERSION=0.4.1; RID=linux-x64      # win-x64 | win-arm64 | win-x86 | linux-x64 | linux-arm64
                                   # linux-arm | linux-musl-x64 | linux-musl-arm64
                                   # osx-x64 | osx-arm64
@@ -107,15 +123,15 @@ curl -fsSLO "${BASE}/prismpdf-v${VERSION}-${RID}.tar.gz"
 curl -fsSLO "${BASE}/SHA256SUMS-v${VERSION}.txt"
 sha256sum --ignore-missing -c "SHA256SUMS-v${VERSION}.txt"
 tar xzf "prismpdf-v${VERSION}-${RID}.tar.gz"
-
-# Or from source, which compiles the engine and needs Rust 1.88+.
-cargo install prismpdf-cli
 ```
 
 The `linux-musl-*` builds are statically linked and run on any distribution, Alpine included; the
-`linux-x64`/`linux-arm64` builds target a glibc 2.17 floor. Windows archives are `.zip`, the rest
-`.tar.gz`. macOS binaries are ad-hoc signed, so first run still needs quarantine cleared
+`linux-x64`/`linux-arm64` builds target a glibc 2.17 floor (the installer picks the right one
+automatically). Windows archives are `.zip`, the rest `.tar.gz`. macOS binaries are ad-hoc
+signed, so a browser-downloaded first run still needs quarantine cleared
 (`xattr -d com.apple.quarantine prismpdf`).
+
+</details>
 
 Commands:
 

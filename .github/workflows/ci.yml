@@ -246,3 +246,56 @@ jobs:
 
       - name: Cross-validate authored output (panel + version-boundary gate)
         run: cargo test -p prismpdf --test verify_base -- --nocapture
+
+  install:
+    name: install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # shellcheck ships preinstalled on the Ubuntu runner; one leg linting is enough.
+      - name: Lint the shell installer
+        if: matrix.os == 'ubuntu-latest'
+        run: shellcheck scripts/install.sh
+
+      # End-to-end against the real latest release: platform detection, checksum verification,
+      # and the installed binary actually running. This is what the README one-liner executes.
+      - name: Install the latest release (sh)
+        if: matrix.os != 'windows-latest'
+        run: |
+          set -euo pipefail
+          PRISMPDF_INSTALL_DIR="$RUNNER_TEMP/prismpdf-bin" sh scripts/install.sh
+          "$RUNNER_TEMP/prismpdf-bin/prismpdf" --version
+
+      # Version pinning resolves nothing over the network, so any released tag works; 0.4.1 is
+      # the first release that shipped CLI archives and exists forever.
+      - name: Install a pinned release (sh)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -euo pipefail
+          PRISMPDF_VERSION=0.4.1 PRISMPDF_INSTALL_DIR="$RUNNER_TEMP/prismpdf-pinned" sh scripts/install.sh
+          "$RUNNER_TEMP/prismpdf-pinned/prismpdf" --version | grep -F 0.4.1
+
+      - name: Install the latest release (PowerShell 7)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $env:PRISMPDF_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'prismpdf-bin'
+          ./scripts/install.ps1
+          & (Join-Path $env:PRISMPDF_INSTALL_DIR 'prismpdf.exe') --version
+
+      # The script claims Windows PowerShell 5.1 compatibility (the stock shell an `irm | iex`
+      # one-liner lands in); hold it to that on a second leg.
+      - name: Install a pinned release (Windows PowerShell 5.1)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          $env:PRISMPDF_VERSION = '0.4.1'
+          $env:PRISMPDF_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'prismpdf-pinned'
+          ./scripts/install.ps1
+          $v = & (Join-Path $env:PRISMPDF_INSTALL_DIR 'prismpdf.exe') --version
+          if ($v -notmatch '0\.4\.1') { throw "expected 0.4.1, got: $v" }
