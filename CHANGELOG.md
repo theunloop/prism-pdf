@@ -9,6 +9,13 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+## [1.0.0-alpha.1] - 2026-08-31
+
+First prerelease of the `1.0.0` stability line. The API surface is the validated `0.4.x` one;
+this tag exists so bindings and downstream consumers can pin and exercise the candidate surface
+while it soaks. Per SemVer, `cargo add prismpdf` and plain version requirements ignore a
+prerelease — only the full `1.0.0-alpha.1` string resolves to it.
+
 ### Added
 
 - **One-line CLI installers**: `scripts/install.sh` (macOS/Linux, `curl | sh`) and
@@ -135,6 +142,7 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   read `-p 21` as `--package 21`. The workflow now passes `--platform 21` and pins cargo-ndk to
   `^4.1`.
 
-[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.1...HEAD
+[1.0.0-alpha.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.1...v1.0.0-alpha.1
 [0.4.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/theunloop/prism-pdf/releases/tag/v0.4.0
