@@ -16,31 +16,42 @@ MAX_LINES = 1_000
 # split the module, move its tests, or document why a reviewed exception is better.
 EXCEPTIONS = {
     "crates/pdf-document/src/builder.rs": (
-        1_483,
-        "public builder model; implementation is already split into sibling modules",
+        1_503,
+        "public builder model; implementation is already split into sibling modules, "
+        "+12 on 2026-09-09 for `FormFieldSpec::Signature`, the empty signature field a "
+        "template offers a later signer, and +8 for `CidFont::cff`, which tells the writer "
+        "whether a program is CFF- or glyf-flavoured (§9.9). Both are model, not logic: the "
+        "code that acts on them lives in the sibling modules.",
     ),
     "crates/pdf-document/src/lib.rs": (
         1_197,
         "document facade and cohesive public API",
     ),
     "crates/pdf-ffi/src/api/authoring.rs": (
-        2_092,
+        2_172,
         "C ABI authoring surface; frozen capability-module budget, +10 on "
         "the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit, "
         "+2 on 2026-08-28 for the `Consumes on success` ownership markers on "
-        "builder_add_page_spec and builder_add_structure_node. No logic added.",
+        "builder_add_page_spec and builder_add_structure_node, +80 on 2026-09-09 for two "
+        "new exports and their contracts: builder_embed_cid_font (the export the header had "
+        "cited since 0.4.0 without declaring) and builder_add_signature_field. Splitting the "
+        "module would fragment the authoring surface a binding reads top to bottom.",
     ),
     "crates/pdf-ffi/src/api/collections.rs": (
-        1_572,
-        "C ABI inspection and collection handles; frozen capability-module budget",
+        1_621,
+        "C ABI inspection and collection handles; frozen capability-module budget, +49 on "
+        "2026-09-09 for form_field_rect and form_field_page_index, the widget geometry a "
+        "caller previously had to walk /AcroForm by hand to find (§12.5.2, §12.7.3.1).",
     ),
     "crates/pdf-ffi/src/api/composition.rs": (
-        1_368,
+        1_417,
         "C ABI composition arena and operations; frozen capability-module budget, +2 on "
         "2026-08-25 for the catch_unwind wrapper that prismpdf_composition_new was missing "
         "(pdf-ffi's no-unwind contract, DESIGN.md §6.1), +2 on 2026-08-27 for the rustfmt "
         "reflow of build_draft's return chain past the 60-col chain width, +3 on 2026-08-28 "
-        "for the `Finalises` ownership marker on composition_build. No logic added.",
+        "for the `Finalises` ownership marker on composition_build, +49 on 2026-09-09 for "
+        "composition_into_builder, which hands a finalised composition over as an owned "
+        "Builder so /Info, attachments, outlines and the conformance passes can reach it.",
     ),
     "crates/pdf-ffi/src/api/core.rs": (
         1_889,
@@ -50,32 +61,43 @@ EXCEPTIONS = {
         "No logic added.",
     ),
     "crates/pdf-ffi/src/api/layout.rs": (
-        1_276,
+        1_300,
         "C ABI legacy flow and layout operations; frozen capability-module budget, +3 on "
         "the 2026-08-27 rename reflow: longer identifiers wrap at the 100-col limit, "
         "+9 on 2026-08-28: the `Consumes always` markers on flow_build and "
         "flow_into_builder, whose failure path frees the handle, and the ordering note on "
         "flow_embed_font. These comments are the fix for a contract a binding could only "
         "read as a double free; splitting the module to fit them would fragment the export "
-        "surface for no readability gain. No logic added.",
+        "surface for no readability gain, +24 on 2026-09-09 for image_source_from_png and "
+        "the PNG size bound its contract has to state.",
     ),
     "crates/pdf-ffi/src/api/security.rs": (
-        1_035,
-        "C ABI encryption, signing, and verification surface",
+        1_140,
+        "C ABI encryption, signing, and verification surface, +105 on 2026-09-09 for three "
+        "signing-settings exports and their contracts: sign_settings_add_certificate (chain "
+        "certificates in the CMS), sign_settings_set_field_name (sign into an existing /Sig "
+        "field) and sign_settings_set_appearance_image.",
     ),
     "crates/pdf-ffi/src/api/tests.rs": (
-        4_896,
+        5_392,
         "cross-capability ABI and standalone C acceptance tests, +39 on 2026-08-27: 4 lines "
         "predate the rename (this budget was already stale at 4_861); 35 are reflow "
-        "at the 100-col limit. No logic added.",
+        "at the 100-col limit. No logic added. +496 on 2026-09-09 covering the eight exports "
+        "this prerelease adds — CID font embedding, composition_into_builder, form-field "
+        "geometry, certificate chains, PNG image sources, appearance images and signing into "
+        "a named field. This is the one exception here that a split would genuinely improve: "
+        "the module is tests, so `api/tests/` per capability costs nothing but the move.",
     ),
     "crates/pdf-fonts/src/standard_metrics.rs": (
         1_993,
         "mostly static Standard-14 font metric tables",
     ),
     "crates/pdf-layout/src/compose.rs": (
-        1_032,
-        "public composition model and page orchestration",
+        1_045,
+        "public composition model and page orchestration, +13 on 2026-09-09: "
+        "PreparedComposition::into_builder, the handover a caller takes to reach everything "
+        "Builder offers, and the §9.9 outline check embedded_font now makes before it "
+        "accepts a program.",
     ),
     "crates/pdf-layout/src/compose/engine.rs": (
         1_460,

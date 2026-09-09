@@ -43,45 +43,7 @@ impl Builder {
         // remember its Type0 font object by resource name.
         let mut embedded_ids: Vec<(String, ObjectId)> = Vec::new();
         for (name, font) in &self.embedded {
-            let fontfile_id = alloc();
-            let fontfile = if font.cff {
-                fontfile3_opentype_stream(&font.program)
-            } else {
-                fontfile2_stream(&font.program)
-            };
-            objects.push((fontfile_id, Object::Stream(fontfile)));
-            let descriptor_id = alloc();
-            objects.push((
-                descriptor_id,
-                Object::Dictionary(font_descriptor_dict(font, fontfile_id)),
-            ));
-            // A CFF descendant (CIDFontType0) takes no `/CIDToGIDMap`, so no remap stream is
-            // emitted for one either (§9.7.4.2).
-            let cid_to_gid_id = font.cid_to_gid.as_ref().filter(|_| !font.cff).map(|map| {
-                let id = alloc();
-                let mut dict = Dictionary::new();
-                dict.insert(
-                    Name::from("Filter"),
-                    Object::Name(Name::from("FlateDecode")),
-                );
-                objects.push((id, Object::Stream(Stream::new(dict, flate_encode(map)))));
-                id
-            });
-            let cid_id = alloc();
-            objects.push((
-                cid_id,
-                Object::Dictionary(cid_font_dict(font, descriptor_id, cid_to_gid_id)),
-            ));
-            let tounicode_id = alloc();
-            objects.push((
-                tounicode_id,
-                Object::Stream(tounicode_stream(&font.to_unicode)),
-            ));
-            let type0_id = alloc();
-            objects.push((
-                type0_id,
-                Object::Dictionary(type0_dict(font, cid_id, tounicode_id)),
-            ));
+            let type0_id = embed_cid_font_objects(font, &mut alloc, &mut objects);
             embedded_ids.push((name.clone(), type0_id));
         }
 

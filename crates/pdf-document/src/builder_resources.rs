@@ -371,6 +371,58 @@ pub(super) fn fontfile3_opentype_stream(program: &[u8]) -> Stream {
     Stream::new(dict, flate_encode(program))
 }
 
+/// Emit the whole object set an embedded composite font needs — program stream, descriptor,
+/// optional `CIDToGIDMap`, descendant CIDFont, `/ToUnicode` — and return the id of the Type0 font
+/// a page's `/Resources` names (§9.7). Which objects those are depends on the program's outline
+/// format, which is why the choice lives here beside the dictionaries rather than in the build
+/// loop.
+pub(super) fn embed_cid_font_objects(
+    font: &CidFont,
+    alloc: &mut impl FnMut() -> ObjectId,
+    objects: &mut Vec<(ObjectId, Object)>,
+) -> ObjectId {
+    let fontfile_id = alloc();
+    let fontfile = if font.cff {
+        fontfile3_opentype_stream(&font.program)
+    } else {
+        fontfile2_stream(&font.program)
+    };
+    objects.push((fontfile_id, Object::Stream(fontfile)));
+    let descriptor_id = alloc();
+    objects.push((
+        descriptor_id,
+        Object::Dictionary(font_descriptor_dict(font, fontfile_id)),
+    ));
+    // A CFF descendant (CIDFontType0) takes no `/CIDToGIDMap`, so no remap stream is emitted for
+    // one either (§9.7.4.2).
+    let cid_to_gid_id = font.cid_to_gid.as_ref().filter(|_| !font.cff).map(|map| {
+        let id = alloc();
+        let mut dict = Dictionary::new();
+        dict.insert(
+            Name::from("Filter"),
+            Object::Name(Name::from("FlateDecode")),
+        );
+        objects.push((id, Object::Stream(Stream::new(dict, flate_encode(map)))));
+        id
+    });
+    let cid_id = alloc();
+    objects.push((
+        cid_id,
+        Object::Dictionary(cid_font_dict(font, descriptor_id, cid_to_gid_id)),
+    ));
+    let tounicode_id = alloc();
+    objects.push((
+        tounicode_id,
+        Object::Stream(tounicode_stream(&font.to_unicode)),
+    ));
+    let type0_id = alloc();
+    objects.push((
+        type0_id,
+        Object::Dictionary(type0_dict(font, cid_id, tounicode_id)),
+    ));
+    type0_id
+}
+
 /// The `/FontDescriptor` (§9.8.1) for an embedded composite font.
 pub(super) fn font_descriptor_dict(font: &CidFont, fontfile: ObjectId) -> Dictionary {
     let mut dict = Dictionary::new();

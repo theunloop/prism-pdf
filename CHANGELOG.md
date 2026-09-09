@@ -121,6 +121,17 @@ fixed here.
   its CMS covers a byte range (§12.8.1), so `corpus/valid/signed-openssl-cms.pdf` verified
   everywhere but Windows. The fixture formats are marked binary now.
 
+### Changed
+
+- **`signing.rs` and `builder_build.rs` are split rather than granted a source-size exception.**
+  The objects a signature revision writes — the field dictionary, the appearance streams — move to
+  `signing_appearance.rs`, leaving `signing.rs` the revision itself; the object set of an embedded
+  composite font moves to `embed_cid_font_objects` in `builder_resources.rs`, beside the
+  dictionaries it emits and where the `glyf`-versus-CFF choice belongs. The eight capability
+  modules this prerelease grew keep their shape — splitting a C ABI module fragments an export
+  surface bindings read top to bottom — and carry updated frozen budgets naming what grew them
+  (`scripts/check_rust_file_size.py`).
+
 ## [1.0.0-alpha.1] - 2026-08-31
 
 First prerelease of the `1.0.0` stability line. The API surface is the validated `0.4.x` one;
