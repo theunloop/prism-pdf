@@ -201,3 +201,23 @@ fn reports_widget_geometry_from_merged_and_kid_widgets() {
     assert_eq!(fields[2].rect, None);
     assert_eq!(fields[2].page_index, None);
 }
+
+#[test]
+fn a_short_rect_array_is_no_rectangle() {
+    // A /Rect needs four numbers (§12.5.2). A short array used to be zero-filled, which reported a
+    // corner the file never gave — and, on the signing path, laid a signature appearance out over
+    // it. It is refused instead; the field itself still lists.
+    let objects = vec![
+        b"<< /Type /Catalog /Pages 2 0 R /AcroForm 5 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /Annots [4 0 R] >>".to_vec(),
+        b"<< /FT /Sig /T (sig) /Subtype /Widget /Rect [10 20 300] >>".to_vec(),
+        b"<< /Fields [4 0 R] >>".to_vec(),
+    ];
+    let doc = Document::open(assemble(&objects, "")).unwrap();
+    let fields = doc.form_fields().unwrap();
+
+    assert_eq!(fields.len(), 1);
+    assert_eq!(fields[0].name, "sig");
+    assert_eq!(fields[0].rect, None);
+}

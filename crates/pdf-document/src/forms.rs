@@ -285,11 +285,15 @@ impl Document {
     }
 
     /// A widget's `/Rect` (§12.5.2) as four numbers, normalised so the lower-left corner comes
-    /// first — the array may name any two opposite corners.
+    /// first — the array may name any two opposite corners. A short array is no rectangle: it is
+    /// rejected rather than zero-filled, which would report a corner the file never gave.
     fn rect_of(&self, dict: &Dictionary) -> Option<[f32; 4]> {
         let Ok(Object::Array(rect)) = self.resolve(dict.get(&Name::from("Rect"))?) else {
             return None;
         };
+        if rect.len() < 4 {
+            return None;
+        }
         let mut v = [0.0f64; 4];
         for (slot, item) in v.iter_mut().zip(rect.iter()) {
             *slot = self.resolve(item).ok()?.as_f64()?;

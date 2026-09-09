@@ -89,6 +89,11 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   what a viewer reads to know a document has a signature field — so Acrobat offered no signing
   workflow on a template built for exactly that. The builder now sets `/SigFlags 1`; `AppendOnly`
   stays clear until something is signed, where `Document::sign` has always set both.
+- **A short `/Rect` array is no longer read as a rectangle.** `FormField::rect` (and
+  `prismpdf_form_field_rect`) zero-filled a `/Rect` with fewer than four numbers, reporting a
+  corner the file never gave — `[10 20 300]` came back as `[10 0 300 20]`. Worse on the new
+  signing path, where `SignSettings::field_name` takes that rectangle as the signature widget's
+  box and laid the appearance out over the wrong area. Such a `/Rect` is refused (`None`) now.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 
