@@ -18,6 +18,12 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   character into `/ToUnicode`, so the text extracts back. Behind it, `prismpdf::cid_font_from_sfnt`
   (new, in `pdf-layout`) builds the `CidFont`, and `pdf-fonts` gains `glyph_advances`. `Flow` and
   `Composition` keep subsetting to the glyphs they drew; this is for the caller who cannot.
+- **`prismpdf_composition_into_builder`** — finalise a declarative composition and take its
+  document over as an owned `Builder`, so `/Info` metadata, attachments, an outline and the PDF/A
+  and PDF/UA passes apply to a composed document before it is serialised. The facade path already
+  existed (`Composition::into_builder` → `PreparedComposition::builder_mut`); across the ABI a
+  composition could set nothing but its tagged language. `PreparedComposition::into_builder` is
+  new, and the type is now re-exported from `prismpdf`.
 - **One-line CLI installers**: `scripts/install.sh` (macOS/Linux, `curl | sh`) and
   `scripts/install.ps1` (Windows, `irm | iex`) download the prebuilt archive matching the
   machine from GitHub Releases, verify it against the release's `SHA256SUMS-v*.txt`, and install

@@ -371,6 +371,14 @@ pub(crate) fn emit_draft_node(
 }
 
 pub(crate) fn build_draft(arena: &CompositionArena) -> Result<Vec<u8>, prismpdf::ComposeError> {
+    compose_draft(arena)
+        .build()
+        .map(prismpdf::ComposedDocument::into_pdf)
+}
+
+/// Realise a finalised arena as the facade's declarative [`Composition`], ready to build or to
+/// hand over as a builder.
+fn compose_draft(arena: &CompositionArena) -> Composition {
     let mut composition = Composition::new();
     if let Some(lang) = &arena.lang {
         composition = composition.tagged(lang);
@@ -391,8 +399,6 @@ pub(crate) fn build_draft(arena: &CompositionArena) -> Result<Vec<u8>, prismpdf:
         });
     }
     composition
-        .build()
-        .map(prismpdf::ComposedDocument::into_pdf)
 }
 
 /// Create an empty declarative composition.
@@ -1342,27 +1348,70 @@ pub unsafe extern "C" fn prismpdf_composition_build(
         *out_len = 0;
     }
     guard(|| {
-        let composition = unsafe { &*composition };
-        let snapshot = {
-            let Ok(mut arena) = composition.0.lock() else {
-                return PrismPdfStatus::Internal;
-            };
-            if !arena.alive || arena.finalised {
-                return PrismPdfStatus::InvalidUse;
-            }
-            arena.finalised = true;
-            CompositionArena {
-                tree_id: arena.tree_id,
-                alive: arena.alive,
-                finalised: arena.finalised,
-                slots: arena.slots.clone(),
-                pages: arena.pages.clone(),
-                lang: arena.lang.clone(),
-            }
+        let snapshot = match finalise(unsafe { &*composition }) {
+            Ok(snapshot) => snapshot,
+            Err(status) => return status,
         };
         match build_draft(&snapshot) {
             Ok(bytes) => emit_bytes(bytes, out_data, out_len),
             Err(error) => composition_status(error),
         }
+    })
+}
+
+/// Finalise the composition and hand back its document as an owned [`PrismPdfBuilder`], so that
+/// everything `Builder` offers — `/Info` metadata, attachments, an outline, a PDF/A or PDF/UA pass —
+/// applies to a composed document before it is serialised. Serialise through
+/// [`prismpdf_builder_build`] afterwards; the composition's own build is not needed.
+///
+/// **Finalises.** As [`prismpdf_composition_build`]: the handle becomes immutable on success and on
+/// failure — later mutation or build calls return [`PrismPdfStatus::InvalidUse`] — but freeing it
+/// stays the caller's job. The returned builder must be freed.
+///
+/// # Safety
+/// `composition` must be live and `out_builder` writable. Release the builder with
+/// [`prismpdf_builder_free`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_composition_into_builder(
+    composition: *mut PrismPdfComposition,
+    out_builder: *mut *mut PrismPdfBuilder,
+) -> PrismPdfStatus {
+    if composition.is_null() || out_builder.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    unsafe { *out_builder = std::ptr::null_mut() };
+    guard(|| {
+        let snapshot = match finalise(unsafe { &*composition }) {
+            Ok(snapshot) => snapshot,
+            Err(status) => return status,
+        };
+        match compose_draft(&snapshot).into_builder() {
+            Ok(prepared) => {
+                let builder = PrismPdfBuilder(prepared.into_builder());
+                unsafe { *out_builder = Box::into_raw(Box::new(builder)) };
+                PrismPdfStatus::Ok
+            }
+            Err(error) => composition_status(error),
+        }
+    })
+}
+
+/// Finalise the arena — one-way, on success and on failure alike — and hand back the snapshot to
+/// realise. `InvalidUse` once the composition has been finalised or released.
+fn finalise(composition: &PrismPdfComposition) -> Result<CompositionArena, PrismPdfStatus> {
+    let Ok(mut arena) = composition.0.lock() else {
+        return Err(PrismPdfStatus::Internal);
+    };
+    if !arena.alive || arena.finalised {
+        return Err(PrismPdfStatus::InvalidUse);
+    }
+    arena.finalised = true;
+    Ok(CompositionArena {
+        tree_id: arena.tree_id,
+        alive: arena.alive,
+        finalised: arena.finalised,
+        slots: arena.slots.clone(),
+        pages: arena.pages.clone(),
+        lang: arena.lang.clone(),
     })
 }

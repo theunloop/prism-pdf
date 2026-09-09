@@ -208,6 +208,14 @@ impl PreparedComposition {
         &mut self.builder
     }
 
+    /// Take the low-level builder outright, dropping the geometry trace. This is the handover for a
+    /// caller that wants everything `Builder` offers — `/Info`, attachments, an outline, a
+    /// conformance pass — and will serialise through it rather than through [`Self::build`].
+    #[must_use]
+    pub fn into_builder(self) -> Builder {
+        self.builder
+    }
+
     /// Serialise the prepared document and retain its geometry trace.
     #[must_use]
     pub fn build(self) -> ComposedDocument {

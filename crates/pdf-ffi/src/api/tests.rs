@@ -4962,3 +4962,81 @@ fn builder_embeds_a_whole_font_program_for_hand_assembled_pages() {
     assert!(take_string(text).contains("Hello"));
     unsafe { prismpdf_document_free(doc) };
 }
+
+#[test]
+fn composition_hands_over_a_builder_for_metadata() {
+    unsafe {
+        let composition = prismpdf_composition_new();
+        let page_style = PrismPdfCompositionPageStyle {
+            width: 200.0,
+            height: 100.0,
+            margin_left: 10.0,
+            margin_right: 10.0,
+            margin_top: 10.0,
+            margin_bottom: 10.0,
+        };
+        let mut content = std::ptr::null_mut();
+        assert_eq!(
+            prismpdf_composition_add_page(composition, &page_style, &mut content),
+            PrismPdfStatus::Ok
+        );
+        let text = CString::new("Composed, then titled").unwrap();
+        let text_style = PrismPdfCompositionTextStyle {
+            size: 12.0,
+            leading: 14.0,
+        };
+        assert_eq!(
+            prismpdf_composition_container_set_text(content, text.as_ptr(), &text_style),
+            PrismPdfStatus::Ok
+        );
+
+        // The handover finalises the composition exactly as a build does.
+        let mut builder: *mut PrismPdfBuilder = std::ptr::null_mut();
+        assert_eq!(
+            prismpdf_composition_into_builder(composition, &mut builder),
+            PrismPdfStatus::Ok
+        );
+        assert!(!builder.is_null());
+        let mut again: *mut PrismPdfBuilder = std::ptr::null_mut();
+        assert_eq!(
+            prismpdf_composition_into_builder(composition, &mut again),
+            PrismPdfStatus::InvalidUse
+        );
+        let (mut data, mut len) = (std::ptr::null_mut(), 0usize);
+        assert_eq!(
+            prismpdf_composition_build(composition, &mut data, &mut len),
+            PrismPdfStatus::InvalidUse
+        );
+        prismpdf_composition_container_free(content);
+        prismpdf_composition_free(composition);
+
+        // What Builder offers now applies to the composed document: here, /Info (§14.3.3).
+        let title = CString::new("Composed").unwrap();
+        assert_eq!(
+            prismpdf_builder_set_title(builder, title.as_ptr()),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_builder_build(builder, &mut data, &mut len),
+            PrismPdfStatus::Ok
+        );
+        let bytes = take_bytes(data, len);
+        prismpdf_builder_free(builder);
+
+        let doc = open(&bytes);
+        let key = CString::new("Title").unwrap();
+        let mut out: *mut c_char = std::ptr::null_mut();
+        assert_eq!(
+            prismpdf_document_info(doc, key.as_ptr(), &mut out),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(take_string(out), "Composed");
+        let mut page_text: *mut c_char = std::ptr::null_mut();
+        assert_eq!(
+            prismpdf_page_text(doc, 0, &mut page_text),
+            PrismPdfStatus::Ok
+        );
+        assert!(take_string(page_text).contains("Composed, then titled"));
+        prismpdf_document_free(doc);
+    }
+}

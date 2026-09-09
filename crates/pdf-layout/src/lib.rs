@@ -17,8 +17,8 @@ mod text;
 
 pub use compose::{
     Color, Column, ComposeError, ComposeTable, ComposeTableRow, ComposedDocument, Composition,
-    Container, GeometryEvent, GeometryTrace, HorizontalAlign, ImageSizing, Page, Plan, Point, Rect,
-    Row, Semantic, Size, TextStyle, VerticalAlign,
+    Container, GeometryEvent, GeometryTrace, HorizontalAlign, ImageSizing, Page, Plan, Point,
+    PreparedComposition, Rect, Row, Semantic, Size, TextStyle, VerticalAlign,
 };
 pub use embed::cid_font_from_sfnt;
 pub use flow::{Flow, ListStyle, PageStyle};

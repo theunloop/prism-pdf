@@ -4633,6 +4633,23 @@ PrismPdfStatus prismpdf_composition_build(PrismPdfComposition *composition,
                                           uint8_t **out_data,
                                           uintptr_t *out_len);
 
+/**
+ * Finalise the composition and hand back its document as an owned [`PrismPdfBuilder`], so that
+ * everything `Builder` offers — `/Info` metadata, attachments, an outline, a PDF/A or PDF/UA pass —
+ * applies to a composed document before it is serialised. Serialise through
+ * [`prismpdf_builder_build`] afterwards; the composition's own build is not needed.
+ *
+ * **Finalises.** As [`prismpdf_composition_build`]: the handle becomes immutable on success and on
+ * failure — later mutation or build calls return [`PrismPdfStatus::InvalidUse`] — but freeing it
+ * stays the caller's job. The returned builder must be freed.
+ *
+ * # Safety
+ * `composition` must be live and `out_builder` writable. Release the builder with
+ * [`prismpdf_builder_free`].
+ */
+PrismPdfStatus prismpdf_composition_into_builder(PrismPdfComposition *composition,
+                                                 PrismPdfBuilder **out_builder);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

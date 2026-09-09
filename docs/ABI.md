@@ -86,7 +86,7 @@ author must not infer the shape from the call's name.
 |--------|---------|---------|
 | **Consumes on success** | `prismpdf_edit_commit`, `prismpdf_builder_add_page_spec`, `prismpdf_builder_add_structure_node`, `prismpdf_struct_node_add_child` | Ownership transfers only on `Ok`. A failure leaves the handle caller-owned and still freeable. |
 | **Consumes always** | `prismpdf_flow_build`, `prismpdf_flow_into_builder` | The box is taken as the call is entered, so the handle is dead on failure too. Freeing it afterwards is a double free. |
-| **Finalises** | `prismpdf_composition_build` | Not a transfer: the handle becomes immutable on success and on failure (later calls return `InvalidUse`), but freeing it stays the caller's job. |
+| **Finalises** | `prismpdf_composition_build`, `prismpdf_composition_into_builder` | Not a transfer: the handle becomes immutable on success and on failure (later calls return `InvalidUse`), but freeing it stays the caller's job. |
 
 ### Collections
 
@@ -256,6 +256,7 @@ The current lifecycle/protocol slice exposes:
 | `prismpdf_composition_container_set_text` | Consume a slot as wrapping Helvetica text. |
 | `prismpdf_composition_container_set_page_break` | Consume a slot as an explicit break. |
 | `prismpdf_composition_build` | Finalise once and return owned PDF bytes. |
+| `prismpdf_composition_into_builder` | Finalise once and hand the composed document over as an owned `PrismPdfBuilder`, so `/Info`, attachments, outlines and the PDF/A and PDF/UA passes apply before serialising through `prismpdf_builder_build`. |
 | `prismpdf_composition_container_free` | Release only the scoped handle; the arena retains its node. |
 
 The complete Phase 4 element set is projected. A compiled C fixture includes this generated header,

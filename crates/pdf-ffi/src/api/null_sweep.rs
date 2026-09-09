@@ -194,6 +194,7 @@ fn every_pointer_taking_status_fn_rejects_all_null_arguments() {
     check!(prismpdf_composition_container_set_text(null_mut(), null(), null()));
     check!(prismpdf_composition_container_set_page_break(null_mut()));
     check!(prismpdf_composition_build(null_mut(), null_mut(), null_mut()));
+    check!(prismpdf_composition_into_builder(null_mut(), null_mut()));
     check!(prismpdf_last_error(null_mut()));
     check!(prismpdf_error_info_status(null(), null_mut()));
     check!(prismpdf_error_info_message(null(), null_mut()));

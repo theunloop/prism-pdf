@@ -34,4 +34,5 @@ void prismpdf_header_surface(void) {
     (void)&prismpdf_builder_add_structure_node;
 
     (void)&prismpdf_builder_embed_cid_font;
+    (void)&prismpdf_composition_into_builder;
 }
