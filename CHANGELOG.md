@@ -9,15 +9,15 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
-## [1.0.0-alpha.1] - 2026-08-31
-
-First prerelease of the `1.0.0` stability line. The API surface is the validated `0.4.x` one;
-this tag exists so bindings and downstream consumers can pin and exercise the candidate surface
-while it soaks. Per SemVer, `cargo add prismpdf` and plain version requirements ignore a
-prerelease — only the full `1.0.0-alpha.1` string resolves to it.
-
 ### Added
 
+- **`prismpdf_builder_embed_cid_font`** — the C ABI export the header had been citing since
+  0.4.0 without ever declaring it. It embeds a **whole** sfnt program under a resource name for
+  pages assembled by hand with `PageSpec` + `Content::show_glyphs`, where the glyphs a page will
+  show are not known in advance: every glyph's width goes into `/W` and every `cmap`-mapped
+  character into `/ToUnicode`, so the text extracts back. Behind it, `prismpdf::cid_font_from_sfnt`
+  (new, in `pdf-layout`) builds the `CidFont`, and `pdf-fonts` gains `glyph_advances`. `Flow` and
+  `Composition` keep subsetting to the glyphs they drew; this is for the caller who cannot.
 - **One-line CLI installers**: `scripts/install.sh` (macOS/Linux, `curl | sh`) and
   `scripts/install.ps1` (Windows, `irm | iex`) download the prebuilt archive matching the
   machine from GitHub Releases, verify it against the release's `SHA256SUMS-v*.txt`, and install

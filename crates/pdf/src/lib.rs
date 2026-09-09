@@ -56,7 +56,7 @@ pub use pdf_document::{
 /// more useful than direct control of PDF page resources.
 pub use pdf_content::Content;
 pub use pdf_document::{
-    AnnotationSpec, Attachment, AttrValue, Builder, DocumentPart, EncryptedPayloadSpec,
+    AnnotationSpec, Attachment, AttrValue, Builder, CidFont, DocumentPart, EncryptedPayloadSpec,
     FormFieldSpec, ImageColorSpace, LinkTarget, ListNumbering, MATHML_STRUCT_NS, PDF2_STRUCT_NS,
     PageLabelRange, PageLabelStyle, PageSpec, PrintFieldRole, RoleMapEntry, SeparationSpec,
     StdFont, StructAttr, StructElem, StructKid, ThScope,
@@ -68,7 +68,8 @@ pub use pdf_layout::{
     Align, Color, Column, ComposeError, ComposeTable, ComposeTableRow, ComposedDocument,
     Composition, Container, Flow, GeometryEvent, GeometryTrace, HorizontalAlign, Image,
     ImageSizing, ListStyle, Page, PageStyle, Plan, Point, Rect, Row, Semantic, Size, Table,
-    TextBlock, TextStyle, VerticalAlign, draw_text_block, measure_text, wrap_text,
+    TextBlock, TextStyle, VerticalAlign, cid_font_from_sfnt, draw_text_block, measure_text,
+    wrap_text,
 };
 
 /// Reader-layer types surfaced through the document API (§7.5).

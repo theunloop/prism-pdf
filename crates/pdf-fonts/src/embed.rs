@@ -132,6 +132,25 @@ pub fn glyph_to_unicode(program: &[u8]) -> Option<BTreeMap<u16, char>> {
     Some(map)
 }
 
+/// The horizontal advance of every glyph in an sfnt `program`, as `(glyph id, advance)` pairs in
+/// 1000-em units, for the `/W` array of a composite font that embeds the **whole** program rather
+/// than a subset (§9.7.4.3). Glyphs without a horizontal advance are omitted, so a font whose
+/// `hmtx` is shorter than its glyph count still yields a well-formed array. `None` for a non-sfnt
+/// program.
+#[must_use]
+pub fn glyph_advances(program: &[u8]) -> Option<Vec<(u16, u16)>> {
+    let face = Face::parse(program, 0).ok()?;
+    let upem = i32::from(face.units_per_em().max(1));
+    Some(
+        (0..face.number_of_glyphs())
+            .filter_map(|gid| {
+                let advance = face.glyph_hor_advance(GlyphId(gid))?;
+                Some((gid, (i32::from(advance) * 1000 / upem) as u16))
+            })
+            .collect(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

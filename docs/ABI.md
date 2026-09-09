@@ -476,6 +476,7 @@ handle and can be built repeatedly.
 | `prismpdf_builder_set_utf8_text_strings(builder)` | UTF-8 text strings (§7.9.2.2, PDF 2.0). |
 | `prismpdf_builder_add_outline(builder, title, page_index)` | A top-level bookmark (§12.3.3). |
 | `prismpdf_builder_attach_file(builder, name, mime, relationship, description, data, data_len)` | Embed a file (§7.11); `description` may be null. |
+| `prismpdf_builder_embed_cid_font(builder, name, program, len)` | Register a whole sfnt program as a composite font (§9.7, §9.9) under `name`, for pages that reference it via `prismpdf_page_spec_add_embedded_font` and draw with `prismpdf_content_show_glyphs`. Every glyph's width and every `cmap`-mapped character travel with it; `Parse` when the bytes are not an sfnt. |
 
 `PrismPdfStdFont`: `Helvetica` = 0 … `ZapfDingbats` = 13, in the order of §9.6.2.2.
 `Content` + `PageSpec` + `Builder` is the low-level precision/escape-hatch layer below `Flow` and
@@ -639,7 +640,7 @@ The authoring core is in place; these remain before the C ABI reaches full parit
 - **Namespace role maps and schemas** (`RoleMapEntry`, namespace schema attachments). Arbitrary raw
   structure trees, attributes, namespaces, references, MCIDs, OBJRs, and associated files are
   available through owned `PrismPdfStructNode` handles.
-- **The rest of `Builder`**: form XObjects, `embed_cid_font`, the colour
+- **The rest of `Builder`**: form XObjects, the colour
   space constructors (`add_separation`, `add_icc_based`, `add_indexed`, `add_lab`), page labels,
   document parts (only *links* to them cross, via `prismpdf_builder_add_link_document_part`),
   developer extensions, encrypted payloads. Output intents cross via
@@ -694,10 +695,14 @@ the `pdf-ffi` crate (`crate-type = ["cdylib", "staticlib", "rlib"]`).
 ## Regenerating the header
 
 ```bash
-cargo install cbindgen   # once
+cargo install cbindgen --version 0.29.4 --locked   # once — the version is pinned, see below
 cd crates/pdf-ffi
 cbindgen --config cbindgen.toml --crate prismpdf-ffi --output include/prismpdf.h
 ```
 
 The generated `prismpdf.h` is committed so consumers don't need `cbindgen`; regenerate it whenever
-the `extern "C"` surface changes.
+the `extern "C"` surface changes. **Use the pinned version.** `cbindgen` releases change how long
+prototypes wrap, and a regeneration under a different version reflows every prototype in the file
+— hundreds of lines of whitespace-only churn that every binding then has to read past to find the
+export that actually changed. `0.29.4` is what produced the committed header; bump the pin
+deliberately, in its own commit, and say so in `CHANGELOG.md`.

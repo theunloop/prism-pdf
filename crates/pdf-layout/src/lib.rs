@@ -8,6 +8,7 @@
 //! lay out [`Table`]s. This is the start of the iText-like authoring surface.
 
 mod compose;
+mod embed;
 mod flow;
 mod image;
 mod metrics;
@@ -19,6 +20,7 @@ pub use compose::{
     Container, GeometryEvent, GeometryTrace, HorizontalAlign, ImageSizing, Page, Plan, Point, Rect,
     Row, Semantic, Size, TextStyle, VerticalAlign,
 };
+pub use embed::cid_font_from_sfnt;
 pub use flow::{Flow, ListStyle, PageStyle};
 pub use image::Image;
 pub use metrics::FontMetrics;

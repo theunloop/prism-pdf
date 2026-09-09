@@ -256,6 +256,7 @@ fn every_pointer_taking_status_fn_rejects_all_null_arguments() {
     check!(prismpdf_flow_into_builder(null_mut(), null_mut()));
     check!(prismpdf_flow_set_tagged(null_mut(), null()));
     check!(prismpdf_flow_embed_font(null_mut(), null(), null(), 0));
+    check!(prismpdf_builder_embed_cid_font(null_mut(), null(), null(), 0));
     check!(prismpdf_flow_set_info(null_mut(), null(), null()));
     check!(prismpdf_flow_add_bookmark(null_mut(), null()));
     check!(prismpdf_flow_text(null_mut(), null(), null()));

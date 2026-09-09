@@ -1308,6 +1308,44 @@ pub unsafe extern "C" fn prismpdf_builder_free(builder: *mut PrismPdfBuilder) {
     unsafe { free_handle(builder) }
 }
 
+/// Register a whole sfnt font program (TrueType/OpenType) as a composite font (§9.7, §9.9) under
+/// `name` — the resource name a page references via [`prismpdf_page_spec_add_embedded_font`] and
+/// draws with [`prismpdf_content_show_glyphs`]. A hand-assembled page can show any glyph in the
+/// program, so unlike a `Flow` the whole program is embedded: every glyph's width in `/W` and every
+/// `cmap`-mapped character in `/ToUnicode`, so the text extracts back. A name already registered
+/// is kept. Returns [`PrismPdfStatus::Parse`] when `program` is not a parseable sfnt.
+///
+/// # Safety
+/// `builder` must be live, `name` a NUL-terminated UTF-8 C string, and `program` must point to
+/// `len` readable bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_builder_embed_cid_font(
+    builder: *mut PrismPdfBuilder,
+    name: *const c_char,
+    program: *const u8,
+    len: usize,
+) -> PrismPdfStatus {
+    let Some(handle) = (unsafe { builder_mut(builder) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    if name.is_null() || program.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        let Some(name) = (unsafe { utf8(name) }) else {
+            return PrismPdfStatus::NullArgument;
+        };
+        let bytes = unsafe { slice_or_empty(program, len) };
+        match prismpdf::cid_font_from_sfnt(&bytes) {
+            Some(font) => {
+                handle.embed_cid_font(name, font);
+                PrismPdfStatus::Ok
+            }
+            None => PrismPdfStatus::Parse,
+        }
+    })
+}
+
 /// Borrow a builder handle for mutation, or `None` when it is null.
 ///
 /// # Safety

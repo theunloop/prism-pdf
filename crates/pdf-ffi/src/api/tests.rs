@@ -4894,3 +4894,71 @@ fn standalone_c_consumer_builds_the_acceptance_invoice() {
         assert!(all_text.contains("TOTAL 23,760.00"));
     }
 }
+
+#[test]
+fn builder_embeds_a_whole_font_program_for_hand_assembled_pages() {
+    // The one sfnt the CI images and the devcontainer all carry; without it there is nothing to
+    // embed and the test has nothing to say.
+    let Ok(program) = std::fs::read("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") else {
+        return;
+    };
+    let builder = prismpdf_builder_new();
+    let name = CString::new("F1").unwrap();
+    assert_eq!(
+        unsafe { prismpdf_builder_embed_cid_font(builder, name.as_ptr(), b"junk".as_ptr(), 4) },
+        PrismPdfStatus::Parse,
+        "not an sfnt"
+    );
+    assert_eq!(
+        unsafe {
+            prismpdf_builder_embed_cid_font(builder, name.as_ptr(), program.as_ptr(), program.len())
+        },
+        PrismPdfStatus::Ok
+    );
+
+    // Show glyph ids directly (§9.4.3); the page references the font by the name registered above.
+    let gids: Vec<u16> = prismpdf::shape_text(&program, "Hello")
+        .unwrap()
+        .iter()
+        .map(|g| g.id)
+        .collect();
+    let content = prismpdf_content_new();
+    unsafe {
+        prismpdf_content_begin_text(content);
+        prismpdf_content_set_font(content, name.as_ptr(), 24.0);
+        prismpdf_content_text_move(content, 72.0, 700.0);
+        prismpdf_content_show_glyphs(content, gids.as_ptr(), gids.len());
+        prismpdf_content_end_text(content);
+    }
+    let page = unsafe { prismpdf_page_spec_new(content) };
+    unsafe { prismpdf_content_free(content) };
+    assert_eq!(
+        unsafe { prismpdf_page_spec_add_embedded_font(page, name.as_ptr()) },
+        PrismPdfStatus::Ok
+    );
+    assert_eq!(
+        unsafe { prismpdf_builder_add_page_spec(builder, page) },
+        PrismPdfStatus::Ok
+    );
+
+    let mut data: *mut u8 = std::ptr::null_mut();
+    let mut len = 0usize;
+    assert_eq!(
+        unsafe { prismpdf_builder_build(builder, &mut data, &mut len) },
+        PrismPdfStatus::Ok
+    );
+    let bytes = unsafe { std::slice::from_raw_parts(data, len) }.to_vec();
+    unsafe { prismpdf_bytes_free(data, len) };
+    unsafe { prismpdf_builder_free(builder) };
+
+    // The text extracts back through the /ToUnicode built from the program's cmap, which is what
+    // embedding the whole program buys a page that shows arbitrary glyph ids.
+    let doc = open(&bytes);
+    let mut text: *mut c_char = std::ptr::null_mut();
+    assert_eq!(
+        unsafe { prismpdf_page_text(doc, 0, &mut text) },
+        PrismPdfStatus::Ok
+    );
+    assert!(take_string(text).contains("Hello"));
+    unsafe { prismpdf_document_free(doc) };
+}

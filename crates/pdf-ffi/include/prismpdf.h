@@ -757,7 +757,8 @@ PrismPdfStatus prismpdf_last_error(PrismPdfErrorInfo **out_error);
  * # Safety
  * `error` must be live and `out_status` writable.
  */
-PrismPdfStatus prismpdf_error_info_status(const PrismPdfErrorInfo *error, PrismPdfStatus *out_status);
+PrismPdfStatus prismpdf_error_info_status(const PrismPdfErrorInfo *error,
+                                          PrismPdfStatus *out_status);
 
 /**
  * Copy the diagnostic message as an owned C string released by [`prismpdf_string_free`].
@@ -785,7 +786,9 @@ void prismpdf_error_info_free(PrismPdfErrorInfo *error);
  * `data` must point to at least `len` readable bytes, and `out_doc` must point to a writable
  * `*mut PrismPdfDocument`. The returned handle must be released with [`prismpdf_document_free`].
  */
-PrismPdfStatus prismpdf_document_open(const uint8_t *data, uintptr_t len, PrismPdfDocument **out_doc);
+PrismPdfStatus prismpdf_document_open(const uint8_t *data,
+                                      uintptr_t len,
+                                      PrismPdfDocument **out_doc);
 
 /**
  * Open an encrypted (or plain) PDF, trying `password` (`password_len` bytes, may be null/empty) as
@@ -798,10 +801,10 @@ PrismPdfStatus prismpdf_document_open(const uint8_t *data, uintptr_t len, PrismP
  * The returned handle must be released with [`prismpdf_document_free`].
  */
 PrismPdfStatus prismpdf_document_open_with_password(const uint8_t *data,
-                                                  uintptr_t len,
-                                                  const uint8_t *password,
-                                                  uintptr_t password_len,
-                                                  PrismPdfDocument **out_doc);
+                                                    uintptr_t len,
+                                                    const uint8_t *password,
+                                                    uintptr_t password_len,
+                                                    PrismPdfDocument **out_doc);
 
 /**
  * Release a document handle returned by [`prismpdf_document_open`]. Null is ignored. Must not be
@@ -820,7 +823,7 @@ void prismpdf_document_free(PrismPdfDocument *doc);
  * [`prismpdf_object_free`].
  */
 PrismPdfStatus prismpdf_document_catalog_object(const PrismPdfDocument *doc,
-                                              PrismPdfObject **out_object);
+                                                PrismPdfObject **out_object);
 
 /**
  * Clone one inherited leaf page dictionary as an owned object (§7.7.3.4).
@@ -829,8 +832,8 @@ PrismPdfStatus prismpdf_document_catalog_object(const PrismPdfDocument *doc,
  * As [`prismpdf_document_catalog_object`].
  */
 PrismPdfStatus prismpdf_document_page_object(const PrismPdfDocument *doc,
-                                           uintptr_t page_index,
-                                           PrismPdfObject **out_object);
+                                             uintptr_t page_index,
+                                             PrismPdfObject **out_object);
 
 /**
  * Fetch an indirect object by number and generation (§7.3.10). Missing/free objects are returned
@@ -840,9 +843,9 @@ PrismPdfStatus prismpdf_document_page_object(const PrismPdfDocument *doc,
  * As [`prismpdf_document_catalog_object`].
  */
 PrismPdfStatus prismpdf_document_get_object(const PrismPdfDocument *doc,
-                                          uint32_t number,
-                                          uint16_t generation,
-                                          PrismPdfObject **out_object);
+                                            uint32_t number,
+                                            uint16_t generation,
+                                            PrismPdfObject **out_object);
 
 /**
  * Resolve an object through any indirect-reference chain and return an owned direct clone
@@ -852,8 +855,8 @@ PrismPdfStatus prismpdf_document_get_object(const PrismPdfDocument *doc,
  * `doc` and `object` must be live and `out_object` writable.
  */
 PrismPdfStatus prismpdf_document_resolve_object(const PrismPdfDocument *doc,
-                                              const PrismPdfObject *object,
-                                              PrismPdfObject **out_object);
+                                                const PrismPdfObject *object,
+                                                PrismPdfObject **out_object);
 
 /**
  * Release an owned COS object. Freeing `NULL` is a no-op.
@@ -903,8 +906,8 @@ PrismPdfStatus prismpdf_object_real(const PrismPdfObject *object, double *out_va
  * `object` must be live and both out-params writable.
  */
 PrismPdfStatus prismpdf_object_bytes(const PrismPdfObject *object,
-                                   const uint8_t **out_data,
-                                   uintptr_t *out_len);
+                                     const uint8_t **out_data,
+                                     uintptr_t *out_len);
 
 /**
  * Return an array's length (§7.3.6).
@@ -921,8 +924,8 @@ PrismPdfStatus prismpdf_object_array_len(const PrismPdfObject *object, uintptr_t
  * `object` must be live and `out_item` writable.
  */
 PrismPdfStatus prismpdf_object_array_get(const PrismPdfObject *object,
-                                       uintptr_t index,
-                                       PrismPdfObject **out_item);
+                                         uintptr_t index,
+                                         PrismPdfObject **out_item);
 
 /**
  * Return a dictionary's number of entries, or a stream dictionary's entry count (§7.3.7–§7.3.8).
@@ -931,7 +934,7 @@ PrismPdfStatus prismpdf_object_array_get(const PrismPdfObject *object,
  * `object` must be live and `out_len` writable.
  */
 PrismPdfStatus prismpdf_object_dictionary_len(const PrismPdfObject *object,
-                                            uintptr_t *out_len);
+                                              uintptr_t *out_len);
 
 /**
  * Look up a binary-safe dictionary key and clone its value. Stream objects expose their stream
@@ -941,9 +944,9 @@ PrismPdfStatus prismpdf_object_dictionary_len(const PrismPdfObject *object,
  * `key` must be readable for `key_len` bytes (or null when zero); `out_value` must be writable.
  */
 PrismPdfStatus prismpdf_object_dictionary_get(const PrismPdfObject *object,
-                                            const uint8_t *key,
-                                            uintptr_t key_len,
-                                            PrismPdfObject **out_value);
+                                              const uint8_t *key,
+                                              uintptr_t key_len,
+                                              PrismPdfObject **out_value);
 
 /**
  * Lend a stream's raw, still-encoded bytes (§7.3.8). The view dies with the object handle.
@@ -952,8 +955,8 @@ PrismPdfStatus prismpdf_object_dictionary_get(const PrismPdfObject *object,
  * `object` must be live and both out-params writable.
  */
 PrismPdfStatus prismpdf_object_stream_raw(const PrismPdfObject *object,
-                                        const uint8_t **out_data,
-                                        uintptr_t *out_len);
+                                          const uint8_t **out_data,
+                                          uintptr_t *out_len);
 
 /**
  * Read an indirect reference's object and generation numbers (§7.3.10).
@@ -962,8 +965,8 @@ PrismPdfStatus prismpdf_object_stream_raw(const PrismPdfObject *object,
  * `object` must be live and both out-params writable.
  */
 PrismPdfStatus prismpdf_object_reference(const PrismPdfObject *object,
-                                       uint32_t *out_number,
-                                       uint16_t *out_generation);
+                                         uint32_t *out_number,
+                                         uint16_t *out_generation);
 
 /**
  * Clone an owned COS object (§7.3). Returns null for a null input.
@@ -1040,9 +1043,9 @@ PrismPdfStatus prismpdf_object_array_push(PrismPdfObject *array, const PrismPdfO
  * `dictionary` and `value` must be live; `key` readable for `key_len` bytes or null when zero.
  */
 PrismPdfStatus prismpdf_object_dictionary_set(PrismPdfObject *dictionary,
-                                            const uint8_t *key,
-                                            uintptr_t key_len,
-                                            const PrismPdfObject *value);
+                                              const uint8_t *key,
+                                              uintptr_t key_len,
+                                              const PrismPdfObject *value);
 
 /**
  * Create a stream by cloning a dictionary and copying raw, still-encoded bytes (§7.3.8).
@@ -1051,8 +1054,8 @@ PrismPdfStatus prismpdf_object_dictionary_set(PrismPdfObject *dictionary,
  * `dictionary` must be a live dictionary object; `data` readable for `len` bytes or null at zero.
  */
 PrismPdfObject *prismpdf_object_new_stream(const PrismPdfObject *dictionary,
-                                         const uint8_t *data,
-                                         uintptr_t len);
+                                           const uint8_t *data,
+                                           uintptr_t len);
 
 /**
  * Begin an object-edit transaction tied to `doc`. The document must remain live until the edit
@@ -1071,9 +1074,9 @@ PrismPdfEdit *prismpdf_edit_new(const PrismPdfDocument *doc);
  * `edit` and `value` must be live.
  */
 PrismPdfStatus prismpdf_edit_set_object(PrismPdfEdit *edit,
-                                      uint32_t number,
-                                      uint16_t generation,
-                                      const PrismPdfObject *value);
+                                        uint32_t number,
+                                        uint16_t generation,
+                                        const PrismPdfObject *value);
 
 /**
  * Commit an edit as an incremental revision or full rewrite. The returned transform report owns
@@ -1086,9 +1089,9 @@ PrismPdfStatus prismpdf_edit_set_object(PrismPdfEdit *edit,
  * `out_report` writable.
  */
 PrismPdfStatus prismpdf_edit_commit(PrismPdfEdit *edit,
-                                  const PrismPdfDocument *doc,
-                                  PrismPdfEditCommitMode mode,
-                                  PrismPdfTransformReport **out_report);
+                                    const PrismPdfDocument *doc,
+                                    PrismPdfEditCommitMode mode,
+                                    PrismPdfTransformReport **out_report);
 
 /**
  * Release an uncommitted edit. Freeing `NULL` is a no-op.
@@ -1106,7 +1109,7 @@ void prismpdf_edit_free(PrismPdfEdit *edit);
  * [`prismpdf_open_report_free`].
  */
 PrismPdfStatus prismpdf_document_open_report(const PrismPdfDocument *doc,
-                                           PrismPdfOpenReport **out_report);
+                                             PrismPdfOpenReport **out_report);
 
 /**
  * Read the report's strict/recovered mode.
@@ -1114,7 +1117,8 @@ PrismPdfStatus prismpdf_document_open_report(const PrismPdfDocument *doc,
  * # Safety
  * `report` must be live and `out_mode` writable.
  */
-PrismPdfStatus prismpdf_open_report_mode(const PrismPdfOpenReport *report, PrismPdfOpenMode *out_mode);
+PrismPdfStatus prismpdf_open_report_mode(const PrismPdfOpenReport *report,
+                                         PrismPdfOpenMode *out_mode);
 
 /**
  * Return the bounded recovery diagnostic count (zero for a strict open).
@@ -1123,7 +1127,7 @@ PrismPdfStatus prismpdf_open_report_mode(const PrismPdfOpenReport *report, Prism
  * `report` must be live and `out_count` writable.
  */
 PrismPdfStatus prismpdf_open_report_diagnostic_count(const PrismPdfOpenReport *report,
-                                                   uintptr_t *out_count);
+                                                     uintptr_t *out_count);
 
 /**
  * Read one recovery diagnostic. `out_has_offset` distinguishes absence from byte zero.
@@ -1132,10 +1136,10 @@ PrismPdfStatus prismpdf_open_report_diagnostic_count(const PrismPdfOpenReport *r
  * `report` must be live and all out-pointers writable.
  */
 PrismPdfStatus prismpdf_open_report_diagnostic(const PrismPdfOpenReport *report,
-                                             uintptr_t index,
-                                             PrismPdfRecoveryReason *out_reason,
-                                             bool *out_has_offset,
-                                             uintptr_t *out_offset);
+                                               uintptr_t index,
+                                               PrismPdfRecoveryReason *out_reason,
+                                               bool *out_has_offset,
+                                               uintptr_t *out_offset);
 
 /**
  * Release an owned open report. Null is ignored.
@@ -1152,8 +1156,8 @@ void prismpdf_open_report_free(PrismPdfOpenReport *report);
  * `report` must be live and both out-pointers writable. The view dies with `report`.
  */
 PrismPdfStatus prismpdf_transform_report_bytes(const PrismPdfTransformReport *report,
-                                             const uint8_t **out_data,
-                                             uintptr_t *out_len);
+                                               const uint8_t **out_data,
+                                               uintptr_t *out_len);
 
 /**
  * Read the transform's serialization strategy.
@@ -1162,7 +1166,7 @@ PrismPdfStatus prismpdf_transform_report_bytes(const PrismPdfTransformReport *re
  * `report` must be live and `out_mode` writable.
  */
 PrismPdfStatus prismpdf_transform_report_rewrite_mode(const PrismPdfTransformReport *report,
-                                                    PrismPdfRewriteMode *out_mode);
+                                                      PrismPdfRewriteMode *out_mode);
 
 /**
  * Read the transform's effect on existing signatures.
@@ -1171,7 +1175,7 @@ PrismPdfStatus prismpdf_transform_report_rewrite_mode(const PrismPdfTransformRep
  * `report` must be live and `out_effect` writable.
  */
 PrismPdfStatus prismpdf_transform_report_signature_effect(const PrismPdfTransformReport *report,
-                                                        PrismPdfSignatureEffect *out_effect);
+                                                          PrismPdfSignatureEffect *out_effect);
 
 /**
  * Read the transform's effect on logical structure (§14.7).
@@ -1180,7 +1184,7 @@ PrismPdfStatus prismpdf_transform_report_signature_effect(const PrismPdfTransfor
  * `report` must be live and `out_effect` writable.
  */
 PrismPdfStatus prismpdf_transform_report_structure_effect(const PrismPdfTransformReport *report,
-                                                        PrismPdfStructureEffect *out_effect);
+                                                          PrismPdfStructureEffect *out_effect);
 
 /**
  * Release a transform report and its output bytes. Null is ignored.
@@ -1206,8 +1210,8 @@ PrismPdfStatus prismpdf_document_page_count(const PrismPdfDocument *doc, uintptr
  * `doc` must be a live handle and the out-pointers writable.
  */
 PrismPdfStatus prismpdf_document_version(const PrismPdfDocument *doc,
-                                       uint8_t *out_major,
-                                       uint8_t *out_minor);
+                                         uint8_t *out_major,
+                                         uint8_t *out_minor);
 
 /**
  * Extract the text of page `index` (0-based) as a newly allocated, NUL-terminated UTF-8 string,
@@ -1241,7 +1245,8 @@ const char *prismpdf_version(void);
  * # Safety
  * `data`/`len` must be a buffer-and-length pair returned by this library, not already freed.
  */
-void prismpdf_bytes_free(uint8_t *data, uintptr_t len);
+void prismpdf_bytes_free(uint8_t *data,
+                         uintptr_t len);
 
 /**
  * Serialise the document to a fresh PDF (full rewrite, classic cross-reference table, §7.5.4),
@@ -1251,8 +1256,8 @@ void prismpdf_bytes_free(uint8_t *data, uintptr_t len);
  * `doc` must be a live handle; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_document_save(const PrismPdfDocument *doc,
-                                    uint8_t **out_data,
-                                    uintptr_t *out_len);
+                                      uint8_t **out_data,
+                                      uintptr_t *out_len);
 
 /**
  * Full-rewrite save returning owned bytes and explicit preservation effects.
@@ -1261,7 +1266,7 @@ PrismPdfStatus prismpdf_document_save(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_save_report(const PrismPdfDocument *doc,
-                                           PrismPdfTransformReport **out_report);
+                                             PrismPdfTransformReport **out_report);
 
 /**
  * As [`prismpdf_document_save`] but with a compact cross-reference **stream** (§7.5.8).
@@ -1270,8 +1275,8 @@ PrismPdfStatus prismpdf_document_save_report(const PrismPdfDocument *doc,
  * `doc` must be a live handle; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_document_save_compact(const PrismPdfDocument *doc,
-                                            uint8_t **out_data,
-                                            uintptr_t *out_len);
+                                              uint8_t **out_data,
+                                              uintptr_t *out_len);
 
 /**
  * Cross-reference-stream full rewrite returning explicit preservation effects.
@@ -1280,7 +1285,7 @@ PrismPdfStatus prismpdf_document_save_compact(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_save_compact_report(const PrismPdfDocument *doc,
-                                                   PrismPdfTransformReport **out_report);
+                                                     PrismPdfTransformReport **out_report);
 
 /**
  * Serialise the document **encrypted** with the standard security handler (§7.6): `algorithm` is
@@ -1292,13 +1297,13 @@ PrismPdfStatus prismpdf_document_save_compact_report(const PrismPdfDocument *doc
  * length 0); `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_document_save_encrypted(const PrismPdfDocument *doc,
-                                              const uint8_t *user_password,
-                                              uintptr_t user_len,
-                                              const uint8_t *owner_password,
-                                              uintptr_t owner_len,
-                                              uint32_t algorithm,
-                                              uint8_t **out_data,
-                                              uintptr_t *out_len);
+                                                const uint8_t *user_password,
+                                                uintptr_t user_len,
+                                                const uint8_t *owner_password,
+                                                uintptr_t owner_len,
+                                                uint32_t algorithm,
+                                                uint8_t **out_data,
+                                                uintptr_t *out_len);
 
 /**
  * Serialise a new PDF containing only the pages at the 0-based `indices` (in the given order,
@@ -1309,10 +1314,10 @@ PrismPdfStatus prismpdf_document_save_encrypted(const PrismPdfDocument *doc,
  * `count` is 0); `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_document_extract_pages(const PrismPdfDocument *doc,
-                                             const uintptr_t *indices,
-                                             uintptr_t count,
-                                             uint8_t **out_data,
-                                             uintptr_t *out_len);
+                                               const uintptr_t *indices,
+                                               uintptr_t count,
+                                               uint8_t **out_data,
+                                               uintptr_t *out_len);
 
 /**
  * Page extraction returning reconstruction, signature, and structure effects with its bytes.
@@ -1321,9 +1326,9 @@ PrismPdfStatus prismpdf_document_extract_pages(const PrismPdfDocument *doc,
  * `doc`, `indices`, and `out_report` follow [`prismpdf_document_extract_pages`]'s contract.
  */
 PrismPdfStatus prismpdf_document_extract_pages_report(const PrismPdfDocument *doc,
-                                                    const uintptr_t *indices,
-                                                    uintptr_t count,
-                                                    PrismPdfTransformReport **out_report);
+                                                      const uintptr_t *indices,
+                                                      uintptr_t count,
+                                                      PrismPdfTransformReport **out_report);
 
 /**
  * Serialise the document with page `index` rotated by `degrees` (a multiple of 90, §7.7.3.3).
@@ -1333,10 +1338,10 @@ PrismPdfStatus prismpdf_document_extract_pages_report(const PrismPdfDocument *do
  * `doc` must be a live handle; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_document_rotate_page(const PrismPdfDocument *doc,
-                                           uintptr_t index,
-                                           int64_t degrees,
-                                           uint8_t **out_data,
-                                           uintptr_t *out_len);
+                                             uintptr_t index,
+                                             int64_t degrees,
+                                             uint8_t **out_data,
+                                             uintptr_t *out_len);
 
 /**
  * Rotation returning full-rewrite, signature, and structure effects with its bytes.
@@ -1345,9 +1350,9 @@ PrismPdfStatus prismpdf_document_rotate_page(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_rotate_page_report(const PrismPdfDocument *doc,
-                                                  uintptr_t index,
-                                                  int64_t degrees,
-                                                  PrismPdfTransformReport **out_report);
+                                                    uintptr_t index,
+                                                    int64_t degrees,
+                                                    PrismPdfTransformReport **out_report);
 
 /**
  * Merge into a reconstructed graph and return explicit removal effects.
@@ -1356,8 +1361,8 @@ PrismPdfStatus prismpdf_document_rotate_page_report(const PrismPdfDocument *doc,
  * `docs` must contain `count` live handles and `out_report` must be writable.
  */
 PrismPdfStatus prismpdf_merge_report(const PrismPdfDocument *const *docs,
-                                   uintptr_t count,
-                                   PrismPdfTransformReport **out_report);
+                                     uintptr_t count,
+                                     PrismPdfTransformReport **out_report);
 
 /**
  * Concatenate `count` documents (in order) into one new PDF (§7.7.3). Result via
@@ -1368,9 +1373,9 @@ PrismPdfStatus prismpdf_merge_report(const PrismPdfDocument *const *docs,
  * writable.
  */
 PrismPdfStatus prismpdf_merge(const PrismPdfDocument *const *docs,
-                            uintptr_t count,
-                            uint8_t **out_data,
-                            uintptr_t *out_len);
+                              uintptr_t count,
+                              uint8_t **out_data,
+                              uintptr_t *out_len);
 
 /**
  * Extract the reading-order text of the whole document (all pages joined by form feeds, §9.4) as a
@@ -1391,8 +1396,8 @@ PrismPdfStatus prismpdf_document_text(const PrismPdfDocument *doc, char **out_te
  * The returned list must be released with [`prismpdf_annotation_list_free`].
  */
 PrismPdfStatus prismpdf_page_annotations(const PrismPdfDocument *doc,
-                                       uintptr_t index,
-                                       PrismPdfAnnotationList **out_list);
+                                         uintptr_t index,
+                                         PrismPdfAnnotationList **out_list);
 
 /**
  * Number of annotations in `list`.
@@ -1410,8 +1415,8 @@ PrismPdfStatus prismpdf_annotation_list_len(const PrismPdfAnnotationList *list, 
  * `list` must be a live list handle and `out_item` a writable `*mut *const PrismPdfAnnotation`.
  */
 PrismPdfStatus prismpdf_annotation_list_get(const PrismPdfAnnotationList *list,
-                                          uintptr_t index,
-                                          const PrismPdfAnnotation **out_item);
+                                            uintptr_t index,
+                                            const PrismPdfAnnotation **out_item);
 
 /**
  * Release an annotation list. Freeing `NULL` is a no-op. Any borrowed item pointer obtained from
@@ -1448,7 +1453,8 @@ PrismPdfStatus prismpdf_annotation_rect(const PrismPdfAnnotation *annot, double 
  * `annot` must be borrowed from a live list; `out_text` must be writable. Release the string with
  * [`prismpdf_string_free`].
  */
-PrismPdfStatus prismpdf_annotation_contents(const PrismPdfAnnotation *annot, char **out_text);
+PrismPdfStatus prismpdf_annotation_contents(const PrismPdfAnnotation *annot,
+                                            char **out_text);
 
 /**
  * For a link annotation with a URI action (§12.6.4.7), the external URI; otherwise
@@ -1478,7 +1484,7 @@ PrismPdfStatus prismpdf_annotation_dest_page(const PrismPdfAnnotation *annot, ui
  * `*mut PrismPdfFormFieldList`. Release it with [`prismpdf_form_field_list_free`].
  */
 PrismPdfStatus prismpdf_document_form_fields(const PrismPdfDocument *doc,
-                                           PrismPdfFormFieldList **out_list);
+                                             PrismPdfFormFieldList **out_list);
 
 /**
  * Number of fields in `list`.
@@ -1495,8 +1501,8 @@ PrismPdfStatus prismpdf_form_field_list_len(const PrismPdfFormFieldList *list, u
  * `list` must be a live list handle and `out_item` a writable `*mut *const PrismPdfFormField`.
  */
 PrismPdfStatus prismpdf_form_field_list_get(const PrismPdfFormFieldList *list,
-                                          uintptr_t index,
-                                          const PrismPdfFormField **out_item);
+                                            uintptr_t index,
+                                            const PrismPdfFormField **out_item);
 
 /**
  * Release a form-field list. Freeing `NULL` is a no-op.
@@ -1546,11 +1552,11 @@ PrismPdfStatus prismpdf_form_field_value(const PrismPdfFormField *field, char **
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_fill_form(const PrismPdfDocument *doc,
-                                         const char *const *names,
-                                         const char *const *values,
-                                         uintptr_t count,
-                                         uint8_t **out_data,
-                                         uintptr_t *out_len);
+                                           const char *const *names,
+                                           const char *const *values,
+                                           uintptr_t count,
+                                           uint8_t **out_data,
+                                           uintptr_t *out_len);
 
 /**
  * Incremental form fill returning explicit signature and structure preservation effects.
@@ -1559,10 +1565,10 @@ PrismPdfStatus prismpdf_document_fill_form(const PrismPdfDocument *doc,
  * `doc`, `names`, `values`, and `out_report` follow [`prismpdf_document_fill_form`]'s contract.
  */
 PrismPdfStatus prismpdf_document_fill_form_report(const PrismPdfDocument *doc,
-                                                const char *const *names,
-                                                const char *const *values,
-                                                uintptr_t count,
-                                                PrismPdfTransformReport **out_report);
+                                                  const char *const *names,
+                                                  const char *const *values,
+                                                  uintptr_t count,
+                                                  PrismPdfTransformReport **out_report);
 
 /**
  * Flatten the interactive form (§12.7): stamp each widget's appearance into its page content,
@@ -1573,8 +1579,8 @@ PrismPdfStatus prismpdf_document_fill_form_report(const PrismPdfDocument *doc,
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_flatten_form(const PrismPdfDocument *doc,
-                                            uint8_t **out_data,
-                                            uintptr_t *out_len);
+                                              uint8_t **out_data,
+                                              uintptr_t *out_len);
 
 /**
  * Flatten forms and report the full rewrite plus possible logical-structure invalidation.
@@ -1583,7 +1589,7 @@ PrismPdfStatus prismpdf_document_flatten_form(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_flatten_form_report(const PrismPdfDocument *doc,
-                                                   PrismPdfTransformReport **out_report);
+                                                     PrismPdfTransformReport **out_report);
 
 /**
  * Read the document outline (§12.3.3) as a tree of top-level entries. A document without
@@ -1592,7 +1598,8 @@ PrismPdfStatus prismpdf_document_flatten_form_report(const PrismPdfDocument *doc
  * # Safety
  * `doc` must be live and `out_list` writable. Release it with [`prismpdf_outline_list_free`].
  */
-PrismPdfStatus prismpdf_document_outline(const PrismPdfDocument *doc, PrismPdfOutlineList **out_list);
+PrismPdfStatus prismpdf_document_outline(const PrismPdfDocument *doc,
+                                         PrismPdfOutlineList **out_list);
 
 /**
  * Number of top-level entries in `list`.
@@ -1609,8 +1616,8 @@ PrismPdfStatus prismpdf_outline_list_len(const PrismPdfOutlineList *list, uintpt
  * `list` must be live and `out_item` a writable `*mut *const PrismPdfOutlineItem`.
  */
 PrismPdfStatus prismpdf_outline_list_get(const PrismPdfOutlineList *list,
-                                       uintptr_t index,
-                                       const PrismPdfOutlineItem **out_item);
+                                         uintptr_t index,
+                                         const PrismPdfOutlineItem **out_item);
 
 /**
  * Release an outline list. Freeing `NULL` is a no-op. Every borrowed entry — including nested
@@ -1637,7 +1644,8 @@ PrismPdfStatus prismpdf_outline_item_title(const PrismPdfOutlineItem *item, char
  * # Safety
  * `item` must be borrowed from a live outline; `out_index` must be a writable `*mut usize`.
  */
-PrismPdfStatus prismpdf_outline_item_dest_page(const PrismPdfOutlineItem *item, uintptr_t *out_index);
+PrismPdfStatus prismpdf_outline_item_dest_page(const PrismPdfOutlineItem *item,
+                                               uintptr_t *out_index);
 
 /**
  * Number of bookmarks nested directly under `item`.
@@ -1645,7 +1653,8 @@ PrismPdfStatus prismpdf_outline_item_dest_page(const PrismPdfOutlineItem *item, 
  * # Safety
  * `item` must be borrowed from a live outline; `out_len` must be a writable `*mut usize`.
  */
-PrismPdfStatus prismpdf_outline_item_child_count(const PrismPdfOutlineItem *item, uintptr_t *out_len);
+PrismPdfStatus prismpdf_outline_item_child_count(const PrismPdfOutlineItem *item,
+                                                 uintptr_t *out_len);
 
 /**
  * Lend child `index` of `item`. Borrowed from the same allocation as its parent, so it stays
@@ -1656,8 +1665,8 @@ PrismPdfStatus prismpdf_outline_item_child_count(const PrismPdfOutlineItem *item
  * `*mut *const PrismPdfOutlineItem`.
  */
 PrismPdfStatus prismpdf_outline_item_child(const PrismPdfOutlineItem *item,
-                                         uintptr_t index,
-                                         const PrismPdfOutlineItem **out_child);
+                                           uintptr_t index,
+                                           const PrismPdfOutlineItem **out_child);
 
 /**
  * Read the document's embedded files (§7.11) from the `/EmbeddedFiles` name tree (§7.7.4),
@@ -1667,7 +1676,7 @@ PrismPdfStatus prismpdf_outline_item_child(const PrismPdfOutlineItem *item,
  * `doc` must be live and `out_list` writable. Release it with [`prismpdf_attachment_list_free`].
  */
 PrismPdfStatus prismpdf_document_attachments(const PrismPdfDocument *doc,
-                                           PrismPdfAttachmentList **out_list);
+                                             PrismPdfAttachmentList **out_list);
 
 /**
  * Number of embedded files in `list`.
@@ -1684,8 +1693,8 @@ PrismPdfStatus prismpdf_attachment_list_len(const PrismPdfAttachmentList *list, 
  * `list` must be live and `out_item` a writable `*mut *const PrismPdfAttachment`.
  */
 PrismPdfStatus prismpdf_attachment_list_get(const PrismPdfAttachmentList *list,
-                                          uintptr_t index,
-                                          const PrismPdfAttachment **out_item);
+                                            uintptr_t index,
+                                            const PrismPdfAttachment **out_item);
 
 /**
  * Release an attachment list. Freeing `NULL` is a no-op. Every borrowed item — and every byte
@@ -1714,8 +1723,8 @@ PrismPdfStatus prismpdf_attachment_name(const PrismPdfAttachment *att, char **ou
  * `att` must be borrowed from a live list; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_attachment_data(const PrismPdfAttachment *att,
-                                      const uint8_t **out_data,
-                                      uintptr_t *out_len);
+                                        const uint8_t **out_data,
+                                        uintptr_t *out_len);
 
 /**
  * The embedded file's MIME type (`/EmbeddedFile /Subtype`), or [`PrismPdfStatus::NotFound`].
@@ -1769,8 +1778,8 @@ PrismPdfStatus prismpdf_font_list_len(const PrismPdfFontList *list, uintptr_t *o
  * `list` must be live and `out_item` a writable `*mut *const PrismPdfFont`.
  */
 PrismPdfStatus prismpdf_font_list_get(const PrismPdfFontList *list,
-                                    uintptr_t index,
-                                    const PrismPdfFont **out_item);
+                                      uintptr_t index,
+                                      const PrismPdfFont **out_item);
 
 /**
  * Release a font list. Freeing `NULL` is a no-op.
@@ -1806,7 +1815,8 @@ PrismPdfStatus prismpdf_font_subtype(const PrismPdfFont *font, char **out_text);
  * `font` must be borrowed from a live list; `out_format` must be a writable
  * `*mut PrismPdfFontFormat`.
  */
-PrismPdfStatus prismpdf_font_program_format(const PrismPdfFont *font, PrismPdfFontFormat *out_format);
+PrismPdfStatus prismpdf_font_program_format(const PrismPdfFont *font,
+                                            PrismPdfFontFormat *out_format);
 
 /**
  * Lend the embedded program bytes, or [`PrismPdfStatus::NotFound`] when the font is not embedded.
@@ -1816,8 +1826,8 @@ PrismPdfStatus prismpdf_font_program_format(const PrismPdfFont *font, PrismPdfFo
  * `font` must be borrowed from a live list; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_font_program(const PrismPdfFont *font,
-                                   const uint8_t **out_data,
-                                   uintptr_t *out_len);
+                                     const uint8_t **out_data,
+                                     uintptr_t *out_len);
 
 /**
  * Parsed sfnt metrics: design units per em and glyph count. [`PrismPdfStatus::NotFound`] when the
@@ -1827,8 +1837,8 @@ PrismPdfStatus prismpdf_font_program(const PrismPdfFont *font,
  * `font` must be borrowed from a live list; both out-params must be writable.
  */
 PrismPdfStatus prismpdf_font_metrics(const PrismPdfFont *font,
-                                   uint16_t *out_units_per_em,
-                                   uint16_t *out_glyph_count);
+                                     uint16_t *out_units_per_em,
+                                     uint16_t *out_glyph_count);
 
 /**
  * The family name recorded in the embedded program, or [`PrismPdfStatus::NotFound`].
@@ -1848,8 +1858,8 @@ PrismPdfStatus prismpdf_font_family_name(const PrismPdfFont *font, char **out_te
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_subset_fonts(const PrismPdfDocument *doc,
-                                            uint8_t **out_data,
-                                            uintptr_t *out_len);
+                                              uint8_t **out_data,
+                                              uintptr_t *out_len);
 
 /**
  * Font subsetting returning full-rewrite preservation effects with the output.
@@ -1858,7 +1868,7 @@ PrismPdfStatus prismpdf_document_subset_fonts(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_subset_fonts_report(const PrismPdfDocument *doc,
-                                                   PrismPdfTransformReport **out_report);
+                                                     PrismPdfTransformReport **out_report);
 
 /**
  * Collect the images page `index` draws (§8.6), recursing into form XObjects (§8.10).
@@ -1867,8 +1877,8 @@ PrismPdfStatus prismpdf_document_subset_fonts_report(const PrismPdfDocument *doc
  * `doc` must be live and `out_list` writable. Release it with [`prismpdf_image_list_free`].
  */
 PrismPdfStatus prismpdf_page_images(const PrismPdfDocument *doc,
-                                  uintptr_t index,
-                                  PrismPdfImageList **out_list);
+                                    uintptr_t index,
+                                    PrismPdfImageList **out_list);
 
 /**
  * Number of images in `list`.
@@ -1885,8 +1895,8 @@ PrismPdfStatus prismpdf_image_list_len(const PrismPdfImageList *list, uintptr_t 
  * `list` must be live and `out_item` a writable `*mut *const PrismPdfImage`.
  */
 PrismPdfStatus prismpdf_image_list_get(const PrismPdfImageList *list,
-                                     uintptr_t index,
-                                     const PrismPdfImage **out_item);
+                                       uintptr_t index,
+                                       const PrismPdfImage **out_item);
 
 /**
  * Release an image list. Freeing `NULL` is a no-op. Every lent payload view dies with it.
@@ -1903,9 +1913,9 @@ void prismpdf_image_list_free(PrismPdfImageList *list);
  * `image` must be borrowed from a live list; all three out-params must be writable.
  */
 PrismPdfStatus prismpdf_image_info(const PrismPdfImage *image,
-                                 uint32_t *out_width,
-                                 uint32_t *out_height,
-                                 uint8_t *out_bits_per_component);
+                                   uint32_t *out_width,
+                                   uint32_t *out_height,
+                                   uint8_t *out_bits_per_component);
 
 /**
  * The image's colour space (§8.6).
@@ -1913,7 +1923,8 @@ PrismPdfStatus prismpdf_image_info(const PrismPdfImage *image,
  * # Safety
  * `image` must be borrowed from a live list; `out_space` must be writable.
  */
-PrismPdfStatus prismpdf_image_color_space(const PrismPdfImage *image, PrismPdfColorSpace *out_space);
+PrismPdfStatus prismpdf_image_color_space(const PrismPdfImage *image,
+                                          PrismPdfColorSpace *out_space);
 
 /**
  * Number of colour components per sample — the value needed to walk `Raw` payload bytes, and the
@@ -1940,8 +1951,8 @@ PrismPdfStatus prismpdf_image_kind(const PrismPdfImage *image, PrismPdfImageKind
  * `image` must be borrowed from a live list; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_image_data(const PrismPdfImage *image,
-                                 const uint8_t **out_data,
-                                 uintptr_t *out_len);
+                                   const uint8_t **out_data,
+                                   uintptr_t *out_len);
 
 /**
  * The document's XMP metadata packet (§14.3.2) as raw XML, or [`PrismPdfStatus::NotFound`] when
@@ -1964,8 +1975,8 @@ PrismPdfStatus prismpdf_document_xmp(const PrismPdfDocument *doc, char **out_tex
  * string with [`prismpdf_string_free`].
  */
 PrismPdfStatus prismpdf_document_info(const PrismPdfDocument *doc,
-                                    const char *key,
-                                    char **out_text);
+                                      const char *key,
+                                      char **out_text);
 
 /**
  * The document's creation date (`/Info /CreationDate`, §14.3.3), or [`PrismPdfStatus::NotFound`]
@@ -1982,7 +1993,8 @@ PrismPdfStatus prismpdf_document_creation_date(const PrismPdfDocument *doc, Pris
  * # Safety
  * `doc` must be live and `out_date` a writable `*mut PrismPdfDate`.
  */
-PrismPdfStatus prismpdf_document_modification_date(const PrismPdfDocument *doc, PrismPdfDate *out_date);
+PrismPdfStatus prismpdf_document_modification_date(const PrismPdfDocument *doc,
+                                                   PrismPdfDate *out_date);
 
 /**
  * Extract page `index`'s text preserving layout — line breaks and horizontal gaps reconstructed
@@ -1994,8 +2006,8 @@ PrismPdfStatus prismpdf_document_modification_date(const PrismPdfDocument *doc, 
  * [`prismpdf_string_free`].
  */
 PrismPdfStatus prismpdf_page_text_positioned(const PrismPdfDocument *doc,
-                                           uintptr_t index,
-                                           char **out_text);
+                                             uintptr_t index,
+                                             char **out_text);
 
 /**
  * The `/P` word with every grantable bit cleared: nothing is allowed. The starting point for
@@ -2063,15 +2075,15 @@ int32_t prismpdf_permissions_allow_print_high_res(int32_t permissions);
  * with [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_save_encrypted_with(const PrismPdfDocument *doc,
-                                                   const uint8_t *user_password,
-                                                   uintptr_t user_len,
-                                                   const uint8_t *owner_password,
-                                                   uintptr_t owner_len,
-                                                   int32_t permissions,
-                                                   bool encrypt_metadata,
-                                                   uint32_t algorithm,
-                                                   uint8_t **out_data,
-                                                   uintptr_t *out_len);
+                                                     const uint8_t *user_password,
+                                                     uintptr_t user_len,
+                                                     const uint8_t *owner_password,
+                                                     uintptr_t owner_len,
+                                                     int32_t permissions,
+                                                     bool encrypt_metadata,
+                                                     uint32_t algorithm,
+                                                     uint8_t **out_data,
+                                                     uintptr_t *out_len);
 
 /**
  * Public-key (certificate) encryption (§7.6.5): each recipient's X.509 certificate is given as
@@ -2087,14 +2099,14 @@ PrismPdfStatus prismpdf_document_save_encrypted_with(const PrismPdfDocument *doc
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_save_encrypted_public_key(const PrismPdfDocument *doc,
-                                                         const uint8_t *const *certs,
-                                                         const uintptr_t *cert_lens,
-                                                         uintptr_t count,
-                                                         int32_t permissions,
-                                                         bool encrypt_metadata,
-                                                         uint32_t algorithm,
-                                                         uint8_t **out_data,
-                                                         uintptr_t *out_len);
+                                                           const uint8_t *const *certs,
+                                                           const uintptr_t *cert_lens,
+                                                           uintptr_t count,
+                                                           int32_t permissions,
+                                                           bool encrypt_metadata,
+                                                           uint32_t algorithm,
+                                                           uint8_t **out_data,
+                                                           uintptr_t *out_len);
 
 /**
  * Encrypted full rewrite carrying a **PDF MAC** (ISO/TS 32004): an authentication tag over the
@@ -2107,15 +2119,15 @@ PrismPdfStatus prismpdf_document_save_encrypted_public_key(const PrismPdfDocumen
  * As [`prismpdf_document_save_encrypted_with`].
  */
 PrismPdfStatus prismpdf_document_save_encrypted_with_mac(const PrismPdfDocument *doc,
-                                                       const uint8_t *user_password,
-                                                       uintptr_t user_len,
-                                                       const uint8_t *owner_password,
-                                                       uintptr_t owner_len,
-                                                       int32_t permissions,
-                                                       bool encrypt_metadata,
-                                                       uint32_t algorithm,
-                                                       uint8_t **out_data,
-                                                       uintptr_t *out_len);
+                                                         const uint8_t *user_password,
+                                                         uintptr_t user_len,
+                                                         const uint8_t *owner_password,
+                                                         uintptr_t owner_len,
+                                                         int32_t permissions,
+                                                         bool encrypt_metadata,
+                                                         uint32_t algorithm,
+                                                         uint8_t **out_data,
+                                                         uintptr_t *out_len);
 
 /**
  * Verify a document's PDF MAC (ISO/TS 32004) with `password`, writing the verdict to
@@ -2127,9 +2139,9 @@ PrismPdfStatus prismpdf_document_save_encrypted_with_mac(const PrismPdfDocument 
  * be live and `out_valid` a writable `*mut bool`.
  */
 PrismPdfStatus prismpdf_document_verify_pdf_mac(const PrismPdfDocument *doc,
-                                              const uint8_t *password,
-                                              uintptr_t password_len,
-                                              bool *out_valid);
+                                                const uint8_t *password,
+                                                uintptr_t password_len,
+                                                bool *out_valid);
 
 /**
  * Create a settings handle with every option unset — equivalent to what
@@ -2162,7 +2174,8 @@ PrismPdfStatus prismpdf_sign_settings_set_name(PrismPdfSignSettings *settings, c
  * # Safety
  * `settings` must be live and `reason` a NUL-terminated UTF-8 C string.
  */
-PrismPdfStatus prismpdf_sign_settings_set_reason(PrismPdfSignSettings *settings, const char *reason);
+PrismPdfStatus prismpdf_sign_settings_set_reason(PrismPdfSignSettings *settings,
+                                                 const char *reason);
 
 /**
  * Set the signing location (`/Location`, §12.8.1).
@@ -2171,7 +2184,7 @@ PrismPdfStatus prismpdf_sign_settings_set_reason(PrismPdfSignSettings *settings,
  * `settings` must be live and `location` a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_sign_settings_set_location(PrismPdfSignSettings *settings,
-                                                 const char *location);
+                                                   const char *location);
 
 /**
  * Set the signer's contact information (`/ContactInfo`, §12.8.1).
@@ -2180,7 +2193,7 @@ PrismPdfStatus prismpdf_sign_settings_set_location(PrismPdfSignSettings *setting
  * `settings` must be live and `contact` a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_sign_settings_set_contact_info(PrismPdfSignSettings *settings,
-                                                     const char *contact);
+                                                       const char *contact);
 
 /**
  * Pin the signing time as a Unix timestamp, instead of taking the current clock. Passing this
@@ -2190,7 +2203,7 @@ PrismPdfStatus prismpdf_sign_settings_set_contact_info(PrismPdfSignSettings *set
  * `settings` must be a live settings handle.
  */
 PrismPdfStatus prismpdf_sign_settings_set_signing_time(PrismPdfSignSettings *settings,
-                                                     uint64_t unix_time);
+                                                       uint64_t unix_time);
 
 /**
  * Request a **PAdES** (ETSI EN 319 142) signature rather than a plain CMS one.
@@ -2211,9 +2224,9 @@ PrismPdfStatus prismpdf_sign_settings_set_pades(PrismPdfSignSettings *settings, 
  * NUL-terminated UTF-8 C string or null.
  */
 PrismPdfStatus prismpdf_sign_settings_set_appearance(PrismPdfSignSettings *settings,
-                                                   uintptr_t page_index,
-                                                   const float *rect,
-                                                   const char *text);
+                                                     uintptr_t page_index,
+                                                     const float *rect,
+                                                     const char *text);
 
 /**
  * Embed a signature timestamp (§12.8.3.3) produced from the given TSA credentials.
@@ -2223,12 +2236,12 @@ PrismPdfStatus prismpdf_sign_settings_set_appearance(PrismPdfSignSettings *setti
  * a live settings handle.
  */
 PrismPdfStatus prismpdf_sign_settings_set_timestamp(PrismPdfSignSettings *settings,
-                                                  const uint8_t *cert_der,
-                                                  uintptr_t cert_len,
-                                                  const uint8_t *key_der,
-                                                  uintptr_t key_len,
-                                                  uint64_t gen_time,
-                                                  uint64_t serial);
+                                                    const uint8_t *cert_der,
+                                                    uintptr_t cert_len,
+                                                    const uint8_t *key_der,
+                                                    uintptr_t key_len,
+                                                    uint64_t gen_time,
+                                                    uint64_t serial);
 
 /**
  * Sign the document with an X.509 certificate and its private key, both DER-encoded, and return
@@ -2241,12 +2254,12 @@ PrismPdfStatus prismpdf_sign_settings_set_timestamp(PrismPdfSignSettings *settin
  * `out_data`/`out_len` writable. Release the buffer with [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_sign(const PrismPdfDocument *doc,
-                                    const uint8_t *cert_der,
-                                    uintptr_t cert_len,
-                                    const uint8_t *key_der,
-                                    uintptr_t key_len,
-                                    uint8_t **out_data,
-                                    uintptr_t *out_len);
+                                      const uint8_t *cert_der,
+                                      uintptr_t cert_len,
+                                      const uint8_t *key_der,
+                                      uintptr_t key_len,
+                                      uint8_t **out_data,
+                                      uintptr_t *out_len);
 
 /**
  * Sign with explicit settings (name, reason, location, appearance, timestamp, PAdES, …).
@@ -2255,13 +2268,13 @@ PrismPdfStatus prismpdf_document_sign(const PrismPdfDocument *doc,
  * As [`prismpdf_document_sign`], plus `settings` must be a live settings handle.
  */
 PrismPdfStatus prismpdf_document_sign_with(const PrismPdfDocument *doc,
-                                         const uint8_t *cert_der,
-                                         uintptr_t cert_len,
-                                         const uint8_t *key_der,
-                                         uintptr_t key_len,
-                                         const PrismPdfSignSettings *settings,
-                                         uint8_t **out_data,
-                                         uintptr_t *out_len);
+                                           const uint8_t *cert_der,
+                                           uintptr_t cert_len,
+                                           const uint8_t *key_der,
+                                           uintptr_t key_len,
+                                           const PrismPdfSignSettings *settings,
+                                           uint8_t **out_data,
+                                           uintptr_t *out_len);
 
 /**
  * Sign an encrypted document and refresh its PDF MAC (ISO/TS 32004) in the same revision, so the
@@ -2272,15 +2285,15 @@ PrismPdfStatus prismpdf_document_sign_with(const PrismPdfDocument *doc,
  * (or be null with length 0).
  */
 PrismPdfStatus prismpdf_document_sign_with_mac(const PrismPdfDocument *doc,
-                                             const uint8_t *cert_der,
-                                             uintptr_t cert_len,
-                                             const uint8_t *key_der,
-                                             uintptr_t key_len,
-                                             const PrismPdfSignSettings *settings,
-                                             const uint8_t *password,
-                                             uintptr_t password_len,
-                                             uint8_t **out_data,
-                                             uintptr_t *out_len);
+                                               const uint8_t *cert_der,
+                                               uintptr_t cert_len,
+                                               const uint8_t *key_der,
+                                               uintptr_t key_len,
+                                               const PrismPdfSignSettings *settings,
+                                               const uint8_t *password,
+                                               uintptr_t password_len,
+                                               uint8_t **out_data,
+                                               uintptr_t *out_len);
 
 /**
  * Append a **document timestamp** (§12.8.5) signed by the given TSA credentials — a signature
@@ -2293,14 +2306,14 @@ PrismPdfStatus prismpdf_document_sign_with_mac(const PrismPdfDocument *doc,
  * be live; `out_data`/`out_len` writable. Release the buffer with [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_timestamp(const PrismPdfDocument *doc,
-                                         const uint8_t *tsa_cert_der,
-                                         uintptr_t cert_len,
-                                         const uint8_t *tsa_key_der,
-                                         uintptr_t key_len,
-                                         uint64_t gen_time,
-                                         bool has_gen_time,
-                                         uint8_t **out_data,
-                                         uintptr_t *out_len);
+                                           const uint8_t *tsa_cert_der,
+                                           uintptr_t cert_len,
+                                           const uint8_t *tsa_key_der,
+                                           uintptr_t key_len,
+                                           uint64_t gen_time,
+                                           bool has_gen_time,
+                                           uint8_t **out_data,
+                                           uintptr_t *out_len);
 
 /**
  * Verify every signature in the document (§12.8), checking each one's byte coverage and CMS
@@ -2310,7 +2323,7 @@ PrismPdfStatus prismpdf_document_timestamp(const PrismPdfDocument *doc,
  * `doc` must be live and `out_list` writable. Release it with [`prismpdf_signature_list_free`].
  */
 PrismPdfStatus prismpdf_document_verify_signatures(const PrismPdfDocument *doc,
-                                                 PrismPdfSignatureList **out_list);
+                                                   PrismPdfSignatureList **out_list);
 
 /**
  * Verify every signature and evaluate trust against the supplied DER root certificates, so each
@@ -2321,10 +2334,10 @@ PrismPdfStatus prismpdf_document_verify_signatures(const PrismPdfDocument *doc,
  * least its stated readable bytes. `doc` must be live and `out_list` writable.
  */
 PrismPdfStatus prismpdf_document_verify_signatures_with(const PrismPdfDocument *doc,
-                                                      const uint8_t *const *roots,
-                                                      const uintptr_t *root_lens,
-                                                      uintptr_t count,
-                                                      PrismPdfSignatureList **out_list);
+                                                        const uint8_t *const *roots,
+                                                        const uintptr_t *root_lens,
+                                                        uintptr_t count,
+                                                        PrismPdfSignatureList **out_list);
 
 /**
  * Verify with trust **and** long-term validation (§12.8.4): the document's DSS revocation
@@ -2334,10 +2347,10 @@ PrismPdfStatus prismpdf_document_verify_signatures_with(const PrismPdfDocument *
  * As [`prismpdf_document_verify_signatures_with`].
  */
 PrismPdfStatus prismpdf_document_verify_signatures_ltv(const PrismPdfDocument *doc,
-                                                     const uint8_t *const *roots,
-                                                     const uintptr_t *root_lens,
-                                                     uintptr_t count,
-                                                     PrismPdfSignatureList **out_list);
+                                                       const uint8_t *const *roots,
+                                                       const uintptr_t *root_lens,
+                                                       uintptr_t count,
+                                                       PrismPdfSignatureList **out_list);
 
 /**
  * Number of signatures in `list`.
@@ -2354,8 +2367,8 @@ PrismPdfStatus prismpdf_signature_list_len(const PrismPdfSignatureList *list, ui
  * `list` must be live and `out_item` a writable `*mut *const PrismPdfSignature`.
  */
 PrismPdfStatus prismpdf_signature_list_get(const PrismPdfSignatureList *list,
-                                         uintptr_t index,
-                                         const PrismPdfSignature **out_item);
+                                           uintptr_t index,
+                                           const PrismPdfSignature **out_item);
 
 /**
  * Release a signature list. Freeing `NULL` is a no-op.
@@ -2439,7 +2452,7 @@ PrismPdfStatus prismpdf_signature_pades(const PrismPdfSignature *sig, bool *out_
  * `sig` must be borrowed from a live list and `out_revocation` writable.
  */
 PrismPdfStatus prismpdf_signature_revocation(const PrismPdfSignature *sig,
-                                           PrismPdfRevocation *out_revocation);
+                                             PrismPdfRevocation *out_revocation);
 
 /**
  * Create a page specification by copying the assembled content bytes (§7.8.2).
@@ -2468,10 +2481,10 @@ void prismpdf_page_spec_free(PrismPdfPageSpec *page);
  * `page` must be a live page-spec handle.
  */
 PrismPdfStatus prismpdf_page_spec_set_media_box(PrismPdfPageSpec *page,
-                                              double llx,
-                                              double lly,
-                                              double urx,
-                                              double ury);
+                                                double llx,
+                                                double lly,
+                                                double urx,
+                                                double ury);
 
 /**
  * Add a named Standard-14 font resource (§9.6.2.2).
@@ -2480,8 +2493,8 @@ PrismPdfStatus prismpdf_page_spec_set_media_box(PrismPdfPageSpec *page,
  * `page` must be live and `name` must be a NUL-terminated UTF-8 string.
  */
 PrismPdfStatus prismpdf_page_spec_add_standard_font(PrismPdfPageSpec *page,
-                                                  const char *name,
-                                                  PrismPdfStdFont font);
+                                                    const char *name,
+                                                    PrismPdfStdFont font);
 
 /**
  * Reference a CID font previously registered on the builder under `name` (§9.7).
@@ -2498,8 +2511,8 @@ PrismPdfStatus prismpdf_page_spec_add_embedded_font(PrismPdfPageSpec *page, cons
  * All handles must be live and `name` must be a NUL-terminated UTF-8 string.
  */
 PrismPdfStatus prismpdf_page_spec_add_image(PrismPdfPageSpec *page,
-                                          const char *name,
-                                          const PrismPdfImageSource *image);
+                                            const char *name,
+                                            const PrismPdfImageSource *image);
 
 /**
  * Create an empty content stream.
@@ -2526,8 +2539,8 @@ void prismpdf_content_free(PrismPdfContent *content);
  * `content` must be a live handle; `out_data`/`out_len` must be writable.
  */
 PrismPdfStatus prismpdf_content_bytes(const PrismPdfContent *content,
-                                    const uint8_t **out_data,
-                                    uintptr_t *out_len);
+                                      const uint8_t **out_data,
+                                      uintptr_t *out_len);
 
 /**
  * Push the graphics state (`q`, §8.4.4).
@@ -2552,12 +2565,12 @@ PrismPdfStatus prismpdf_content_restore(PrismPdfContent *content);
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
 PrismPdfStatus prismpdf_content_transform(PrismPdfContent *content,
-                                        double a,
-                                        double b,
-                                        double c,
-                                        double d,
-                                        double e,
-                                        double f);
+                                          double a,
+                                          double b,
+                                          double c,
+                                          double d,
+                                          double e,
+                                          double f);
 
 /**
  * Set the stroke width (`w`, §8.4.3.2).
@@ -2589,7 +2602,10 @@ PrismPdfStatus prismpdf_content_set_stroke_gray(PrismPdfContent *content, double
  * # Safety
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
-PrismPdfStatus prismpdf_content_set_fill_rgb(PrismPdfContent *content, double r, double g, double b);
+PrismPdfStatus prismpdf_content_set_fill_rgb(PrismPdfContent *content,
+                                             double r,
+                                             double g,
+                                             double b);
 
 /**
  * Set a `DeviceRGB` stroke colour (`RG`, §8.6.4.3).
@@ -2597,7 +2613,10 @@ PrismPdfStatus prismpdf_content_set_fill_rgb(PrismPdfContent *content, double r,
  * # Safety
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
-PrismPdfStatus prismpdf_content_set_stroke_rgb(PrismPdfContent *content, double r, double g, double b);
+PrismPdfStatus prismpdf_content_set_stroke_rgb(PrismPdfContent *content,
+                                               double r,
+                                               double g,
+                                               double b);
 
 /**
  * Set a `DeviceCMYK` fill colour (`k`, §8.6.4.4).
@@ -2606,10 +2625,10 @@ PrismPdfStatus prismpdf_content_set_stroke_rgb(PrismPdfContent *content, double 
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
 PrismPdfStatus prismpdf_content_set_fill_cmyk(PrismPdfContent *content,
-                                            double c,
-                                            double m,
-                                            double y,
-                                            double k);
+                                              double c,
+                                              double m,
+                                              double y,
+                                              double k);
 
 /**
  * Begin a new subpath at `(x, y)` (`m`, §8.5.2.1).
@@ -2634,12 +2653,12 @@ PrismPdfStatus prismpdf_content_line_to(PrismPdfContent *content, double x, doub
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
 PrismPdfStatus prismpdf_content_curve_to(PrismPdfContent *content,
-                                       double x1,
-                                       double y1,
-                                       double x2,
-                                       double y2,
-                                       double x3,
-                                       double y3);
+                                         double x1,
+                                         double y1,
+                                         double x2,
+                                         double y2,
+                                         double x3,
+                                         double y3);
 
 /**
  * Append a complete rectangular subpath (`re`, §8.5.2.1).
@@ -2647,7 +2666,11 @@ PrismPdfStatus prismpdf_content_curve_to(PrismPdfContent *content,
  * # Safety
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
-PrismPdfStatus prismpdf_content_rect(PrismPdfContent *content, double x, double y, double w, double h);
+PrismPdfStatus prismpdf_content_rect(PrismPdfContent *content,
+                                     double x,
+                                     double y,
+                                     double w,
+                                     double h);
 
 /**
  * Close the current subpath (`h`, §8.5.2.1).
@@ -2736,12 +2759,12 @@ PrismPdfStatus prismpdf_content_text_move(PrismPdfContent *content, double tx, d
  * `content` must be a live handle from [`prismpdf_content_new`].
  */
 PrismPdfStatus prismpdf_content_set_text_matrix(PrismPdfContent *content,
-                                              double a,
-                                              double b,
-                                              double c,
-                                              double d,
-                                              double e,
-                                              double f);
+                                                double a,
+                                                double b,
+                                                double c,
+                                                double d,
+                                                double e,
+                                                double f);
 
 /**
  * Move to the start of the next line, using the leading (`T*`, §9.4.2).
@@ -2785,8 +2808,8 @@ PrismPdfStatus prismpdf_content_set_fill_color_space(PrismPdfContent *content, c
  * `content` must be a live handle.
  */
 PrismPdfStatus prismpdf_content_set_fill_color(PrismPdfContent *content,
-                                             const double *components,
-                                             uintptr_t count);
+                                               const double *components,
+                                               uintptr_t count);
 
 /**
  * Draw a named XObject (`Do`, §8.8) — an image or form from the page's `/Resources /XObject`.
@@ -2805,12 +2828,12 @@ PrismPdfStatus prismpdf_content_do_xobject(PrismPdfContent *content, const char 
  * `data_len` readable bytes (or be null with `data_len` 0).
  */
 PrismPdfStatus prismpdf_content_inline_image(PrismPdfContent *content,
-                                           uint32_t width,
-                                           uint32_t height,
-                                           const char *cs,
-                                           uint32_t bits_per_component,
-                                           const uint8_t *data,
-                                           uintptr_t data_len);
+                                             uint32_t width,
+                                             uint32_t height,
+                                             const char *cs,
+                                             uint32_t bits_per_component,
+                                             const uint8_t *data,
+                                             uintptr_t data_len);
 
 /**
  * Select a font and size (`Tf`, §9.3.1). `name` must be a key in the page's
@@ -2829,8 +2852,8 @@ PrismPdfStatus prismpdf_content_set_font(PrismPdfContent *content, const char *n
  * `content` must be live and `bytes` must point to `len` readable bytes (or be null with `len` 0).
  */
 PrismPdfStatus prismpdf_content_show_text(PrismPdfContent *content,
-                                        const uint8_t *bytes,
-                                        uintptr_t len);
+                                          const uint8_t *bytes,
+                                          uintptr_t len);
 
 /**
  * Show UTF-8 text (`Tj`, §9.4.3), encoded for the current Standard-14 font.
@@ -2849,8 +2872,8 @@ PrismPdfStatus prismpdf_content_show_str(PrismPdfContent *content, const char *t
  * `count` 0).
  */
 PrismPdfStatus prismpdf_content_show_glyphs(PrismPdfContent *content,
-                                          const uint16_t *gids,
-                                          uintptr_t count);
+                                            const uint16_t *gids,
+                                            uintptr_t count);
 
 /**
  * Open a marked-content sequence tying this content to structure element `mcid`
@@ -2860,8 +2883,8 @@ PrismPdfStatus prismpdf_content_show_glyphs(PrismPdfContent *content,
  * `content` must be live and `tag` a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_content_begin_marked_content(PrismPdfContent *content,
-                                                   const char *tag,
-                                                   uint32_t mcid);
+                                                     const char *tag,
+                                                     uint32_t mcid);
 
 /**
  * Open a marked-content sequence associating this content with an embedded file
@@ -2872,7 +2895,7 @@ PrismPdfStatus prismpdf_content_begin_marked_content(PrismPdfContent *content,
  * `content` must be live and `property` a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_content_begin_af_marked_content(PrismPdfContent *content,
-                                                      const char *property);
+                                                        const char *property);
 
 /**
  * Create an empty raw structure element with `/S tag` (§14.7.4.2).
@@ -2946,9 +2969,9 @@ PrismPdfStatus prismpdf_struct_node_add_reference(PrismPdfStructNode *node, cons
  * All strings must be NUL-terminated UTF-8 and `node` live.
  */
 PrismPdfStatus prismpdf_struct_node_add_name_attribute(PrismPdfStructNode *node,
-                                                     const char *owner,
-                                                     const char *key,
-                                                     const char *value);
+                                                       const char *owner,
+                                                       const char *key,
+                                                       const char *value);
 
 /**
  * Add an integer-valued structure attribute (§14.7.6).
@@ -2957,9 +2980,9 @@ PrismPdfStatus prismpdf_struct_node_add_name_attribute(PrismPdfStructNode *node,
  * `owner` and `key` must be NUL-terminated UTF-8 and `node` live.
  */
 PrismPdfStatus prismpdf_struct_node_add_integer_attribute(PrismPdfStructNode *node,
-                                                        const char *owner,
-                                                        const char *key,
-                                                        int64_t value);
+                                                          const char *owner,
+                                                          const char *key,
+                                                          int64_t value);
 
 /**
  * Add a text-valued structure attribute (§14.7.6).
@@ -2968,9 +2991,9 @@ PrismPdfStatus prismpdf_struct_node_add_integer_attribute(PrismPdfStructNode *no
  * All strings must be NUL-terminated UTF-8 and `node` live.
  */
 PrismPdfStatus prismpdf_struct_node_add_text_attribute(PrismPdfStructNode *node,
-                                                     const char *owner,
-                                                     const char *key,
-                                                     const char *value);
+                                                       const char *owner,
+                                                       const char *key,
+                                                       const char *value);
 
 /**
  * Append a marked-content reference `(page_index, mcid)` (§14.7.4.3).
@@ -2979,8 +3002,8 @@ PrismPdfStatus prismpdf_struct_node_add_text_attribute(PrismPdfStructNode *node,
  * `node` must be live.
  */
 PrismPdfStatus prismpdf_struct_node_add_content(PrismPdfStructNode *node,
-                                              uintptr_t page_index,
-                                              uint32_t mcid);
+                                                uintptr_t page_index,
+                                                uint32_t mcid);
 
 /**
  * Append a form-widget `/OBJR` child by builder insertion index (§14.7.4.3).
@@ -2997,7 +3020,7 @@ PrismPdfStatus prismpdf_struct_node_add_widget(PrismPdfStructNode *node, uintptr
  * `node` must be live.
  */
 PrismPdfStatus prismpdf_struct_node_add_annotation(PrismPdfStructNode *node,
-                                                 uintptr_t annotation_index);
+                                                   uintptr_t annotation_index);
 
 /**
  * Transfer `child` into `parent` in reading order (§14.7.4.2).
@@ -3007,7 +3030,8 @@ PrismPdfStatus prismpdf_struct_node_add_annotation(PrismPdfStructNode *node,
  * # Safety
  * Both nodes must be distinct live handles.
  */
-PrismPdfStatus prismpdf_struct_node_add_child(PrismPdfStructNode *parent, PrismPdfStructNode *child);
+PrismPdfStatus prismpdf_struct_node_add_child(PrismPdfStructNode *parent,
+                                              PrismPdfStructNode *child);
 
 /**
  * Associate an embedded file with this structure element (`/AF`, §14.13.6, PDF 2.0).
@@ -3018,12 +3042,12 @@ PrismPdfStatus prismpdf_struct_node_add_child(PrismPdfStructNode *parent, PrismP
  * `description` must be UTF-8 or null; `data` readable for `data_len` bytes or null at zero.
  */
 PrismPdfStatus prismpdf_struct_node_associate_file(PrismPdfStructNode *node,
-                                                 const char *name,
-                                                 const char *mime,
-                                                 const char *relationship,
-                                                 const char *description,
-                                                 const uint8_t *data,
-                                                 uintptr_t data_len);
+                                                   const char *name,
+                                                   const char *mime,
+                                                   const char *relationship,
+                                                   const char *description,
+                                                   const uint8_t *data,
+                                                   uintptr_t data_len);
 
 /**
  * Create an empty document builder — US Letter pages, no metadata, no pages.
@@ -3042,6 +3066,23 @@ PrismPdfBuilder *prismpdf_builder_new(void);
 void prismpdf_builder_free(PrismPdfBuilder *builder);
 
 /**
+ * Register a whole sfnt font program (TrueType/OpenType) as a composite font (§9.7, §9.9) under
+ * `name` — the resource name a page references via [`prismpdf_page_spec_add_embedded_font`] and
+ * draws with [`prismpdf_content_show_glyphs`]. A hand-assembled page can show any glyph in the
+ * program, so unlike a `Flow` the whole program is embedded: every glyph's width in `/W` and every
+ * `cmap`-mapped character in `/ToUnicode`, so the text extracts back. A name already registered
+ * is kept. Returns [`PrismPdfStatus::Parse`] when `program` is not a parseable sfnt.
+ *
+ * # Safety
+ * `builder` must be live, `name` a NUL-terminated UTF-8 C string, and `program` must point to
+ * `len` readable bytes.
+ */
+PrismPdfStatus prismpdf_builder_embed_cid_font(PrismPdfBuilder *builder,
+                                               const char *name,
+                                               const uint8_t *program,
+                                               uintptr_t len);
+
+/**
  * Transfer one top-level raw structure element to the builder (§14.7).
  *
  * **Consumes on success.** A null-argument rejection leaves `node` caller-owned.
@@ -3049,7 +3090,8 @@ void prismpdf_builder_free(PrismPdfBuilder *builder);
  * # Safety
  * `builder` and `node` must be distinct live handles of their respective types.
  */
-PrismPdfStatus prismpdf_builder_add_structure_node(PrismPdfBuilder *builder, PrismPdfStructNode *node);
+PrismPdfStatus prismpdf_builder_add_structure_node(PrismPdfBuilder *builder,
+                                                   PrismPdfStructNode *node);
 
 /**
  * Set the PDF 2.0 namespace URI on the implicit `Document` structure root (§14.7.4).
@@ -3070,8 +3112,8 @@ PrismPdfStatus prismpdf_builder_set_structure_namespace(PrismPdfBuilder *builder
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_builder_build(const PrismPdfBuilder *builder,
-                                    uint8_t **out_data,
-                                    uintptr_t *out_len);
+                                      uint8_t **out_data,
+                                      uintptr_t *out_len);
 
 /**
  * Serialise declaring exactly the target version `(major, minor)` (§7.5.2), guaranteeing the
@@ -3084,10 +3126,10 @@ PrismPdfStatus prismpdf_builder_build(const PrismPdfBuilder *builder,
  * As [`prismpdf_builder_build`].
  */
 PrismPdfStatus prismpdf_builder_build_for(const PrismPdfBuilder *builder,
-                                        uint8_t major,
-                                        uint8_t minor,
-                                        uint8_t **out_data,
-                                        uintptr_t *out_len);
+                                          uint8_t major,
+                                          uint8_t minor,
+                                          uint8_t **out_data,
+                                          uintptr_t *out_len);
 
 /**
  * Set the default page box `[llx lly urx ury]` (`/MediaBox`, §7.7.3.3) for pages added after
@@ -3113,7 +3155,9 @@ PrismPdfStatus prismpdf_builder_set_version(PrismPdfBuilder *builder, uint8_t ma
  * # Safety
  * `builder` must be live; `key` and `value` NUL-terminated UTF-8 C strings.
  */
-PrismPdfStatus prismpdf_builder_set_info(PrismPdfBuilder *builder, const char *key, const char *value);
+PrismPdfStatus prismpdf_builder_set_info(PrismPdfBuilder *builder,
+                                         const char *key,
+                                         const char *value);
 
 /**
  * Drop every `/Info` entry set so far — PDF/A-4 and PDF 2.0 prefer XMP as the sole metadata
@@ -3131,8 +3175,8 @@ PrismPdfStatus prismpdf_builder_clear_info(PrismPdfBuilder *builder);
  * `builder` must be live and `xmp` must point to `len` readable bytes (or be null with `len` 0).
  */
 PrismPdfStatus prismpdf_builder_set_metadata_xmp(PrismPdfBuilder *builder,
-                                               const uint8_t *xmp,
-                                               uintptr_t len);
+                                                 const uint8_t *xmp,
+                                                 uintptr_t len);
 
 /**
  * Set the document's natural language (`/Lang`, §14.9.2) — required by PDF/UA.
@@ -3150,8 +3194,8 @@ PrismPdfStatus prismpdf_builder_set_lang(PrismPdfBuilder *builder, const char *c
  * `builder` must be live and `id` must point to `len` readable bytes (or be null with `len` 0).
  */
 PrismPdfStatus prismpdf_builder_set_file_id(PrismPdfBuilder *builder,
-                                          const uint8_t *id,
-                                          uintptr_t len);
+                                            const uint8_t *id,
+                                            uintptr_t len);
 
 /**
  * Write text strings as UTF-8 with a BOM (§7.9.2.2) rather than UTF-16BE — a PDF 2.0 form that
@@ -3183,11 +3227,11 @@ PrismPdfStatus prismpdf_builder_set_display_doc_title(PrismPdfBuilder *builder, 
  * readable [`PrismPdfStdFont`] values. `builder` must be a live handle.
  */
 PrismPdfStatus prismpdf_builder_add_page(PrismPdfBuilder *builder,
-                                       const uint8_t *content,
-                                       uintptr_t content_len,
-                                       const char *const *font_names,
-                                       const PrismPdfStdFont *fonts,
-                                       uintptr_t font_count);
+                                         const uint8_t *content,
+                                         uintptr_t content_len,
+                                         const char *const *font_names,
+                                         const PrismPdfStdFont *fonts,
+                                         uintptr_t font_count);
 
 /**
  * Transfer an assembled low-level page specification to the builder (§7.7.3.3).
@@ -3208,8 +3252,8 @@ PrismPdfStatus prismpdf_builder_add_page_spec(PrismPdfBuilder *builder, PrismPdf
  * `builder` must be live and `title` a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_builder_add_outline(PrismPdfBuilder *builder,
-                                          const char *title,
-                                          uintptr_t page_index);
+                                            const char *title,
+                                            uintptr_t page_index);
 
 /**
  * Embed a file (§7.11) and list it in the `/EmbeddedFiles` name tree (§7.7.4).
@@ -3223,12 +3267,12 @@ PrismPdfStatus prismpdf_builder_add_outline(PrismPdfBuilder *builder,
  * with `data_len` 0).
  */
 PrismPdfStatus prismpdf_builder_attach_file(PrismPdfBuilder *builder,
-                                          const char *name,
-                                          const char *mime,
-                                          const char *relationship,
-                                          const char *description,
-                                          const uint8_t *data,
-                                          uintptr_t data_len);
+                                            const char *name,
+                                            const char *mime,
+                                            const char *relationship,
+                                            const char *description,
+                                            const uint8_t *data,
+                                            uintptr_t data_len);
 
 /**
  * Add a hyperlink annotation (§12.5.6.5) over `rect` on page `page_index` pointing at an external
@@ -3239,10 +3283,10 @@ PrismPdfStatus prismpdf_builder_attach_file(PrismPdfBuilder *builder,
  * NUL-terminated UTF-8 C string, and `contents` such a string or null.
  */
 PrismPdfStatus prismpdf_builder_add_link_uri(PrismPdfBuilder *builder,
-                                           uintptr_t page_index,
-                                           const double *rect,
-                                           const char *uri,
-                                           const char *contents);
+                                             uintptr_t page_index,
+                                             const double *rect,
+                                             const char *uri,
+                                             const char *contents);
 
 /**
  * Add a hyperlink annotation jumping to another page in the same document (§12.3.2).
@@ -3251,10 +3295,10 @@ PrismPdfStatus prismpdf_builder_add_link_uri(PrismPdfBuilder *builder,
  * As [`prismpdf_builder_add_link_uri`], without the `uri` argument.
  */
 PrismPdfStatus prismpdf_builder_add_link_page(PrismPdfBuilder *builder,
-                                            uintptr_t page_index,
-                                            const double *rect,
-                                            uintptr_t target_page,
-                                            const char *contents);
+                                              uintptr_t page_index,
+                                              const double *rect,
+                                              uintptr_t target_page,
+                                              const char *contents);
 
 /**
  * Add a hyperlink annotation jumping to a **structure element** by its `/ID` (a structure
@@ -3264,10 +3308,10 @@ PrismPdfStatus prismpdf_builder_add_link_page(PrismPdfBuilder *builder,
  * As [`prismpdf_builder_add_link_uri`], with `element_id` in place of `uri`.
  */
 PrismPdfStatus prismpdf_builder_add_link_element(PrismPdfBuilder *builder,
-                                               uintptr_t page_index,
-                                               const double *rect,
-                                               const char *element_id,
-                                               const char *contents);
+                                                 uintptr_t page_index,
+                                                 const double *rect,
+                                                 const char *element_id,
+                                                 const char *contents);
 
 /**
  * Add a hyperlink annotation jumping to a document part (§14.12 — PDF 2.0).
@@ -3276,10 +3320,10 @@ PrismPdfStatus prismpdf_builder_add_link_element(PrismPdfBuilder *builder,
  * As [`prismpdf_builder_add_link_page`], with a part index in place of a page index.
  */
 PrismPdfStatus prismpdf_builder_add_link_document_part(PrismPdfBuilder *builder,
-                                                     uintptr_t page_index,
-                                                     const double *rect,
-                                                     uintptr_t part_index,
-                                                     const char *contents);
+                                                       uintptr_t page_index,
+                                                       const double *rect,
+                                                       uintptr_t part_index,
+                                                       const char *contents);
 
 /**
  * Add a text-note annotation (§12.5.6.4) anchored at `rect` carrying `contents` as its body. A
@@ -3290,9 +3334,9 @@ PrismPdfStatus prismpdf_builder_add_link_document_part(PrismPdfBuilder *builder,
  * NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_builder_add_note(PrismPdfBuilder *builder,
-                                       uintptr_t page_index,
-                                       const double *rect,
-                                       const char *contents);
+                                         uintptr_t page_index,
+                                         const double *rect,
+                                         const char *contents);
 
 /**
  * Add a checkbox form field (`/FT /Btn`, §12.7.4.2.3) as a widget on `page_index`. Its on-state is
@@ -3306,11 +3350,11 @@ PrismPdfStatus prismpdf_builder_add_note(PrismPdfBuilder *builder,
  * NUL-terminated UTF-8 C string, and `tooltip` such a string or null.
  */
 PrismPdfStatus prismpdf_builder_add_checkbox(PrismPdfBuilder *builder,
-                                           uintptr_t page_index,
-                                           const double *rect,
-                                           const char *name,
-                                           bool checked,
-                                           const char *tooltip);
+                                             uintptr_t page_index,
+                                             const double *rect,
+                                             const char *name,
+                                             bool checked,
+                                             const char *tooltip);
 
 /**
  * Set the document title (`/Title`, §14.3.3) — PDF/UA requires one.
@@ -3408,9 +3452,9 @@ PrismPdfStatus prismpdf_xmp_metadata_add_author(PrismPdfXmpMetadata *meta, const
  * `builder` and `meta` must be live handles; `out_issue` must be writable or null.
  */
 PrismPdfStatus prismpdf_builder_make_pdfa(PrismPdfBuilder *builder,
-                                        PrismPdfPdfAConformance conformance,
-                                        const PrismPdfXmpMetadata *meta,
-                                        PrismPdfConformanceIssue *out_issue);
+                                          PrismPdfPdfAConformance conformance,
+                                          const PrismPdfXmpMetadata *meta,
+                                          PrismPdfConformanceIssue *out_issue);
 
 /**
  * As [`prismpdf_builder_make_pdfa`], but with a caller-chosen ICC output intent (§14.11.5) instead
@@ -3424,13 +3468,13 @@ PrismPdfStatus prismpdf_builder_make_pdfa(PrismPdfBuilder *builder,
  * `identifier` must be a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_builder_make_pdfa_with_output_intent(PrismPdfBuilder *builder,
-                                                           PrismPdfPdfAConformance conformance,
-                                                           const PrismPdfXmpMetadata *meta,
-                                                           const uint8_t *icc,
-                                                           uintptr_t icc_len,
-                                                           uint32_t n,
-                                                           const char *identifier,
-                                                           PrismPdfConformanceIssue *out_issue);
+                                                             PrismPdfPdfAConformance conformance,
+                                                             const PrismPdfXmpMetadata *meta,
+                                                             const uint8_t *icc,
+                                                             uintptr_t icc_len,
+                                                             uint32_t n,
+                                                             const char *identifier,
+                                                             PrismPdfConformanceIssue *out_issue);
 
 /**
  * Finalise `builder` as an accessible **PDF/UA-1** file (ISO 14289-1) in the natural language
@@ -3441,9 +3485,9 @@ PrismPdfStatus prismpdf_builder_make_pdfa_with_output_intent(PrismPdfBuilder *bu
  * `out_issue` writable or null.
  */
 PrismPdfStatus prismpdf_builder_make_pdfua(PrismPdfBuilder *builder,
-                                         const PrismPdfXmpMetadata *meta,
-                                         const char *lang,
-                                         PrismPdfConformanceIssue *out_issue);
+                                           const PrismPdfXmpMetadata *meta,
+                                           const char *lang,
+                                           PrismPdfConformanceIssue *out_issue);
 
 /**
  * Finalise `builder` as an accessible **PDF/UA-2** file (ISO 14289-2:2024, on PDF 2.0): the root
@@ -3456,9 +3500,9 @@ PrismPdfStatus prismpdf_builder_make_pdfua(PrismPdfBuilder *builder,
  * As [`prismpdf_builder_make_pdfua`].
  */
 PrismPdfStatus prismpdf_builder_make_pdfua2(PrismPdfBuilder *builder,
-                                          const PrismPdfXmpMetadata *meta,
-                                          const char *lang,
-                                          PrismPdfConformanceIssue *out_issue);
+                                            const PrismPdfXmpMetadata *meta,
+                                            const char *lang,
+                                            PrismPdfConformanceIssue *out_issue);
 
 /**
  * Set the document's OutputIntent (§14.11.5) directly, without running a conformance pass: the
@@ -3469,10 +3513,10 @@ PrismPdfStatus prismpdf_builder_make_pdfua2(PrismPdfBuilder *builder,
  * a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_builder_set_output_intent(PrismPdfBuilder *builder,
-                                                const uint8_t *icc,
-                                                uintptr_t icc_len,
-                                                uint32_t n,
-                                                const char *identifier);
+                                                  const uint8_t *icc,
+                                                  uintptr_t icc_len,
+                                                  uint32_t n,
+                                                  const char *identifier);
 
 /**
  * Set `dc:title`.
@@ -3541,7 +3585,8 @@ PrismPdfOpenOptions *prismpdf_open_options_new(void);
  * # Safety
  * `options` must be a live options handle.
  */
-PrismPdfStatus prismpdf_open_options_set_max_depth(PrismPdfOpenOptions *options, uintptr_t max_depth);
+PrismPdfStatus prismpdf_open_options_set_max_depth(PrismPdfOpenOptions *options,
+                                                   uintptr_t max_depth);
 
 /**
  * Set the maximum number of objects declared by one object stream (§7.5.7).
@@ -3550,7 +3595,7 @@ PrismPdfStatus prismpdf_open_options_set_max_depth(PrismPdfOpenOptions *options,
  * `options` must be a live options handle.
  */
 PrismPdfStatus prismpdf_open_options_set_max_objstm_objects(PrismPdfOpenOptions *options,
-                                                          uintptr_t max_objects);
+                                                            uintptr_t max_objects);
 
 /**
  * Set the maximum number of objects in the document (§7.5).
@@ -3559,7 +3604,7 @@ PrismPdfStatus prismpdf_open_options_set_max_objstm_objects(PrismPdfOpenOptions 
  * `options` must be a live options handle.
  */
 PrismPdfStatus prismpdf_open_options_set_max_objects(PrismPdfOpenOptions *options,
-                                                   uintptr_t max_objects);
+                                                     uintptr_t max_objects);
 
 /**
  * Copy a password tried as both user and owner password. Null with length zero clears it.
@@ -3568,8 +3613,8 @@ PrismPdfStatus prismpdf_open_options_set_max_objects(PrismPdfOpenOptions *option
  * `options` must be live; `password` must be readable for `password_len` bytes or null when zero.
  */
 PrismPdfStatus prismpdf_open_options_set_password(PrismPdfOpenOptions *options,
-                                                const uint8_t *password,
-                                                uintptr_t password_len);
+                                                  const uint8_t *password,
+                                                  uintptr_t password_len);
 
 /**
  * Open using a reusable options snapshot. The input and options are copied for the new document.
@@ -3578,9 +3623,9 @@ PrismPdfStatus prismpdf_open_options_set_password(PrismPdfOpenOptions *options,
  * `data` must be readable for `len` bytes, `options` live, and `out_doc` writable.
  */
 PrismPdfStatus prismpdf_document_open_with_options(const uint8_t *data,
-                                                 uintptr_t len,
-                                                 const PrismPdfOpenOptions *options,
-                                                 PrismPdfDocument **out_doc);
+                                                   uintptr_t len,
+                                                   const PrismPdfOpenOptions *options,
+                                                   PrismPdfDocument **out_doc);
 
 /**
  * Release reusable open options. Null is ignored.
@@ -3603,9 +3648,9 @@ void prismpdf_open_options_free(PrismPdfOpenOptions *options);
  * handle with [`prismpdf_document_free`].
  */
 PrismPdfStatus prismpdf_document_open_with_limits(const uint8_t *data,
-                                                uintptr_t len,
-                                                const PrismPdfLimits *limits,
-                                                PrismPdfDocument **out_doc);
+                                                  uintptr_t len,
+                                                  const PrismPdfLimits *limits,
+                                                  PrismPdfDocument **out_doc);
 
 /**
  * Open a document encrypted to a certificate (§7.6.5) using the matching private key, both
@@ -3617,12 +3662,12 @@ PrismPdfStatus prismpdf_document_open_with_limits(const uint8_t *data,
  * `out_doc` must be writable. Release the handle with [`prismpdf_document_free`].
  */
 PrismPdfStatus prismpdf_document_open_with_private_key(const uint8_t *data,
-                                                     uintptr_t len,
-                                                     const uint8_t *cert_der,
-                                                     uintptr_t cert_len,
-                                                     const uint8_t *key_der,
-                                                     uintptr_t key_len,
-                                                     PrismPdfDocument **out_doc);
+                                                       uintptr_t len,
+                                                       const uint8_t *cert_der,
+                                                       uintptr_t cert_len,
+                                                       const uint8_t *key_der,
+                                                       uintptr_t key_len,
+                                                       PrismPdfDocument **out_doc);
 
 /**
  * The **minimum** PDF version the document's constructs actually require (§7.5.2), which can be
@@ -3633,8 +3678,8 @@ PrismPdfStatus prismpdf_document_open_with_private_key(const uint8_t *data,
  * `doc` must be live; `out_major`/`out_minor` must be writable.
  */
 PrismPdfStatus prismpdf_document_min_version(const PrismPdfDocument *doc,
-                                           uint8_t *out_major,
-                                           uint8_t *out_minor);
+                                             uint8_t *out_major,
+                                             uint8_t *out_minor);
 
 /**
  * Full rewrite declaring exactly version `(major, minor)` (§7.5.2), refusing constructs above the
@@ -3646,10 +3691,10 @@ PrismPdfStatus prismpdf_document_min_version(const PrismPdfDocument *doc,
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_save_as(const PrismPdfDocument *doc,
-                                       uint8_t major,
-                                       uint8_t minor,
-                                       uint8_t **out_data,
-                                       uintptr_t *out_len);
+                                         uint8_t major,
+                                         uint8_t minor,
+                                         uint8_t **out_data,
+                                         uintptr_t *out_len);
 
 /**
  * Version-targeted full rewrite returning explicit preservation effects.
@@ -3658,9 +3703,9 @@ PrismPdfStatus prismpdf_document_save_as(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_save_as_report(const PrismPdfDocument *doc,
-                                              uint8_t major,
-                                              uint8_t minor,
-                                              PrismPdfTransformReport **out_report);
+                                                uint8_t major,
+                                                uint8_t minor,
+                                                PrismPdfTransformReport **out_report);
 
 /**
  * Full rewrite packing objects into **object streams** (§7.5.7) as well as using a cross-reference
@@ -3671,8 +3716,8 @@ PrismPdfStatus prismpdf_document_save_as_report(const PrismPdfDocument *doc,
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_document_save_packed(const PrismPdfDocument *doc,
-                                           uint8_t **out_data,
-                                           uintptr_t *out_len);
+                                             uint8_t **out_data,
+                                             uintptr_t *out_len);
 
 /**
  * Object-stream full rewrite returning explicit preservation effects.
@@ -3681,7 +3726,7 @@ PrismPdfStatus prismpdf_document_save_packed(const PrismPdfDocument *doc,
  * `doc` must be live and `out_report` writable.
  */
 PrismPdfStatus prismpdf_document_save_packed_report(const PrismPdfDocument *doc,
-                                                  PrismPdfTransformReport **out_report);
+                                                    PrismPdfTransformReport **out_report);
 
 /**
  * Number of strings in `list`.
@@ -3701,8 +3746,8 @@ PrismPdfStatus prismpdf_string_list_len(const PrismPdfStringList *list, uintptr_
  * `list` must be live and `out_text` writable. Release the string with [`prismpdf_string_free`].
  */
 PrismPdfStatus prismpdf_string_list_get(const PrismPdfStringList *list,
-                                      uintptr_t index,
-                                      char **out_text);
+                                        uintptr_t index,
+                                        char **out_text);
 
 /**
  * Release a string list. Freeing `NULL` is a no-op.
@@ -3719,7 +3764,7 @@ void prismpdf_string_list_free(PrismPdfStringList *list);
  * `doc` must be live and `out_list` writable. Release it with [`prismpdf_string_list_free`].
  */
 PrismPdfStatus prismpdf_document_structure_namespaces(const PrismPdfDocument *doc,
-                                                    PrismPdfStringList **out_list);
+                                                      PrismPdfStringList **out_list);
 
 /**
  * The `/VRI` keys in the document's DSS (§12.8.4.3) — one per signature carrying long-term
@@ -3729,7 +3774,7 @@ PrismPdfStatus prismpdf_document_structure_namespaces(const PrismPdfDocument *do
  * `doc` must be live and `out_list` writable. Release it with [`prismpdf_string_list_free`].
  */
 PrismPdfStatus prismpdf_document_signature_vri_keys(const PrismPdfDocument *doc,
-                                                  PrismPdfStringList **out_list);
+                                                    PrismPdfStringList **out_list);
 
 /**
  * Create a text style. `font_resource` is the name in the page's `/Resources /Font`;
@@ -3740,10 +3785,10 @@ PrismPdfStatus prismpdf_document_signature_vri_keys(const PrismPdfDocument *doc,
  * [`prismpdf_text_block_free`]. Returns null on a null or non-UTF-8 argument.
  */
 PrismPdfTextBlock *prismpdf_text_block_new(const char *font_resource,
-                                         const char *base_font,
-                                         double size,
-                                         double leading,
-                                         PrismPdfAlign align);
+                                           const char *base_font,
+                                           double size,
+                                           double leading,
+                                           PrismPdfAlign align);
 
 /**
  * Release a text style. Freeing `NULL` is a no-op.
@@ -3760,8 +3805,8 @@ void prismpdf_text_block_free(PrismPdfTextBlock *block);
  * `block` must be live, `text` a NUL-terminated UTF-8 C string, `out_width` writable.
  */
 PrismPdfStatus prismpdf_measure_text(const PrismPdfTextBlock *block,
-                                   const char *text,
-                                   double *out_width);
+                                     const char *text,
+                                     double *out_width);
 
 /**
  * Wrap `text` to `width` points, returning one string per line.
@@ -3771,9 +3816,9 @@ PrismPdfStatus prismpdf_measure_text(const PrismPdfTextBlock *block,
  * list with [`prismpdf_string_list_free`].
  */
 PrismPdfStatus prismpdf_wrap_text(const PrismPdfTextBlock *block,
-                                const char *text,
-                                double width,
-                                PrismPdfStringList **out_list);
+                                  const char *text,
+                                  double width,
+                                  PrismPdfStringList **out_list);
 
 /**
  * Wrap a complete JPEG file, embedded verbatim as `DCTDecode` (§7.4.8). Returns null if the data
@@ -3794,9 +3839,9 @@ PrismPdfImageSource *prismpdf_image_source_from_jpeg(const uint8_t *data, uintpt
  * [`prismpdf_image_source_free`].
  */
 PrismPdfImageSource *prismpdf_image_source_from_rgb(uint32_t width,
-                                                  uint32_t height,
-                                                  const uint8_t *data,
-                                                  uintptr_t len);
+                                                    uint32_t height,
+                                                    const uint8_t *data,
+                                                    uintptr_t len);
 
 /**
  * Wrap raw 8-bit grayscale samples (`width * height` bytes). Returns null on a length mismatch.
@@ -3805,9 +3850,9 @@ PrismPdfImageSource *prismpdf_image_source_from_rgb(uint32_t width,
  * As [`prismpdf_image_source_from_rgb`].
  */
 PrismPdfImageSource *prismpdf_image_source_from_gray(uint32_t width,
-                                                   uint32_t height,
-                                                   const uint8_t *data,
-                                                   uintptr_t len);
+                                                     uint32_t height,
+                                                     const uint8_t *data,
+                                                     uintptr_t len);
 
 /**
  * Wrap raw 8-bit RGBA samples (`width * height * 4` bytes): the alpha channel becomes a
@@ -3818,9 +3863,9 @@ PrismPdfImageSource *prismpdf_image_source_from_gray(uint32_t width,
  * As [`prismpdf_image_source_from_rgb`].
  */
 PrismPdfImageSource *prismpdf_image_source_from_rgba(uint32_t width,
-                                                   uint32_t height,
-                                                   const uint8_t *data,
-                                                   uintptr_t len);
+                                                     uint32_t height,
+                                                     const uint8_t *data,
+                                                     uintptr_t len);
 
 /**
  * The image's pixel dimensions.
@@ -3829,8 +3874,8 @@ PrismPdfImageSource *prismpdf_image_source_from_rgba(uint32_t width,
  * `image` must be live; both out-params writable.
  */
 PrismPdfStatus prismpdf_image_source_size(const PrismPdfImageSource *image,
-                                        uint32_t *out_width,
-                                        uint32_t *out_height);
+                                          uint32_t *out_width,
+                                          uint32_t *out_height);
 
 /**
  * Release a placeable image. Freeing `NULL` is a no-op.
@@ -3864,8 +3909,8 @@ void prismpdf_table_free(PrismPdfTable *table);
  * `table` must be live; both names NUL-terminated UTF-8 C strings.
  */
 PrismPdfStatus prismpdf_table_set_font(PrismPdfTable *table,
-                                     const char *resource,
-                                     const char *base_font);
+                                       const char *resource,
+                                       const char *base_font);
 
 /**
  * Append a row of `count` cells, in column order. Call after
@@ -3874,7 +3919,9 @@ PrismPdfStatus prismpdf_table_set_font(PrismPdfTable *table,
  * # Safety
  * `table` must be live and `cells` must point to `count` non-null NUL-terminated UTF-8 C strings.
  */
-PrismPdfStatus prismpdf_table_add_row(PrismPdfTable *table, const char *const *cells, uintptr_t count);
+PrismPdfStatus prismpdf_table_add_row(PrismPdfTable *table,
+                                      const char *const *cells,
+                                      uintptr_t count);
 
 /**
  * Font size in points.
@@ -3937,10 +3984,10 @@ PrismPdfStatus prismpdf_table_set_align(PrismPdfTable *table, PrismPdfAlign alig
  * on a null or non-UTF-8 argument.
  */
 PrismPdfFlow *prismpdf_flow_new(const double *size,
-                              const double *margins,
-                              const char *const *font_names,
-                              const PrismPdfStdFont *fonts,
-                              uintptr_t font_count);
+                                const double *margins,
+                                const char *const *font_names,
+                                const PrismPdfStdFont *fonts,
+                                uintptr_t font_count);
 
 /**
  * Release a flow **without** building it. Freeing `NULL` is a no-op.
@@ -4004,9 +4051,9 @@ PrismPdfStatus prismpdf_flow_set_tagged(PrismPdfFlow *flow, const char *lang);
  * `len` readable bytes.
  */
 PrismPdfStatus prismpdf_flow_embed_font(PrismPdfFlow *flow,
-                                      const char *resource,
-                                      const uint8_t *program,
-                                      uintptr_t len);
+                                        const char *resource,
+                                        const uint8_t *program,
+                                        uintptr_t len);
 
 /**
  * Add an `/Info` entry (§14.3.3).
@@ -4030,7 +4077,9 @@ PrismPdfStatus prismpdf_flow_add_bookmark(PrismPdfFlow *flow, const char *title)
  * # Safety
  * `flow` and `block` must be live handles and `text` a NUL-terminated UTF-8 C string.
  */
-PrismPdfStatus prismpdf_flow_text(PrismPdfFlow *flow, const PrismPdfTextBlock *block, const char *text);
+PrismPdfStatus prismpdf_flow_text(PrismPdfFlow *flow,
+                                  const PrismPdfTextBlock *block,
+                                  const char *text);
 
 /**
  * Pour a heading at `level` (1–6), tagged `H1`…`H6` when the flow is tagged.
@@ -4039,9 +4088,9 @@ PrismPdfStatus prismpdf_flow_text(PrismPdfFlow *flow, const PrismPdfTextBlock *b
  * As [`prismpdf_flow_text`].
  */
 PrismPdfStatus prismpdf_flow_heading(PrismPdfFlow *flow,
-                                   uint8_t level,
-                                   const PrismPdfTextBlock *block,
-                                   const char *text);
+                                     uint8_t level,
+                                     const PrismPdfTextBlock *block,
+                                     const char *text);
 
 /**
  * Pour a bulleted or numbered list of `count` items.
@@ -4051,10 +4100,10 @@ PrismPdfStatus prismpdf_flow_heading(PrismPdfFlow *flow,
  * UTF-8 C strings.
  */
 PrismPdfStatus prismpdf_flow_list(PrismPdfFlow *flow,
-                                const PrismPdfTextBlock *block,
-                                const char *const *items,
-                                uintptr_t count,
-                                PrismPdfListStyle style);
+                                  const PrismPdfTextBlock *block,
+                                  const char *const *items,
+                                  uintptr_t count,
+                                  PrismPdfListStyle style);
 
 /**
  * Place a table, breaking across pages and repeating the header row where one is set.
@@ -4071,9 +4120,9 @@ PrismPdfStatus prismpdf_flow_table(PrismPdfFlow *flow, const PrismPdfTable *tabl
  * `flow` and `image` must be live handles.
  */
 PrismPdfStatus prismpdf_flow_image(PrismPdfFlow *flow,
-                                 const PrismPdfImageSource *image,
-                                 double width,
-                                 double height);
+                                   const PrismPdfImageSource *image,
+                                   double width,
+                                   double height);
 
 /**
  * Place an image scaled to fit `max_width` points, preserving aspect ratio.
@@ -4082,8 +4131,8 @@ PrismPdfStatus prismpdf_flow_image(PrismPdfFlow *flow,
  * As [`prismpdf_flow_image`].
  */
 PrismPdfStatus prismpdf_flow_image_fit(PrismPdfFlow *flow,
-                                     const PrismPdfImageSource *image,
-                                     double max_width);
+                                       const PrismPdfImageSource *image,
+                                       double max_width);
 
 /**
  * Place an image as a **tagged `Figure`** carrying `alt` text — what PDF/UA requires (§7.3), and
@@ -4093,10 +4142,10 @@ PrismPdfStatus prismpdf_flow_image_fit(PrismPdfFlow *flow,
  * `flow` and `image` must be live and `alt` a NUL-terminated UTF-8 C string.
  */
 PrismPdfStatus prismpdf_flow_figure(PrismPdfFlow *flow,
-                                  const PrismPdfImageSource *image,
-                                  double width,
-                                  double height,
-                                  const char *alt);
+                                    const PrismPdfImageSource *image,
+                                    double width,
+                                    double height,
+                                    const char *alt);
 
 /**
  * A tagged `Figure` scaled to fit `max_width`, carrying `alt` text.
@@ -4105,9 +4154,9 @@ PrismPdfStatus prismpdf_flow_figure(PrismPdfFlow *flow,
  * As [`prismpdf_flow_figure`].
  */
 PrismPdfStatus prismpdf_flow_figure_fit(PrismPdfFlow *flow,
-                                      const PrismPdfImageSource *image,
-                                      double max_width,
-                                      const char *alt);
+                                        const PrismPdfImageSource *image,
+                                        double max_width,
+                                        const char *alt);
 
 /**
  * A tagged `Figure` with a `Caption` beneath it, kept together on one page.
@@ -4116,12 +4165,12 @@ PrismPdfStatus prismpdf_flow_figure_fit(PrismPdfFlow *flow,
  * `flow`, `image` and `block` must be live; `alt` and `caption` NUL-terminated UTF-8 C strings.
  */
 PrismPdfStatus prismpdf_flow_figure_with_caption(PrismPdfFlow *flow,
-                                               const PrismPdfImageSource *image,
-                                               double width,
-                                               double height,
-                                               const char *alt,
-                                               const PrismPdfTextBlock *block,
-                                               const char *caption);
+                                                 const PrismPdfImageSource *image,
+                                                 double width,
+                                                 double height,
+                                                 const char *alt,
+                                                 const PrismPdfTextBlock *block,
+                                                 const char *caption);
 
 /**
  * A footnote tagged `Note` with the given `id` (PDF/UA-1). PDF/UA-2 forbids `Note` — use
@@ -4131,9 +4180,9 @@ PrismPdfStatus prismpdf_flow_figure_with_caption(PrismPdfFlow *flow,
  * `flow` and `block` must be live; `text` and `id` NUL-terminated UTF-8 C strings.
  */
 PrismPdfStatus prismpdf_flow_note(PrismPdfFlow *flow,
-                                const PrismPdfTextBlock *block,
-                                const char *text,
-                                const char *id);
+                                  const PrismPdfTextBlock *block,
+                                  const char *text,
+                                  const char *id);
 
 /**
  * A footnote tagged `FENote` (ISO 14289-2 §8.2.5.14) with `citation_count` citation references —
@@ -4144,11 +4193,11 @@ PrismPdfStatus prismpdf_flow_note(PrismPdfFlow *flow,
  * must point to `citation_count` non-null C strings.
  */
 PrismPdfStatus prismpdf_flow_fenote(PrismPdfFlow *flow,
-                                  const PrismPdfTextBlock *block,
-                                  const char *text,
-                                  const char *id,
-                                  const char *const *citations,
-                                  uintptr_t citation_count);
+                                    const PrismPdfTextBlock *block,
+                                    const char *text,
+                                    const char *id,
+                                    const char *const *citations,
+                                    uintptr_t citation_count);
 
 /**
  * The document title as a tagged `Title` element.
@@ -4157,8 +4206,8 @@ PrismPdfStatus prismpdf_flow_fenote(PrismPdfFlow *flow,
  * As [`prismpdf_flow_text`].
  */
 PrismPdfStatus prismpdf_flow_title_element(PrismPdfFlow *flow,
-                                         const PrismPdfTextBlock *block,
-                                         const char *text);
+                                           const PrismPdfTextBlock *block,
+                                           const char *text);
 
 /**
  * A formula tagged `Formula` with `actual_text` as its `/ActualText` — how a mathematical
@@ -4168,9 +4217,9 @@ PrismPdfStatus prismpdf_flow_title_element(PrismPdfFlow *flow,
  * `flow` and `block` must be live; `text` and `actual_text` NUL-terminated UTF-8 C strings.
  */
 PrismPdfStatus prismpdf_flow_formula(PrismPdfFlow *flow,
-                                   const PrismPdfTextBlock *block,
-                                   const char *text,
-                                   const char *actual_text);
+                                     const PrismPdfTextBlock *block,
+                                     const char *text,
+                                     const char *actual_text);
 
 /**
  * A running header drawn at the top of every page, as an artifact.
@@ -4179,8 +4228,8 @@ PrismPdfStatus prismpdf_flow_formula(PrismPdfFlow *flow,
  * As [`prismpdf_flow_text`].
  */
 PrismPdfStatus prismpdf_flow_set_header(PrismPdfFlow *flow,
-                                      const PrismPdfTextBlock *block,
-                                      const char *text);
+                                        const PrismPdfTextBlock *block,
+                                        const char *text);
 
 /**
  * A running footer drawn at the bottom of every page, as an artifact.
@@ -4189,8 +4238,8 @@ PrismPdfStatus prismpdf_flow_set_header(PrismPdfFlow *flow,
  * As [`prismpdf_flow_text`].
  */
 PrismPdfStatus prismpdf_flow_set_footer(PrismPdfFlow *flow,
-                                      const PrismPdfTextBlock *block,
-                                      const char *text);
+                                        const PrismPdfTextBlock *block,
+                                        const char *text);
 
 /**
  * Advance the cursor by `dy` points without drawing.
@@ -4270,8 +4319,8 @@ void prismpdf_composition_container_free(PrismPdfCompositionContainer *container
  * [`prismpdf_composition_container_free`].
  */
 PrismPdfStatus prismpdf_composition_add_page(PrismPdfComposition *composition,
-                                           const PrismPdfCompositionPageStyle *style,
-                                           PrismPdfCompositionContainer **out_content);
+                                             const PrismPdfCompositionPageStyle *style,
+                                             PrismPdfCompositionContainer **out_content);
 
 /**
  * Add a header tree repeated on every physical page produced by a page design.
@@ -4282,8 +4331,8 @@ PrismPdfStatus prismpdf_composition_add_page(PrismPdfComposition *composition,
  * `composition` must be live and `out_header` writable.
  */
 PrismPdfStatus prismpdf_composition_page_set_header(PrismPdfComposition *composition,
-                                                  uintptr_t page_index,
-                                                  PrismPdfCompositionContainer **out_header);
+                                                    uintptr_t page_index,
+                                                    PrismPdfCompositionContainer **out_header);
 
 /**
  * Add a footer tree repeated on every physical page produced by a page design.
@@ -4294,8 +4343,8 @@ PrismPdfStatus prismpdf_composition_page_set_header(PrismPdfComposition *composi
  * `composition` must be live and `out_footer` writable.
  */
 PrismPdfStatus prismpdf_composition_page_set_footer(PrismPdfComposition *composition,
-                                                  uintptr_t page_index,
-                                                  PrismPdfCompositionContainer **out_footer);
+                                                    uintptr_t page_index,
+                                                    PrismPdfCompositionContainer **out_footer);
 
 /**
  * Enable tagged-PDF output and set the document language (for example `en-US`).
@@ -4304,7 +4353,7 @@ PrismPdfStatus prismpdf_composition_page_set_footer(PrismPdfComposition *composi
  * `composition` must be live and `lang` a valid NUL-terminated UTF-8 string.
  */
 PrismPdfStatus prismpdf_composition_set_tagged_language(PrismPdfComposition *composition,
-                                                      const char *lang);
+                                                        const char *lang);
 
 /**
  * Fill an empty slot with a column and return a handle used to append child slots.
@@ -4313,8 +4362,8 @@ PrismPdfStatus prismpdf_composition_set_tagged_language(PrismPdfComposition *com
  * `container` and `out_column` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_column(PrismPdfCompositionContainer *container,
-                                                       double spacing,
-                                                       PrismPdfCompositionContainer **out_column);
+                                                         double spacing,
+                                                         PrismPdfCompositionContainer **out_column);
 
 /**
  * Append an empty child slot to a column.
@@ -4323,7 +4372,7 @@ PrismPdfStatus prismpdf_composition_container_set_column(PrismPdfCompositionCont
  * `column` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_column_add_item(PrismPdfCompositionContainer *column,
-                                                  PrismPdfCompositionContainer **out_child);
+                                                    PrismPdfCompositionContainer **out_child);
 
 /**
  * Fill an empty slot with a row and return a handle used to append child slots.
@@ -4332,7 +4381,7 @@ PrismPdfStatus prismpdf_composition_column_add_item(PrismPdfCompositionContainer
  * `container` and `out_row` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_row(PrismPdfCompositionContainer *container,
-                                                    PrismPdfCompositionContainer **out_row);
+                                                      PrismPdfCompositionContainer **out_row);
 
 /**
  * Append an exact-width child to a row.
@@ -4341,8 +4390,8 @@ PrismPdfStatus prismpdf_composition_container_set_row(PrismPdfCompositionContain
  * `row` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_row_add_fixed(PrismPdfCompositionContainer *row,
-                                                double width,
-                                                PrismPdfCompositionContainer **out_child);
+                                                  double width,
+                                                  PrismPdfCompositionContainer **out_child);
 
 /**
  * Append a child receiving a weighted share of remaining row width.
@@ -4351,8 +4400,8 @@ PrismPdfStatus prismpdf_composition_row_add_fixed(PrismPdfCompositionContainer *
  * `row` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_row_add_relative(PrismPdfCompositionContainer *row,
-                                                   double factor,
-                                                   PrismPdfCompositionContainer **out_child);
+                                                     double factor,
+                                                     PrismPdfCompositionContainer **out_child);
 
 /**
  * Append a naturally sized child to a row.
@@ -4361,7 +4410,7 @@ PrismPdfStatus prismpdf_composition_row_add_relative(PrismPdfCompositionContaine
  * `row` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_row_add_auto(PrismPdfCompositionContainer *row,
-                                               PrismPdfCompositionContainer **out_child);
+                                                 PrismPdfCompositionContainer **out_child);
 
 /**
  * Fill an empty slot with a paginating table and return its editor handle.
@@ -4370,7 +4419,7 @@ PrismPdfStatus prismpdf_composition_row_add_auto(PrismPdfCompositionContainer *r
  * `container` and `out_table` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_table(PrismPdfCompositionContainer *container,
-                                                      PrismPdfCompositionContainer **out_table);
+                                                        PrismPdfCompositionContainer **out_table);
 
 /**
  * Add an exact-width table column.
@@ -4379,7 +4428,7 @@ PrismPdfStatus prismpdf_composition_container_set_table(PrismPdfCompositionConta
  * `table` must be a live table editor handle.
  */
 PrismPdfStatus prismpdf_composition_table_add_fixed_column(PrismPdfCompositionContainer *table,
-                                                         double width);
+                                                           double width);
 
 /**
  * Add a table column receiving a weighted share of remaining width.
@@ -4388,7 +4437,7 @@ PrismPdfStatus prismpdf_composition_table_add_fixed_column(PrismPdfCompositionCo
  * `table` must be a live table editor handle.
  */
 PrismPdfStatus prismpdf_composition_table_add_relative_column(PrismPdfCompositionContainer *table,
-                                                            double factor);
+                                                              double factor);
 
 /**
  * Add a naturally sized table column.
@@ -4405,7 +4454,7 @@ PrismPdfStatus prismpdf_composition_table_add_auto_column(PrismPdfCompositionCon
  * `table` and `out_row` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_table_set_header(PrismPdfCompositionContainer *table,
-                                                   PrismPdfCompositionContainer **out_row);
+                                                     PrismPdfCompositionContainer **out_row);
 
 /**
  * Append a table body row.
@@ -4414,7 +4463,7 @@ PrismPdfStatus prismpdf_composition_table_set_header(PrismPdfCompositionContaine
  * `table` and `out_row` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_table_add_row(PrismPdfCompositionContainer *table,
-                                                PrismPdfCompositionContainer **out_row);
+                                                  PrismPdfCompositionContainer **out_row);
 
 /**
  * Append an empty cell to a table row.
@@ -4423,7 +4472,7 @@ PrismPdfStatus prismpdf_composition_table_add_row(PrismPdfCompositionContainer *
  * `row` and `out_cell` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_table_row_add_cell(PrismPdfCompositionContainer *row,
-                                                     PrismPdfCompositionContainer **out_cell);
+                                                       PrismPdfCompositionContainer **out_cell);
 
 /**
  * Wrap a child in a simple logical-structure role (§14.7–§14.8).
@@ -4432,8 +4481,8 @@ PrismPdfStatus prismpdf_composition_table_row_add_cell(PrismPdfCompositionContai
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_semantic(PrismPdfCompositionContainer *container,
-                                                         PrismPdfCompositionSemantic semantic,
-                                                         PrismPdfCompositionContainer **out_child);
+                                                           PrismPdfCompositionSemantic semantic,
+                                                           PrismPdfCompositionContainer **out_child);
 
 /**
  * Wrap a child in a heading role; `level` must be 1–6.
@@ -4442,8 +4491,8 @@ PrismPdfStatus prismpdf_composition_container_set_semantic(PrismPdfCompositionCo
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_heading(PrismPdfCompositionContainer *container,
-                                                        uint8_t level,
-                                                        PrismPdfCompositionContainer **out_child);
+                                                          uint8_t level,
+                                                          PrismPdfCompositionContainer **out_child);
 
 /**
  * Wrap a child in an accessible URI-link role.
@@ -4452,9 +4501,9 @@ PrismPdfStatus prismpdf_composition_container_set_heading(PrismPdfCompositionCon
  * Pointers must be live/writable and strings valid NUL-terminated UTF-8.
  */
 PrismPdfStatus prismpdf_composition_container_set_link(PrismPdfCompositionContainer *container,
-                                                     const char *uri,
-                                                     const char *description,
-                                                     PrismPdfCompositionContainer **out_child);
+                                                       const char *uri,
+                                                       const char *description,
+                                                       PrismPdfCompositionContainer **out_child);
 
 /**
  * Wrap a child in a figure role carrying alternate text.
@@ -4463,8 +4512,8 @@ PrismPdfStatus prismpdf_composition_container_set_link(PrismPdfCompositionContai
  * `container`/`out_child` must be live/writable and `alt` valid NUL-terminated UTF-8.
  */
 PrismPdfStatus prismpdf_composition_container_set_figure(PrismPdfCompositionContainer *container,
-                                                       const char *alt,
-                                                       PrismPdfCompositionContainer **out_child);
+                                                         const char *alt,
+                                                         PrismPdfCompositionContainer **out_child);
 
 /**
  * Fill an empty slot with an image using fit, fill, or exact box sizing (§8.9).
@@ -4475,10 +4524,10 @@ PrismPdfStatus prismpdf_composition_container_set_figure(PrismPdfCompositionCont
  * `container` and `image` must be live handles.
  */
 PrismPdfStatus prismpdf_composition_container_set_image(PrismPdfCompositionContainer *container,
-                                                      const PrismPdfImageSource *image,
-                                                      PrismPdfCompositionImageSizing sizing,
-                                                      double width,
-                                                      double height);
+                                                        const PrismPdfImageSource *image,
+                                                        PrismPdfCompositionImageSizing sizing,
+                                                        double width,
+                                                        double height);
 
 /**
  * Wrap a slot in uniform padding and return its empty child.
@@ -4487,8 +4536,8 @@ PrismPdfStatus prismpdf_composition_container_set_image(PrismPdfCompositionConta
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_padding(PrismPdfCompositionContainer *container,
-                                                        double points,
-                                                        PrismPdfCompositionContainer **out_child);
+                                                          double points,
+                                                          PrismPdfCompositionContainer **out_child);
 
 /**
  * Wrap a slot in an exact-width constraint and return its empty child.
@@ -4497,8 +4546,8 @@ PrismPdfStatus prismpdf_composition_container_set_padding(PrismPdfCompositionCon
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_width(PrismPdfCompositionContainer *container,
-                                                      double points,
-                                                      PrismPdfCompositionContainer **out_child);
+                                                        double points,
+                                                        PrismPdfCompositionContainer **out_child);
 
 /**
  * Wrap a slot in an exact-height constraint and return its empty child.
@@ -4507,8 +4556,8 @@ PrismPdfStatus prismpdf_composition_container_set_width(PrismPdfCompositionConta
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_height(PrismPdfCompositionContainer *container,
-                                                       double points,
-                                                       PrismPdfCompositionContainer **out_child);
+                                                         double points,
+                                                         PrismPdfCompositionContainer **out_child);
 
 /**
  * Wrap a slot in an alignment constraint and return its empty child.
@@ -4517,9 +4566,9 @@ PrismPdfStatus prismpdf_composition_container_set_height(PrismPdfCompositionCont
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_alignment(PrismPdfCompositionContainer *container,
-                                                          PrismPdfCompositionHorizontalAlign horizontal,
-                                                          PrismPdfCompositionVerticalAlign vertical,
-                                                          PrismPdfCompositionContainer **out_child);
+                                                            PrismPdfCompositionHorizontalAlign horizontal,
+                                                            PrismPdfCompositionVerticalAlign vertical,
+                                                            PrismPdfCompositionContainer **out_child);
 
 /**
  * Extend a child to consume all offered width and height.
@@ -4528,7 +4577,7 @@ PrismPdfStatus prismpdf_composition_container_set_alignment(PrismPdfCompositionC
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_extend(PrismPdfCompositionContainer *container,
-                                                       PrismPdfCompositionContainer **out_child);
+                                                         PrismPdfCompositionContainer **out_child);
 
 /**
  * Paint a border around a child and return its empty slot.
@@ -4537,9 +4586,9 @@ PrismPdfStatus prismpdf_composition_container_set_extend(PrismPdfCompositionCont
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_border(PrismPdfCompositionContainer *container,
-                                                       double width,
-                                                       PrismPdfCompositionColor color,
-                                                       PrismPdfCompositionContainer **out_child);
+                                                         double width,
+                                                         PrismPdfCompositionColor color,
+                                                         PrismPdfCompositionContainer **out_child);
 
 /**
  * Paint a background behind a child and return its empty slot.
@@ -4548,8 +4597,8 @@ PrismPdfStatus prismpdf_composition_container_set_border(PrismPdfCompositionCont
  * `container` and `out_child` must be live/writable.
  */
 PrismPdfStatus prismpdf_composition_container_set_background(PrismPdfCompositionContainer *container,
-                                                           PrismPdfCompositionColor color,
-                                                           PrismPdfCompositionContainer **out_child);
+                                                             PrismPdfCompositionColor color,
+                                                             PrismPdfCompositionContainer **out_child);
 
 /**
  * Fill an empty slot with wrapping text using the default Helvetica resource.
@@ -4558,8 +4607,8 @@ PrismPdfStatus prismpdf_composition_container_set_background(PrismPdfComposition
  * `container` must be live; `text` must be a valid NUL-terminated UTF-8 string; `style` readable.
  */
 PrismPdfStatus prismpdf_composition_container_set_text(PrismPdfCompositionContainer *container,
-                                                     const char *text,
-                                                     const PrismPdfCompositionTextStyle *style);
+                                                       const char *text,
+                                                       const PrismPdfCompositionTextStyle *style);
 
 /**
  * Fill an empty slot with an explicit page break.
@@ -4581,8 +4630,8 @@ PrismPdfStatus prismpdf_composition_container_set_page_break(PrismPdfComposition
  * [`prismpdf_bytes_free`].
  */
 PrismPdfStatus prismpdf_composition_build(PrismPdfComposition *composition,
-                                        uint8_t **out_data,
-                                        uintptr_t *out_len);
+                                          uint8_t **out_data,
+                                          uintptr_t *out_len);
 
 #ifdef __cplusplus
 }  // extern "C"
