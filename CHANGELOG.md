@@ -94,6 +94,11 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   corner the file never gave — `[10 20 300]` came back as `[10 0 300 20]`. Worse on the new
   signing path, where `SignSettings::field_name` takes that rectangle as the signature widget's
   box and laid the appearance out over the wrong area. Such a `/Rect` is refused (`None`) now.
+- **A broken page tree no longer fails the whole field listing.** `Document::form_fields` walks
+  the pages only to fill in each widget's `page_index`, but propagated any failure of that walk —
+  so a document with an `/AcroForm` and an unusable `/Pages` returned `BadPageTree` instead of its
+  fields, against the module's own best-effort-and-bounded contract. The lookup degrades to empty
+  and only `page_index` is lost.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

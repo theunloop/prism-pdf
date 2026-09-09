@@ -221,3 +221,23 @@ fn a_short_rect_array_is_no_rectangle() {
     assert_eq!(fields[0].name, "sig");
     assert_eq!(fields[0].rect, None);
 }
+
+#[test]
+fn an_unwalkable_page_tree_costs_only_the_page_index() {
+    // Reading is best-effort (module docs): a catalog with an /AcroForm but no usable /Pages still
+    // lists its fields — the page tree is needed only to say which page a widget sits on.
+    let objects = vec![
+        b"<< /Type /Catalog /AcroForm 4 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [] /Count 0 >>".to_vec(),
+        b"<< /FT /Tx /T (name) /V (Alice) /Subtype /Widget /Rect [1 2 3 4] >>".to_vec(),
+        b"<< /Fields [3 0 R] >>".to_vec(),
+    ];
+    let doc = Document::open(assemble(&objects, "")).unwrap();
+    let fields = doc.form_fields().unwrap();
+
+    assert_eq!(fields.len(), 1);
+    assert_eq!(fields[0].name, "name");
+    assert_eq!(fields[0].value.as_deref(), Some("Alice"));
+    assert_eq!(fields[0].rect, Some([1.0, 2.0, 3.0, 4.0]));
+    assert_eq!(fields[0].page_index, None, "no page tree to locate it in");
+}

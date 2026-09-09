@@ -73,15 +73,22 @@ impl Document {
     pub fn form_fields(&self) -> Result<Vec<FormField>> {
         let terminals = self.collect_terminal_fields()?;
         // Page lookup for the widgets: by the page object `/P` names, else by the page whose
-        // `/Annots` lists the widget. Built once, not per field.
+        // `/Annots` lists the widget. Built once, not per field. A page tree we cannot walk only
+        // costs the `page_index` of every field, so it degrades to an empty lookup rather than
+        // failing the listing — reading stays best-effort (module docs).
         let mut page_of_id = BTreeMap::new();
         let mut page_of_annot = BTreeMap::new();
         if terminals.iter().any(|f| f.rect.is_some()) {
-            for (index, (id, page)) in self.page_entries()?.into_iter().enumerate() {
+            for (index, (id, page)) in self
+                .page_entries()
+                .unwrap_or_default()
+                .into_iter()
+                .enumerate()
+            {
                 if let Some(id) = id {
                     page_of_id.insert(id, index);
                 }
-                for annot in self.annots_of(&page)? {
+                for annot in self.annots_of(&page).unwrap_or_default() {
                     if let Some(id) = annot.as_reference() {
                         page_of_annot.entry(id).or_insert(index);
                     }
