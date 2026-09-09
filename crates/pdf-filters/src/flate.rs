@@ -278,15 +278,26 @@ mod tests {
     #[cfg(feature = "tracing")]
     mod tracing_events {
         use super::*;
+        use std::cell::RefCell;
         use std::fmt;
-        use std::sync::{Arc, Mutex};
+        use std::sync::Once;
         use tracing::field::{Field, Visit};
         use tracing::{Event, Level, Metadata, span};
 
+        // Each event lands in the buffer of the thread that emitted it, and a test reads only its
+        // own. That is what makes a *global* subscriber safe here: `tracing` caches every call
+        // site's interest globally, so a thread-scoped subscriber (`with_default`) loses the race
+        // whenever a test that drives the same call site with no subscriber — `raw_deflate_fallback`
+        // above — registers it first as "nobody is interested". That failed this module about one
+        // run in twenty, on every platform. A subscriber installed once for the process settles the
+        // interest as enabled for good; the buffers keep the tests independent of each other.
+        thread_local! {
+            static EVENTS: RefCell<Vec<(Level, String)>> = const { RefCell::new(Vec::new()) };
+        }
+
         /// Minimal collector: `tracing-subscriber` is deliberately not a dependency of any
         /// engine crate (the consumer owns the subscriber), so the test hand-rolls one.
-        #[derive(Clone, Default)]
-        struct Collector(Arc<Mutex<Vec<(Level, String)>>>);
+        struct Collector;
 
         struct MessageVisitor(String);
         impl Visit for MessageVisitor {
@@ -309,23 +320,35 @@ mod tests {
             fn event(&self, event: &Event<'_>) {
                 let mut visitor = MessageVisitor(String::new());
                 event.record(&mut visitor);
-                self.0
-                    .lock()
-                    .unwrap()
-                    .push((*event.metadata().level(), visitor.0));
+                let level = *event.metadata().level();
+                EVENTS.with(|events| events.borrow_mut().push((level, visitor.0)));
             }
             fn enter(&self, _: &span::Id) {}
             fn exit(&self, _: &span::Id) {}
         }
 
+        /// Install the collector for the whole process, once, and re-evaluate the interest of any
+        /// call site another test already registered while nothing was listening.
+        fn install() {
+            static ONCE: Once = Once::new();
+            ONCE.call_once(|| {
+                tracing::subscriber::set_global_default(Collector)
+                    .expect("no other subscriber in this test binary");
+                tracing::callsite::rebuild_interest_cache();
+            });
+        }
+
+        /// Take this thread's events, leaving the buffer empty for the next call.
+        fn drain() -> Vec<(Level, String)> {
+            EVENTS.with(|events| std::mem::take(&mut *events.borrow_mut()))
+        }
+
         #[test]
         fn raw_deflate_fallback_emits_a_warning() {
-            let collector = Collector::default();
-            let events = Arc::clone(&collector.0);
-            tracing::subscriber::with_default(collector, || {
-                flate_decode(&raw_deflate(b"event under test"), None, 1 << 20).unwrap();
-            });
-            let events = events.lock().unwrap();
+            install();
+            drain();
+            flate_decode(&raw_deflate(b"event under test"), None, 1 << 20).unwrap();
+            let events = drain();
             assert!(
                 events
                     .iter()
@@ -336,12 +359,10 @@ mod tests {
 
         #[test]
         fn clean_zlib_emits_nothing() {
-            let collector = Collector::default();
-            let events = Arc::clone(&collector.0);
-            tracing::subscriber::with_default(collector, || {
-                flate_decode(&zlib(b"well-formed"), None, 1 << 20).unwrap();
-            });
-            assert_eq!(*events.lock().unwrap(), vec![]);
+            install();
+            drain();
+            flate_decode(&zlib(b"well-formed"), None, 1 << 20).unwrap();
+            assert_eq!(drain(), vec![]);
         }
     }
 

@@ -120,6 +120,14 @@ fixed here.
   rebuilt by scanning), which is why it went unnoticed for so long; a signature does not, because
   its CMS covers a byte range (§12.8.1), so `corpus/valid/signed-openssl-cms.pdf` verified
   everywhere but Windows. The fixture formats are marked binary now.
+- **A `tracing` test no longer fails about one run in twenty.** `tracing` caches each call site's
+  interest globally, but the test installed its collector for one thread only
+  (`with_default`), so whenever `raw_deflate_fallback` — which drives the same `warn!` call site
+  with no subscriber — registered that site first, it was cached as "nobody is interested" and the
+  collector on the other thread saw nothing. The tests now share one process-wide subscriber that
+  records into the emitting thread's own buffer, which settles the interest for good and keeps the
+  two tests independent. Measured at 4 failures in 80 runs before and 0 in 400 after. This flake
+  predates the prerelease and could fail any platform's `test` job at random.
 
 ### Changed
 
