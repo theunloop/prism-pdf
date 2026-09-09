@@ -192,8 +192,8 @@ the bar. Only what genuinely needs a process (exit codes, the stdout/stderr spli
 
 ### Test infrastructure (per `DESIGN.md` §7, EPIC 0/15)
 
-In place: `cargo fuzz` (`fuzz/`, 11 targets — `lexer parser jbig2 cmap function document ccitt lzw
-jpx cms revocation` — every one smoke-run in CI; new targets are picked up automatically once
+In place: `cargo fuzz` (`fuzz/`, 12 targets — `lexer parser jbig2 cmap function document ccitt lzw
+jpx cms revocation png` — every one smoke-run in CI; new targets are picked up automatically once
 registered in `fuzz/Cargo.toml`),
 `cargo-deny` for licenses/vulns, **veraPDF** in CI for PDF/A + PDF/UA conformance
 (`corpus/prismpdf-pdfa/`, PASS-only, graded by `crates/pdf/tests/conformance_corpus.rs`), the M18

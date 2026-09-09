@@ -57,6 +57,9 @@ indexmap = "2"
 ttf-parser = "0.25"
 # Image codecs: decode DCTDecode (JPEG) image samples (DESIGN.md §6).
 zune-jpeg = "0.4"
+# PNG for authored images (§8.9.5): same family as zune-jpeg, decoded to 8-bit samples and
+# embedded through the existing raw-sample paths (DESIGN.md §6, reuse over reimplementation).
+zune-png = "0.5"
 # JBIG2 (§7.4.7): memory-safe, pure-Rust decoder (#![forbid(unsafe_code)]); full segment coverage
 # incl. symbol-dict/text-region. From the `hayro` PDF renderer (DESIGN.md §6, reuse over reimpl).
 hayro-jbig2 = { version = "0.3", default-features = false, features = ["std"] }

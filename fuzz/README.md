@@ -44,6 +44,9 @@ One target per untrusted-input surface (DESIGN.md §3.4). Currently:
   all of it parsed before anything is authenticated.
 - **`revocation`** — OCSP (RFC 6960) and CRL (RFC 5280 §5) blobs as they arrive from a document's
   own `/DSS` (§12.8.4.3), matched against the committed test certificate.
+- **`png`** — `Image::from_png` (§8.9.5, authoring): the `zune-png` decoder over an untrusted chunk
+  stream with an inflate step inside it, plus the engine's own re-shaping of whatever geometry the
+  decoder reports into the raw image paths.
 
 Still to add as their surfaces stabilise: the DCT decoder (it is `zune-jpeg`'s surface more than
 ours), and the crypt/decrypt path.

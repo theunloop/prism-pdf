@@ -267,6 +267,28 @@ pub unsafe extern "C" fn prismpdf_image_source_from_rgba(
     })
 }
 
+/// Decode a complete PNG file and wrap it (§8.9.5): greyscale and RGB samples embed uncompressed,
+/// an alpha channel becomes the `/SMask` soft mask [`prismpdf_image_source_from_rgba`] produces,
+/// palettes are expanded and 16-bit samples reduced to 8. Returns null when the bytes are not a
+/// PNG the decoder accepts.
+///
+/// # Safety
+/// `data` must point to `len` readable bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_image_source_from_png(
+    data: *const u8,
+    len: usize,
+) -> *mut PrismPdfImageSource {
+    if data.is_null() {
+        return std::ptr::null_mut();
+    }
+    let bytes = unsafe { std::slice::from_raw_parts(data, len) };
+    guard_ptr(|| match Image::from_png(bytes) {
+        Some(image) => Box::into_raw(Box::new(PrismPdfImageSource(image))),
+        None => std::ptr::null_mut(),
+    })
+}
+
 /// The image's pixel dimensions.
 ///
 /// # Safety

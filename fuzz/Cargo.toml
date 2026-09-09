@@ -100,3 +100,10 @@ doc = false
 bench = false
 
 [workspace]
+
+[[bin]]
+name = "png"
+path = "fuzz_targets/png.rs"
+test = false
+doc = false
+bench = false

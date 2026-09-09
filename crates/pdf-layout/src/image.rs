@@ -6,6 +6,11 @@
 //! content layer's job.
 
 use pdf_document::{ImageColorSpace, ImageFilter, ImageXObject};
+use zune_png::PngDecoder;
+use zune_png::zune_core::bytestream::ZCursor;
+use zune_png::zune_core::colorspace::ColorSpace;
+use zune_png::zune_core::options::DecoderOptions;
+use zune_png::zune_core::result::DecodingResult;
 
 /// An image ready to embed: its intrinsic pixel size and the [`ImageXObject`] payload.
 #[derive(Clone, Debug)]
@@ -72,6 +77,41 @@ impl Image {
         let smask = Self::from_gray(width, height, alpha)?;
         image.xobject.smask = Some(Box::new(smask.xobject));
         Some(image)
+    }
+
+    /// Decode a complete PNG file and wrap it (§8.9.5): greyscale and RGB samples are embedded
+    /// uncompressed exactly as [`Self::from_gray`] and [`Self::from_rgb`] embed them; an alpha
+    /// channel becomes the `/SMask` soft mask [`Self::from_rgba`] produces (§11.6.5.2); a palette is
+    /// expanded to its colours and 16-bit samples are reduced to 8. `None` when the bytes are not a
+    /// PNG the decoder accepts. The decoder bounds its own allocations (DESIGN.md §3.4); nothing
+    /// here trusts the header beyond the geometry the decoded sample count already agrees with.
+    #[must_use]
+    pub fn from_png(bytes: &[u8]) -> Option<Image> {
+        let options = DecoderOptions::default().png_set_strip_to_8bit(true);
+        let mut decoder = PngDecoder::new_with_options(ZCursor::new(bytes), options);
+        let DecodingResult::U8(samples) = decoder.decode().ok()? else {
+            return None;
+        };
+        let (width, height) = decoder.dimensions()?;
+        let (width, height) = (u32::try_from(width).ok()?, u32::try_from(height).ok()?);
+        match decoder.colorspace()? {
+            ColorSpace::Luma => Self::from_gray(width, height, samples),
+            ColorSpace::LumaA => {
+                let (gray, alpha): (Vec<u8>, Vec<u8>) = samples
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|px| (px[0], px[1]))
+                    .unzip();
+                let mut image = Self::from_gray(width, height, gray)?;
+                image.xobject.smask =
+                    Some(Box::new(Self::from_gray(width, height, alpha)?.xobject));
+                Some(image)
+            }
+            ColorSpace::RGB => Self::from_rgb(width, height, samples),
+            ColorSpace::RGBA => Self::from_rgba(width, height, samples),
+            _ => None,
+        }
     }
 
     /// Attach a 1-bit **stencil mask** (`/Mask`, §8.9.6.3) of its own `mask_width × mask_height`:
@@ -268,5 +308,86 @@ mod tests {
         let mask = masked.xobject.mask.as_ref().expect("stencil mask present");
         assert!(mask.image_mask, "/ImageMask true");
         assert_eq!(mask.bits_per_component, 1);
+    }
+
+    // PNG fixtures written by a stdlib encoder (IHDR/PLTE/IDAT/IEND, zlib, CRC): 2×2 RGBA with a
+    // half-transparent and a transparent pixel; a 2×1 8-bit palette; a 2×1 16-bit greyscale; a 2×1
+    // grey+alpha.
+    const RGBA_2X2: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x08, 0x06, 0x00, 0x00, 0x00, 0x72,
+        0xb6, 0x0d, 0x24, 0x00, 0x00, 0x00, 0x14, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8,
+        0xcf, 0xc0, 0xf0, 0x1f, 0x08, 0x1b, 0x18, 0xc0, 0x34, 0x10, 0x00, 0x00, 0x3f, 0xd7, 0x08,
+        0x79, 0x8f, 0x13, 0x8a, 0x8a, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
+        0x60, 0x82,
+    ];
+    const PALETTE_2X1: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x03, 0x00, 0x00, 0x00, 0xc3,
+        0xfc, 0x8f, 0xb8, 0x00, 0x00, 0x00, 0x06, 0x50, 0x4c, 0x54, 0x45, 0xff, 0x00, 0x00, 0x00,
+        0x00, 0xff, 0x6c, 0xa1, 0xfd, 0x8e, 0x00, 0x00, 0x00, 0x0b, 0x49, 0x44, 0x41, 0x54, 0x78,
+        0x9c, 0x63, 0x60, 0x60, 0x04, 0x00, 0x00, 0x04, 0x00, 0x02, 0xbf, 0x7a, 0x3f, 0x4a, 0x00,
+        0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ];
+    const GRAY16_2X1: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x10, 0x00, 0x00, 0x00, 0x00, 0x81,
+        0xd9, 0xfc, 0x15, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x60,
+        0x60, 0xf8, 0xff, 0x1f, 0x00, 0x03, 0x02, 0x01, 0xff, 0xe6, 0x77, 0x0b, 0xae, 0x00, 0x00,
+        0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ];
+    const GRAY_ALPHA_2X1: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x08, 0x04, 0x00, 0x00, 0x00, 0x5e,
+        0x2b, 0xb7, 0x01, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xe0,
+        0xfa, 0x7f, 0x82, 0x01, 0x00, 0x04, 0xba, 0x01, 0xd2, 0xa1, 0x11, 0x5f, 0xa8, 0x00, 0x00,
+        0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ];
+
+    /// The raw-sample paths store their samples FlateDecode-compressed; read them back.
+    fn samples(image: &ImageXObject) -> Vec<u8> {
+        assert_eq!(image.filter, Some(ImageFilter::Flate));
+        pdf_filters::flate_decode(&image.data, None, 1 << 16).expect("inflates")
+    }
+
+    #[test]
+    fn png_rgba_becomes_rgb_with_a_soft_mask() {
+        let image = Image::from_png(RGBA_2X2).expect("decodes");
+        assert_eq!((image.xobject.width, image.xobject.height), (2, 2));
+        assert_eq!(image.xobject.color_space, ImageColorSpace::Rgb);
+        assert_eq!(
+            samples(&image.xobject),
+            [255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255]
+        );
+        let smask = image.xobject.smask.as_deref().expect("alpha → /SMask");
+        assert_eq!(samples(smask), [255, 128, 0, 255]);
+    }
+
+    #[test]
+    fn png_palette_is_expanded_and_16_bit_reduced() {
+        let palette = Image::from_png(PALETTE_2X1).expect("decodes");
+        assert_eq!(palette.xobject.color_space, ImageColorSpace::Rgb);
+        assert_eq!(samples(&palette.xobject), [255, 0, 0, 0, 0, 255]);
+        assert!(palette.xobject.smask.is_none());
+
+        let gray = Image::from_png(GRAY16_2X1).expect("decodes");
+        assert_eq!(gray.xobject.color_space, ImageColorSpace::Gray);
+        assert_eq!(gray.xobject.bits_per_component, 8);
+        assert_eq!(samples(&gray.xobject), [0, 255]);
+    }
+
+    #[test]
+    fn png_grey_alpha_splits_into_grey_and_a_soft_mask() {
+        let image = Image::from_png(GRAY_ALPHA_2X1).expect("decodes");
+        assert_eq!(image.xobject.color_space, ImageColorSpace::Gray);
+        assert_eq!(samples(&image.xobject), [10, 200]);
+        assert_eq!(samples(image.xobject.smask.as_deref().unwrap()), [255, 0]);
+    }
+
+    #[test]
+    fn png_refuses_what_is_not_a_png() {
+        assert!(Image::from_png(b"not a png").is_none());
+        assert!(Image::from_png(&RGBA_2X2[..40]).is_none(), "truncated");
+        assert!(Image::from_png(&[]).is_none());
     }
 }

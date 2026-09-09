@@ -37,6 +37,23 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   (RFC 5652 §10.2.3, §12.8.3.3). Until now the CMS held the signer certificate only, and every
   signature from a private CA validated as an unknown issuer anywhere but here. On the ABI:
   `prismpdf_sign_settings_add_certificate`, once per certificate.
+- **PNG as an image source**: `Image::from_png` (and `prismpdf_image_source_from_png`) accepts a
+  PNG file and embeds it through the raw-sample paths the engine already had — greyscale, RGB,
+  and, when the file carries alpha, the same `/SMask` soft mask `from_rgba` produces; palettes are
+  expanded and 16-bit samples reduced to 8. PNG is what logo uploads, QR generators and every
+  raster toolkit emit by default; until now a caller decoded it with a second library first.
+  Decoded by `zune-png`, the same family as the `zune-jpeg` already used for DCTDecode, under the
+  same licence policy. A new `png` fuzz target covers the decoder-plus-reshaping path.
+
+## [1.0.0-alpha.1] - 2026-08-31
+
+First prerelease of the `1.0.0` stability line. The API surface is the validated `0.4.x` one;
+this tag exists so bindings and downstream consumers can pin and exercise the candidate surface
+while it soaks. Per SemVer, `cargo add prismpdf` and plain version requirements ignore a
+prerelease — only the full `1.0.0-alpha.1` string resolves to it.
+
+### Added
+
 - **One-line CLI installers**: `scripts/install.sh` (macOS/Linux, `curl | sh`) and
   `scripts/install.ps1` (Windows, `irm | iex`) download the prebuilt archive matching the
   machine from GitHub Releases, verify it against the release's `SHA256SUMS-v*.txt`, and install

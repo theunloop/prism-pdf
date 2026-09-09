@@ -3901,6 +3901,17 @@ PrismPdfImageSource *prismpdf_image_source_from_rgba(uint32_t width,
                                                      uintptr_t len);
 
 /**
+ * Decode a complete PNG file and wrap it (§8.9.5): greyscale and RGB samples embed uncompressed,
+ * an alpha channel becomes the `/SMask` soft mask [`prismpdf_image_source_from_rgba`] produces,
+ * palettes are expanded and 16-bit samples reduced to 8. Returns null when the bytes are not a
+ * PNG the decoder accepts.
+ *
+ * # Safety
+ * `data` must point to `len` readable bytes.
+ */
+PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data, uintptr_t len);
+
+/**
  * The image's pixel dimensions.
  *
  * # Safety
