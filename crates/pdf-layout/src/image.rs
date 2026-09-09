@@ -12,6 +12,15 @@ use zune_png::zune_core::colorspace::ColorSpace;
 use zune_png::zune_core::options::DecoderOptions;
 use zune_png::zune_core::result::DecodingResult;
 
+/// The largest side [`Image::from_png`] accepts, in pixels. Generous on purpose: it is the pixel
+/// budget below, not this, that bounds what a PNG can make the decoder allocate.
+pub const MAX_PNG_SIDE: usize = 1 << 20;
+
+/// The largest sample count [`Image::from_png`] accepts (width × height), in pixels — 2²⁸, the
+/// same budget the decoder's default 16384 × 16384 square allows, without imposing its shape.
+/// At four channels that is a 1 GiB decoded buffer.
+pub const MAX_PNG_PIXELS: usize = 1 << 28;
+
 /// An image ready to embed: its intrinsic pixel size and the [`ImageXObject`] payload.
 #[derive(Clone, Debug)]
 pub struct Image {
@@ -83,16 +92,30 @@ impl Image {
     /// uncompressed exactly as [`Self::from_gray`] and [`Self::from_rgb`] embed them; an alpha
     /// channel becomes the `/SMask` soft mask [`Self::from_rgba`] produces (§11.6.5.2); a palette is
     /// expanded to its colours and 16-bit samples are reduced to 8. `None` when the bytes are not a
-    /// PNG the decoder accepts. The decoder bounds its own allocations (DESIGN.md §3.4); nothing
-    /// here trusts the header beyond the geometry the decoded sample count already agrees with.
+    /// PNG the decoder accepts, or when the image exceeds the size bound below.
+    ///
+    /// **Size bound** (DESIGN.md §3.4, hostile input): the header is read first and the image is
+    /// refused unless each side is at most [`MAX_PNG_SIDE`] pixels *and* the two multiply to at
+    /// most [`MAX_PNG_PIXELS`] — the sample buffer is allocated from those numbers before any
+    /// pixel data is read, so a small file may otherwise name a huge one. The pixel budget is what
+    /// bounds the allocation; the per-side limit only keeps the multiplication meaningful. A long
+    /// thin scan or panorama passes, which the decoder's own square 16384 × 16384 default would
+    /// have refused at the same memory cost.
     #[must_use]
     pub fn from_png(bytes: &[u8]) -> Option<Image> {
-        let options = DecoderOptions::default().png_set_strip_to_8bit(true);
+        let options = DecoderOptions::default()
+            .png_set_strip_to_8bit(true)
+            .set_max_width(MAX_PNG_SIDE)
+            .set_max_height(MAX_PNG_SIDE);
         let mut decoder = PngDecoder::new_with_options(ZCursor::new(bytes), options);
+        decoder.decode_headers().ok()?;
+        let (width, height) = decoder.dimensions()?;
+        if (width as u64) * (height as u64) > MAX_PNG_PIXELS as u64 {
+            return None;
+        }
         let DecodingResult::U8(samples) = decoder.decode().ok()? else {
             return None;
         };
-        let (width, height) = decoder.dimensions()?;
         let (width, height) = (u32::try_from(width).ok()?, u32::try_from(height).ok()?);
         match decoder.colorspace()? {
             ColorSpace::Luma => Self::from_gray(width, height, samples),
@@ -396,5 +419,78 @@ mod tests {
         assert!(Image::from_png(b"not a png").is_none());
         assert!(Image::from_png(&RGBA_2X2[..40]).is_none(), "truncated");
         assert!(Image::from_png(&[]).is_none());
+    }
+
+    /// CRC-32 (the PNG chunk check value), computed on the fly rather than tabulated.
+    fn crc32(bytes: &[u8]) -> u32 {
+        let mut crc = 0xffff_ffffu32;
+        for &b in bytes {
+            crc ^= u32::from(b);
+            for _ in 0..8 {
+                crc = if crc & 1 == 1 {
+                    (crc >> 1) ^ 0xedb8_8320
+                } else {
+                    crc >> 1
+                };
+            }
+        }
+        !crc
+    }
+
+    /// An 8-bit greyscale PNG of `width` × `height` black pixels. `honest` writes the matching
+    /// image data; without it the IDAT is junk, which is enough to test a refusal that happens on
+    /// the header alone — and keeps a "20000 × 20000" fixture a few bytes long.
+    fn grey_png(width: u32, height: u32, honest: bool) -> Vec<u8> {
+        fn chunk(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+            let mut body = kind.to_vec();
+            body.extend_from_slice(payload);
+            let mut out = (payload.len() as u32).to_be_bytes().to_vec();
+            out.extend_from_slice(&body);
+            out.extend_from_slice(&crc32(&body).to_be_bytes());
+            out
+        }
+        let mut ihdr = width.to_be_bytes().to_vec();
+        ihdr.extend_from_slice(&height.to_be_bytes());
+        ihdr.extend_from_slice(&[8, 0, 0, 0, 0]); // 8-bit greyscale, no interlace
+        let idat = if honest {
+            // One filter byte (None) plus one sample per pixel, per scanline.
+            let mut raw = Vec::new();
+            for _ in 0..height {
+                raw.push(0);
+                raw.extend(std::iter::repeat_n(0u8, width as usize));
+            }
+            pdf_filters::flate_encode(&raw)
+        } else {
+            vec![0; 4]
+        };
+        let mut png = vec![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        png.extend(chunk(b"IHDR", &ihdr));
+        png.extend(chunk(b"IDAT", &idat));
+        png.extend(chunk(b"IEND", &[]));
+        png
+    }
+
+    #[test]
+    fn png_size_bound_is_a_pixel_budget_not_a_square() {
+        // A long thin scan is a legitimate image the decoder's own default (a square 16384 × 16384)
+        // refuses at a fraction of that memory. It decodes here; the budget is on the sample count.
+        let long = grey_png(20_000, 1, true);
+        let image = Image::from_png(&long).expect("a 20000 × 1 scan decodes");
+        assert_eq!((image.xobject.width, image.xobject.height), (20_000, 1));
+        assert_eq!(samples(&image.xobject).len(), 20_000);
+    }
+
+    #[test]
+    fn png_over_the_size_bound_is_refused_on_its_header() {
+        // 20000 × 20000 is 4 × the pixel budget — refused before any pixel data is read, which is
+        // the point: the sample buffer is sized from the header, so a tiny file must not be able
+        // to name a huge one.
+        let huge = grey_png(20_000, 20_000, false);
+        assert!(huge.len() < 100, "the fixture is a header, not an image");
+        assert!(u64::from(20_000u32) * 20_000 > MAX_PNG_PIXELS as u64);
+        assert!(Image::from_png(&huge).is_none());
+        // And a single side beyond MAX_PNG_SIDE, whatever the product.
+        let wide = grey_png(MAX_PNG_SIDE as u32 + 1, 1, false);
+        assert!(Image::from_png(&wide).is_none());
     }
 }

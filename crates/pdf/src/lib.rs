@@ -67,9 +67,9 @@ pub use pdf_document::{
 pub use pdf_layout::{
     Align, Color, Column, ComposeError, ComposeTable, ComposeTableRow, ComposedDocument,
     Composition, Container, Flow, GeometryEvent, GeometryTrace, HorizontalAlign, Image,
-    ImageSizing, ListStyle, Page, PageStyle, Plan, Point, PreparedComposition, Rect, Row, Semantic,
-    Size, Table, TextBlock, TextStyle, VerticalAlign, cid_font_from_sfnt, draw_text_block,
-    measure_text, wrap_text,
+    ImageSizing, ListStyle, MAX_PNG_PIXELS, MAX_PNG_SIDE, Page, PageStyle, Plan, Point,
+    PreparedComposition, Rect, Row, Semantic, Size, Table, TextBlock, TextStyle, VerticalAlign,
+    cid_font_from_sfnt, draw_text_block, measure_text, wrap_text,
 };
 
 /// Reader-layer types surfaced through the document API (§7.5).

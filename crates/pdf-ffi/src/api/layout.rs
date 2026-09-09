@@ -270,7 +270,9 @@ pub unsafe extern "C" fn prismpdf_image_source_from_rgba(
 /// Decode a complete PNG file and wrap it (§8.9.5): greyscale and RGB samples embed uncompressed,
 /// an alpha channel becomes the `/SMask` soft mask [`prismpdf_image_source_from_rgba`] produces,
 /// palettes are expanded and 16-bit samples reduced to 8. Returns null when the bytes are not a
-/// PNG the decoder accepts.
+/// PNG the decoder accepts, or when the image is larger than the size bound: each side at most
+/// 1048576 pixels and the two multiplying to at most 268435456 (2²⁸) — the sample buffer is sized
+/// from the header before any pixel data is read, so a small file may otherwise name a huge one.
 ///
 /// # Safety
 /// `data` must point to `len` readable bytes.

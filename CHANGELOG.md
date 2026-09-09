@@ -99,6 +99,13 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   so a document with an `/AcroForm` and an unusable `/Pages` returned `BadPageTree` instead of its
   fields, against the module's own best-effort-and-bounded contract. The lookup degrades to empty
   and only `page_index` is lost.
+- **`Image::from_png` bounds the image by pixel budget, not by shape.** It inherited `zune-png`'s
+  default 16384 × 16384 limit, so a legitimate long scan or panorama — an 8000 × 1 decodes, a
+  20000 × 1 did not — was refused with the same bare `None` (null across the ABI) as "not a PNG",
+  while `from_jpeg` had no comparable cap. The bound is now explicit and documented: each side at
+  most `MAX_PNG_SIDE`, and the two multiplying to at most `MAX_PNG_PIXELS` (2²⁸, the same sample
+  count the old square allowed). It is still checked on the header before any pixel data is read,
+  since that is what the sample buffer is sized from.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

@@ -22,7 +22,7 @@ pub use compose::{
 };
 pub use embed::cid_font_from_sfnt;
 pub use flow::{Flow, ListStyle, PageStyle};
-pub use image::Image;
+pub use image::{Image, MAX_PNG_PIXELS, MAX_PNG_SIDE};
 pub use metrics::FontMetrics;
 pub use table::Table;
 pub use text::{Align, TextBlock, draw_text_block, measure_text, wrap_text};
