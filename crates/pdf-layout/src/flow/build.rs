@@ -43,13 +43,11 @@ impl Flow {
 
             // Subset to just the glyphs used. The content already shows the original glyph IDs as
             // codes/CIDs, so keep those and supply a CIDToGIDMap to the renumbered subset. If
-            // subsetting fails, embed the whole program with an Identity map instead.
+            // subsetting fails — or the program is CFF, whose descendant has no CIDToGIDMap to
+            // carry a renumbering — embed the whole program instead.
             let used_gids: Vec<u16> = slot.used.keys().copied().collect();
-            let (program, cid_to_gid) = match pdf_fonts::subset_with_map(&slot.program, &used_gids)
-            {
-                Some((subset, map)) => (subset, Some(cid_to_gid_map(&map))),
-                None => (slot.program.clone(), None),
-            };
+            let (program, cid_to_gid) =
+                crate::embed::subset_for_embedding(slot.info.outlines, &slot.program, &used_gids);
 
             builder.embed_cid_font(
                 &slot.resource,
@@ -66,6 +64,7 @@ impl Flow {
                     widths,
                     to_unicode,
                     cid_to_gid,
+                    cff: slot.info.outlines == pdf_fonts::GlyphOutlines::Cff,
                 },
             );
         }

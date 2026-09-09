@@ -754,3 +754,116 @@ fn authors_namespace_schema_filespec() {
     assert_eq!(attachments[0].name, "custom.xsd");
     assert_eq!(attachments[0].data, b"<xs:schema/>");
 }
+
+/// A `CidFont` with `program` bytes the builder never parses — the emission path only reads the
+/// flags and metrics, so a placeholder program keeps the test independent of any system font.
+fn cid_font(program: &[u8], cff: bool) -> CidFont {
+    CidFont {
+        program: program.to_vec(),
+        postscript_name: "Test".into(),
+        ascent: 750,
+        descent: -250,
+        cap_height: 700,
+        bbox: [0, -250, 1000, 750],
+        italic_angle: 0.0,
+        flags: 4,
+        default_width: 1000,
+        widths: vec![(3, 600)],
+        to_unicode: vec![(3, 'A')],
+        cid_to_gid: Some(vec![0, 0, 0, 3]),
+        cff,
+    }
+}
+
+/// The descendant CIDFont and its descriptor for the embedded font named `resource`.
+fn descendant_font(doc: &Document, resource: &str) -> (Dictionary, Dictionary) {
+    let page = doc.pages().unwrap().remove(0);
+    let resources = doc
+        .resolve(page.get(&Name::from("Resources")).unwrap())
+        .unwrap();
+    let Object::Dictionary(resources) = resources else {
+        panic!("no /Resources")
+    };
+    let Ok(Object::Dictionary(fonts)) = doc.resolve(resources.get(&Name::from("Font")).unwrap())
+    else {
+        panic!("no /Font")
+    };
+    let Ok(Object::Dictionary(type0)) = doc.resolve(fonts.get(&Name::from(resource)).unwrap())
+    else {
+        panic!("no {resource}")
+    };
+    let Ok(Object::Array(descendants)) =
+        doc.resolve(type0.get(&Name::from("DescendantFonts")).unwrap())
+    else {
+        panic!("no /DescendantFonts")
+    };
+    let Ok(Object::Dictionary(cid)) = doc.resolve(&descendants[0]) else {
+        panic!("no descendant")
+    };
+    let Ok(Object::Dictionary(descriptor)) =
+        doc.resolve(cid.get(&Name::from("FontDescriptor")).unwrap())
+    else {
+        panic!("no /FontDescriptor")
+    };
+    (cid, descriptor)
+}
+
+#[test]
+fn embeds_a_truetype_program_as_cidfonttype2() {
+    let mut builder = Builder::new();
+    builder
+        .embed_cid_font("F1", cid_font(b"true-type-program", false))
+        .add_page(PageSpec::new(Vec::new()).embedded_font("F1"));
+    let doc = Document::open(builder.build()).unwrap();
+    let (cid, descriptor) = descendant_font(&doc, "F1");
+
+    assert_eq!(
+        cid.get(&Name::from("Subtype")),
+        Some(&Object::Name(Name::from("CIDFontType2")))
+    );
+    // The subsetted program renumbered its glyphs, so the map travels as a stream (§9.7.4.3).
+    assert!(matches!(
+        cid.get(&Name::from("CIDToGIDMap")),
+        Some(Object::Reference(_))
+    ));
+    assert!(descriptor.get(&Name::from("FontFile2")).is_some());
+    assert!(descriptor.get(&Name::from("FontFile3")).is_none());
+}
+
+#[test]
+fn embeds_a_cff_program_as_cidfonttype0_fontfile3() {
+    // §9.9: a CFF-flavoured OpenType program is `/FontFile3` with `/Subtype /OpenType` under a
+    // `CIDFontType0` descendant — writing it as `/FontFile2` under `CIDFontType2` (the TrueType
+    // form) produces a font no conforming reader renders.
+    let mut builder = Builder::new();
+    builder
+        .embed_cid_font("F1", cid_font(b"OTTO-cff-program", true))
+        .add_page(PageSpec::new(Vec::new()).embedded_font("F1"));
+    let pdf = builder.build();
+    let doc = Document::open(pdf.clone()).unwrap();
+    let (cid, descriptor) = descendant_font(&doc, "F1");
+
+    assert_eq!(
+        cid.get(&Name::from("Subtype")),
+        Some(&Object::Name(Name::from("CIDFontType0")))
+    );
+    // /CIDToGIDMap is a CIDFontType2 entry only (§9.7.4.2), so it is absent here — and no remap
+    // stream was emitted for it either.
+    assert!(cid.get(&Name::from("CIDToGIDMap")).is_none());
+
+    assert!(descriptor.get(&Name::from("FontFile2")).is_none());
+    let Some(Object::Reference(file_id)) = descriptor.get(&Name::from("FontFile3")) else {
+        panic!("no /FontFile3")
+    };
+    let Ok(Object::Stream(stream)) = doc.get(*file_id) else {
+        panic!("/FontFile3 is not a stream")
+    };
+    assert_eq!(
+        stream.dict().get(&Name::from("Subtype")),
+        Some(&Object::Name(Name::from("OpenType")))
+    );
+    // /Length1 belongs to the TrueType form only (§9.9, Table 126).
+    assert!(stream.dict().get(&Name::from("Length1")).is_none());
+    // An embedded OpenType program is PDF 1.6 (§9.9), which the header auto-stamp picks up.
+    assert!(pdf.starts_with(b"%PDF-1.6"), "header floors at 1.6");
+}

@@ -21,10 +21,8 @@ impl EmbeddedSlot {
         widths.sort_unstable();
         let to_unicode = used.iter().map(|(gid, (_, ch))| (*gid, *ch)).collect();
         let used_gids: Vec<_> = used.keys().copied().collect();
-        let (program, cid_to_gid) = match pdf_fonts::subset_with_map(&self.program, &used_gids) {
-            Some((program, map)) => (program, Some(cid_to_gid_map(&map))),
-            None => (self.program.clone(), None),
-        };
+        let (program, cid_to_gid) =
+            crate::embed::subset_for_embedding(self.info.outlines, &self.program, &used_gids);
         CidFont {
             program,
             postscript_name: self.info.postscript_name.clone(),
@@ -38,18 +36,9 @@ impl EmbeddedSlot {
             widths,
             to_unicode,
             cid_to_gid,
+            cff: self.info.outlines == pdf_fonts::GlyphOutlines::Cff,
         }
     }
-}
-
-pub(super) fn cid_to_gid_map(map: &[(u16, u16)]) -> Vec<u8> {
-    let max_cid = map.iter().map(|(cid, _)| *cid).max().unwrap_or(0) as usize;
-    let mut bytes = vec![0u8; (max_cid + 1) * 2];
-    for &(cid, gid) in map {
-        let offset = cid as usize * 2;
-        bytes[offset..offset + 2].copy_from_slice(&gid.to_be_bytes());
-    }
-    bytes
 }
 
 pub(super) struct Metrics<'a> {

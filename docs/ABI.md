@@ -482,7 +482,7 @@ handle and can be built repeatedly.
 | `prismpdf_builder_set_utf8_text_strings(builder)` | UTF-8 text strings (§7.9.2.2, PDF 2.0). |
 | `prismpdf_builder_add_outline(builder, title, page_index)` | A top-level bookmark (§12.3.3). |
 | `prismpdf_builder_attach_file(builder, name, mime, relationship, description, data, data_len)` | Embed a file (§7.11); `description` may be null. |
-| `prismpdf_builder_embed_cid_font(builder, name, program, len)` | Register a whole sfnt program as a composite font (§9.7, §9.9) under `name`, for pages that reference it via `prismpdf_page_spec_add_embedded_font` and draw with `prismpdf_content_show_glyphs`. Every glyph's width and every `cmap`-mapped character travel with it; `Parse` when the bytes are not an sfnt. |
+| `prismpdf_builder_embed_cid_font(builder, name, program, len)` | Register a whole sfnt program as a composite font (§9.7, §9.9) under `name`, for pages that reference it via `prismpdf_page_spec_add_embedded_font` and draw with `prismpdf_content_show_glyphs`. Every glyph's width and every `cmap`-mapped character travel with it. TrueType (`glyf`) outlines embed as `/FontFile2` under a `CIDFontType2` descendant, CFF (`OTTO`) ones as `/FontFile3 /Subtype /OpenType` under `CIDFontType0` (PDF 1.6); `Parse` when the bytes are not an sfnt or carry outlines with no §9.9 embedding form here — a CID-keyed CFF or a CFF2 face. |
 
 `PrismPdfStdFont`: `Helvetica` = 0 … `ZapfDingbats` = 13, in the order of §9.6.2.2.
 `Content` + `PageSpec` + `Builder` is the low-level precision/escape-hatch layer below `Flow` and

@@ -60,6 +60,41 @@ impl FontProgramFormat {
     }
 }
 
+/// How an sfnt program stores its glyph outlines, which decides how §9.9 embeds it: a `glyf`
+/// program goes in `/FontFile2` under a `CIDFontType2` descendant, a CFF one in `/FontFile3`
+/// with `/Subtype /OpenType` under a `CIDFontType0` descendant.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum GlyphOutlines {
+    /// TrueType `glyf` outlines.
+    TrueType,
+    /// CFF (PostScript) outlines that are **not** CID-keyed, so the CIDs shown under `Identity-H`
+    /// are used directly as glyph indices (§9.7.4.2) — the same code == glyph id contract the
+    /// `glyf` path has.
+    Cff,
+    /// CID-keyed CFF outlines: the CFF's own charset maps CIDs to glyphs, so a glyph id cannot
+    /// double as a CID and this crate's shaping output would select the wrong glyphs.
+    CidKeyedCff,
+    /// Neither `glyf` nor CFF — e.g. a CFF2 (variable) or bitmap-only face, which §9.9 has no
+    /// embedding form for.
+    Other,
+}
+
+/// Classify a parsed face's outlines. Kept next to [`FontProgramFormat`] because it answers the
+/// same question — which `/FontFile*` key carries this program.
+pub(crate) fn outlines_of(face: &ttf_parser::Face<'_>) -> GlyphOutlines {
+    if face.tables().glyf.is_some() {
+        return GlyphOutlines::TrueType;
+    }
+    let Some(cff) = face.tables().cff.as_ref() else {
+        return GlyphOutlines::Other;
+    };
+    // `glyph_cid` answers `None` for a SID-keyed (ordinary) CFF and `Some` for a CID-keyed one.
+    match cff.glyph_cid(ttf_parser::GlyphId(0)) {
+        Some(_) => GlyphOutlines::CidKeyedCff,
+        None => GlyphOutlines::Cff,
+    }
+}
+
 /// Basic metrics read from an sfnt (TrueType/OpenType) font program (§9.9).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FaceMetrics {

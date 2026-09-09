@@ -348,9 +348,14 @@ impl Composition {
     /// Register a TrueType/OpenType program as a composite embedded font (§9.7/§9.9).
     ///
     /// # Errors
-    /// Returns [`ComposeError::InvalidFont`] when `program` is not a supported sfnt font.
+    /// Returns [`ComposeError::InvalidFont`] when `program` is not a supported sfnt font — which
+    /// includes an sfnt whose outlines §9.9 has no embedding form for, a CID-keyed CFF or a CFF2
+    /// face (see [`cid_font_from_sfnt`](crate::cid_font_from_sfnt)).
     pub fn embedded_font(mut self, resource: &str, program: &[u8]) -> Result<Self, ComposeError> {
         let info = pdf_fonts::font_info(program).ok_or(ComposeError::InvalidFont)?;
+        if !crate::embed::embeddable(info.outlines) {
+            return Err(ComposeError::InvalidFont);
+        }
         self.fonts.insert(
             resource.to_string(),
             FontSlot::Embedded(EmbeddedSlot {

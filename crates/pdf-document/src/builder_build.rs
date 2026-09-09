@@ -44,13 +44,20 @@ impl Builder {
         let mut embedded_ids: Vec<(String, ObjectId)> = Vec::new();
         for (name, font) in &self.embedded {
             let fontfile_id = alloc();
-            objects.push((fontfile_id, Object::Stream(fontfile2_stream(&font.program))));
+            let fontfile = if font.cff {
+                fontfile3_opentype_stream(&font.program)
+            } else {
+                fontfile2_stream(&font.program)
+            };
+            objects.push((fontfile_id, Object::Stream(fontfile)));
             let descriptor_id = alloc();
             objects.push((
                 descriptor_id,
                 Object::Dictionary(font_descriptor_dict(font, fontfile_id)),
             ));
-            let cid_to_gid_id = font.cid_to_gid.as_ref().map(|map| {
+            // A CFF descendant (CIDFontType0) takes no `/CIDToGIDMap`, so no remap stream is
+            // emitted for one either (§9.7.4.2).
+            let cid_to_gid_id = font.cid_to_gid.as_ref().filter(|_| !font.cff).map(|map| {
                 let id = alloc();
                 let mut dict = Dictionary::new();
                 dict.insert(

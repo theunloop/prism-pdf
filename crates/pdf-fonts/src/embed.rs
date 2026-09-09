@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 
 use ttf_parser::{Face, GlyphId, name_id};
 
+use crate::program::{GlyphOutlines, outlines_of};
+
 /// Font-wide metrics for a `/FontDescriptor` (§9.8.1), with lengths scaled to 1000-em units.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontInfo {
@@ -28,6 +30,8 @@ pub struct FontInfo {
     pub italic: bool,
     /// The PostScript name (for `/BaseFont` / `/FontName`), or a generic fallback.
     pub postscript_name: String,
+    /// Which outline format the program carries — the embedding form §9.9 requires for it.
+    pub outlines: GlyphOutlines,
 }
 
 /// One shaped character: its glyph ID in the font, its advance (1000-em units), and the source char.
@@ -74,6 +78,7 @@ pub fn font_info(program: &[u8]) -> Option<FontInfo> {
         italic_angle: f64::from(face.italic_angle()),
         italic: face.is_italic(),
         postscript_name,
+        outlines: outlines_of(&face),
     })
 }
 

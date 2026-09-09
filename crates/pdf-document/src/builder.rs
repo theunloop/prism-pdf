@@ -127,10 +127,10 @@ pub struct ImageXObject {
     pub image_mask: bool,
 }
 
-/// An embedded TrueType font to write as a composite (Type0/`Identity-H`, CIDFontType2) font
-/// (§9.7): the whole program plus the descriptor metrics, per-glyph widths and a glyph→Unicode map
-/// for the glyphs actually used. CID == glyph ID (CIDToGIDMap `Identity`). Built by the layout layer
-/// — the fields are primitives so this crate needs no font-parsing dependency.
+/// An embedded sfnt font to write as a composite (Type0/`Identity-H`) font (§9.7): the whole
+/// program plus the descriptor metrics, per-glyph widths and a glyph→Unicode map for the glyphs
+/// actually used. CID == glyph ID. Built by the layout layer — the fields are primitives so this
+/// crate needs no font-parsing dependency.
 #[derive(Clone, Debug)]
 pub struct CidFont {
     /// The full sfnt (TrueType/OpenType) program bytes.
@@ -152,7 +152,15 @@ pub struct CidFont {
     pub to_unicode: Vec<(u16, char)>,
     /// `CIDToGIDMap` bytes (CID→GID, 2 bytes each, big-endian) when the `program` is subsetted and
     /// its glyphs renumbered; `None` keeps the codes equal to glyph IDs (`/CIDToGIDMap /Identity`).
+    /// Ignored when `cff` is set — `/CIDToGIDMap` is a CIDFontType2 entry only (§9.7.4.2).
     pub cid_to_gid: Option<Vec<u8>>,
+    /// Whether `program` carries CFF (PostScript) outlines rather than TrueType `glyf` ones — an
+    /// `OTTO`-flavoured OpenType file. §9.9 embeds the two differently: a `glyf` program in
+    /// `/FontFile2` under a `CIDFontType2` descendant, a CFF one in `/FontFile3` with
+    /// `/Subtype /OpenType` under a `CIDFontType0` descendant. Writing the second as the first
+    /// produces a font no conforming reader renders, so the flag has to travel with the bytes.
+    /// The CFF must not be CID-keyed: the codes stay glyph indices either way (§9.7.4.2).
+    pub cff: bool,
 }
 
 /// A top-level outline entry (bookmark, §12.3.3): a title and the 0-based page it jumps to.

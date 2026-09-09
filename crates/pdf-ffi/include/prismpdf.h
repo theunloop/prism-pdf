@@ -3138,7 +3138,11 @@ void prismpdf_builder_free(PrismPdfBuilder *builder);
  * draws with [`prismpdf_content_show_glyphs`]. A hand-assembled page can show any glyph in the
  * program, so unlike a `Flow` the whole program is embedded: every glyph's width in `/W` and every
  * `cmap`-mapped character in `/ToUnicode`, so the text extracts back. A name already registered
- * is kept. Returns [`PrismPdfStatus::Parse`] when `program` is not a parseable sfnt.
+ * is kept. A `glyf` program is embedded as `/FontFile2` under a `CIDFontType2` descendant and a
+ * CFF-flavoured (`OTTO`) one as `/FontFile3 /Subtype /OpenType` under `CIDFontType0` — the latter
+ * raises the file's version to PDF 1.6 (§9.9). Returns [`PrismPdfStatus::Parse`] when `program`
+ * is not a parseable sfnt, or carries outlines §9.9 has no embedding form for here: a CID-keyed
+ * CFF (its charset maps CIDs to glyphs, so glyph ids cannot double as CIDs) or a CFF2 face.
  *
  * # Safety
  * `builder` must be live, `name` a NUL-terminated UTF-8 C string, and `program` must point to

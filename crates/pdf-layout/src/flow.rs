@@ -205,8 +205,10 @@ impl Flow {
     /// registered under that name** by [`Flow::new`]. The font is embedded as a composite
     /// (Type0/`Identity-H`) font, so [`Flow::text`] with it can show any glyph the font contains
     /// (e.g. non-Latin scripts), and the text still extracts via a generated `/ToUnicode`. Returns
-    /// `false` (and registers nothing) if the bytes are not a valid font. Justified alignment falls
-    /// back to left for embedded fonts.
+    /// `false` (and registers nothing) if the bytes are not a valid font, or carry outlines §9.9
+    /// has no embedding form for — a CID-keyed CFF or a CFF2 face, see
+    /// [`cid_font_from_sfnt`](crate::cid_font_from_sfnt). Justified alignment falls back to left
+    /// for embedded fonts.
     ///
     /// Call this before drawing with `resource`: a page resource dictionary (§7.8.3) has one entry
     /// per name, so text already poured in the Standard-14 font of that name would be shown by the
@@ -215,6 +217,9 @@ impl Flow {
         let Some(info) = pdf_fonts::font_info(program) else {
             return false;
         };
+        if !crate::embed::embeddable(info.outlines) {
+            return false;
+        }
         // Drop the Standard-14 registration this name may have had. A surviving one is not
         // harmless: the page resource dictionary would carry a single `/resource` entry (the
         // embedded font wins, since it is inserted last), orphaning a `/Type /Font` object per
@@ -949,19 +954,6 @@ enum RowKind {
     Body,
     /// A header row repeated at the top of a continued page — a pagination artifact, not structure.
     RepeatedHeader,
-}
-
-/// Build a `CIDToGIDMap` byte array (§9.7.4.3) from an old→new glyph-ID remapping: indexed by CID
-/// (= original glyph ID), two big-endian bytes giving the glyph's ID in the subsetted program.
-fn cid_to_gid_map(map: &[(u16, u16)]) -> Vec<u8> {
-    let max_cid = map.iter().map(|(old, _)| *old).max().unwrap_or(0);
-    let mut bytes = vec![0u8; (max_cid as usize + 1) * 2];
-    for &(old, new) in map {
-        let i = old as usize * 2;
-        bytes[i] = (new >> 8) as u8;
-        bytes[i + 1] = new as u8;
-    }
-    bytes
 }
 
 /// Wrap each cell of `row` to its column's inner width and return the wrapped cells plus the row

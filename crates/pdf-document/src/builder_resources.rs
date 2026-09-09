@@ -358,6 +358,19 @@ pub(super) fn fontfile2_stream(program: &[u8]) -> Stream {
     Stream::new(dict, flate_encode(program))
 }
 
+/// The `/FontFile3` stream (§9.9, Table 126) for a CFF-flavoured OpenType program: `/Subtype
+/// /OpenType` names the whole sfnt wrapper as the payload. Unlike `/FontFile2` it carries no
+/// `/Length1` — that key belongs to the TrueType form only.
+pub(super) fn fontfile3_opentype_stream(program: &[u8]) -> Stream {
+    let mut dict = Dictionary::new();
+    dict.insert(Name::from("Subtype"), Object::Name(Name::from("OpenType")));
+    dict.insert(
+        Name::from("Filter"),
+        Object::Name(Name::from("FlateDecode")),
+    );
+    Stream::new(dict, flate_encode(program))
+}
+
 /// The `/FontDescriptor` (§9.8.1) for an embedded composite font.
 pub(super) fn font_descriptor_dict(font: &CidFont, fontfile: ObjectId) -> Dictionary {
     let mut dict = Dictionary::new();
@@ -396,12 +409,17 @@ pub(super) fn font_descriptor_dict(font: &CidFont, fontfile: ObjectId) -> Dictio
         Object::Integer(i64::from(font.cap_height)),
     );
     dict.insert(Name::from("StemV"), Object::Integer(80)); // a reasonable default; unused for rendering
-    dict.insert(Name::from("FontFile2"), Object::Reference(fontfile));
+    // §9.9, Table 126: the key names the program's format. A CFF-flavoured OpenType program is
+    // `/FontFile3` (with `/Subtype /OpenType` on the stream), never `/FontFile2`.
+    let key = if font.cff { "FontFile3" } else { "FontFile2" };
+    dict.insert(Name::from(key), Object::Reference(fontfile));
     dict
 }
 
-/// The CIDFontType2 descendant font (§9.7.4): per-glyph widths in `/W` and a `/CIDToGIDMap` that is
-/// either the `Identity` name (CID == glyph ID) or a reference to a remap stream (subsetted font).
+/// The descendant CIDFont (§9.7.4): per-glyph widths in `/W`, and — for the TrueType form — a
+/// `/CIDToGIDMap` that is either the `Identity` name (CID == glyph ID) or a reference to a remap
+/// stream (subsetted font). A CFF program's descendant is `CIDFontType0`, which has no
+/// `/CIDToGIDMap`: its codes are glyph indices because the CFF is not CID-keyed (§9.7.4.2).
 pub(super) fn cid_font_dict(
     font: &CidFont,
     descriptor: ObjectId,
@@ -431,7 +449,11 @@ pub(super) fn cid_font_dict(
     dict.insert(Name::from("Type"), Object::Name(Name::from("Font")));
     dict.insert(
         Name::from("Subtype"),
-        Object::Name(Name::from("CIDFontType2")),
+        Object::Name(Name::from(if font.cff {
+            "CIDFontType0"
+        } else {
+            "CIDFontType2"
+        })),
     );
     dict.insert(
         Name::from("BaseFont"),
@@ -439,13 +461,15 @@ pub(super) fn cid_font_dict(
     );
     dict.insert(Name::from("CIDSystemInfo"), Object::Dictionary(system_info));
     dict.insert(Name::from("FontDescriptor"), Object::Reference(descriptor));
-    dict.insert(
-        Name::from("CIDToGIDMap"),
-        match cid_to_gid {
-            Some(id) => Object::Reference(id),
-            None => Object::Name(Name::from("Identity")),
-        },
-    );
+    if !font.cff {
+        dict.insert(
+            Name::from("CIDToGIDMap"),
+            match cid_to_gid {
+                Some(id) => Object::Reference(id),
+                None => Object::Name(Name::from("Identity")),
+            },
+        );
+    }
     dict.insert(
         Name::from("DW"),
         Object::Integer(i64::from(font.default_width)),

@@ -68,6 +68,22 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   the engine laid out (`tools/gen_external_signature.py`). `verify_signatures` had only ever been
   run against its own output. Bindings port these as part of their conformance suites.
 
+### Fixed
+
+- **A CFF-flavoured OpenType program is embedded as the composite font §9.9 defines for it**:
+  `/FontFile3` with `/Subtype /OpenType` under a `CIDFontType0` descendant, and no `/CIDToGIDMap`
+  (a `CIDFontType2` entry only, §9.7.4.2). `cid_font_from_sfnt` accepted any face `ttf-parser`
+  parsed, `.otf` files included — as `prismpdf_builder_embed_cid_font`'s own "TrueType/OpenType"
+  contract invites — but the writer emitted every program as `/FontFile2` under `CIDFontType2`,
+  producing a PDF whose text no conforming reader renders. `CidFont` carries the distinction in a
+  new `cff` field, `pdf-fonts` reports it as `FontInfo::outlines`, and an embedded OpenType
+  program floors the header at PDF 1.6. A CFF program is also embedded whole rather than
+  subsetted, because only the TrueType form has a `/CIDToGIDMap` to carry the renumbering the
+  subsetter applies. Two sfnt families have no §9.9 embedding form here and are now refused
+  outright — `Parse` on the ABI, `false` from `Flow::embed_font`, `InvalidFont` from
+  `Composition::embedded_font` — rather than embedded as something they are not: a **CID-keyed**
+  CFF, whose charset maps CIDs to glyphs so glyph ids cannot double as CIDs, and CFF2.
+
 ## [1.0.0-alpha.1] - 2026-08-31
 
 First prerelease of the `1.0.0` stability line. The API surface is the validated `0.4.x` one;

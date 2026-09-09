@@ -29,6 +29,6 @@ pub use cmap::ToUnicode;
 pub use decode::ResourceDecoder;
 pub use embed::{FontInfo, Glyph, font_info, glyph_advances, glyph_to_unicode, shape_text};
 pub use encoding::{Encoding, winansi_encode};
-pub use program::{FaceMetrics, FontProgramFormat, analyze_sfnt};
+pub use program::{FaceMetrics, FontProgramFormat, GlyphOutlines, analyze_sfnt};
 pub use standard_metrics::{standard_glyph_width, standard_text_width};
 pub use subset::{glyphs_for_text, subset_sfnt, subset_with_map};
