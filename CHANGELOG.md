@@ -83,6 +83,12 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   outright — `Parse` on the ABI, `false` from `Flow::embed_font`, `InvalidFont` from
   `Composition::embedded_font` — rather than embedded as something they are not: a **CID-keyed**
   CFF, whose charset maps CIDs to glyphs so glyph ids cannot double as CIDs, and CFF2.
+- **A template with a signature field declares `/SigFlags`.** `FormFieldSpec::Signature`
+  (`prismpdf_builder_add_signature_field`) wrote the widget and the `/AcroForm` `/Fields` entry
+  but left the form dictionary without the `SignaturesExist` bit (§12.7.2, Table 218), which is
+  what a viewer reads to know a document has a signature field — so Acrobat offered no signing
+  workflow on a template built for exactly that. The builder now sets `/SigFlags 1`; `AppendOnly`
+  stays clear until something is signed, where `Document::sign` has always set both.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

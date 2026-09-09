@@ -867,3 +867,54 @@ fn embeds_a_cff_program_as_cidfonttype0_fontfile3() {
     // An embedded OpenType program is PDF 1.6 (§9.9), which the header auto-stamp picks up.
     assert!(pdf.starts_with(b"%PDF-1.6"), "header floors at 1.6");
 }
+
+#[test]
+fn signature_field_template_declares_that_signatures_exist() {
+    // §12.7.2, Table 218: bit 1 (SignaturesExist) is what a viewer reads to know the document has
+    // a signature field and to offer the signing workflow. Bit 2 (AppendOnly) stays clear until
+    // something is actually signed.
+    let mut builder = Builder::new();
+    builder.add_page(PageSpec::new(Vec::new())).add_form_field(
+        0,
+        FormFieldSpec::Signature {
+            rect: [72.0, 700.0, 272.0, 760.0],
+            name: "Approval".into(),
+            tooltip: None,
+        },
+        Vec::new(),
+    );
+    let doc = Document::open(builder.build()).unwrap();
+    let acroform = doc
+        .resolve(doc.catalog().unwrap().get(&Name::from("AcroForm")).unwrap())
+        .unwrap();
+    let Object::Dictionary(acroform) = acroform else {
+        panic!("no /AcroForm")
+    };
+    assert_eq!(
+        acroform.get(&Name::from("SigFlags")),
+        Some(&Object::Integer(1))
+    );
+}
+
+#[test]
+fn a_form_without_signature_fields_has_no_sigflags() {
+    let mut builder = Builder::new();
+    builder.add_page(PageSpec::new(Vec::new())).add_form_field(
+        0,
+        FormFieldSpec::Checkbox {
+            rect: [72.0, 700.0, 90.0, 718.0],
+            name: "agree".into(),
+            checked: true,
+            tooltip: None,
+        },
+        Vec::new(),
+    );
+    let doc = Document::open(builder.build()).unwrap();
+    let acroform = doc
+        .resolve(doc.catalog().unwrap().get(&Name::from("AcroForm")).unwrap())
+        .unwrap();
+    let Object::Dictionary(acroform) = acroform else {
+        panic!("no /AcroForm")
+    };
+    assert!(acroform.get(&Name::from("SigFlags")).is_none());
+}

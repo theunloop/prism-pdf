@@ -226,7 +226,9 @@ impl Builder {
                 annot_refs.push((annot_id, page_ids[pi]));
             }
             let mut field_ids: Vec<ObjectId> = Vec::new();
+            let mut has_signature_field = false;
             for (page_index, field, files) in &self.form_fields {
+                has_signature_field |= matches!(field, FormFieldSpec::Signature { .. });
                 let pi = (*page_index).min(page_ids.len() - 1);
                 let id = emit_form_field(
                     field,
@@ -260,8 +262,9 @@ impl Builder {
                     }
                 }
             }
-            // The interactive form dictionary (§12.7.2): /Fields only — no /NeedAppearances (every
-            // field carries its own appearance) and no /XFA (PDF/A §6.4.1 t3 / §6.4.2 t1).
+            // The interactive form dictionary (§12.7.2): /Fields, plus /SigFlags when a signature
+            // field is present — no /NeedAppearances (every field carries its own appearance) and
+            // no /XFA (PDF/A §6.4.1 t3 / §6.4.2 t1).
             if field_ids.is_empty() {
                 None
             } else {
@@ -277,6 +280,13 @@ impl Builder {
                     )),
                 );
                 acro.insert(Name::from("DR"), Object::Dictionary(Dictionary::new()));
+                if has_signature_field {
+                    // SignaturesExist (Table 218, bit 1): what a viewer reads to know the document
+                    // has a signature field and to offer the signing workflow. AppendOnly (bit 2)
+                    // stays clear — nothing is signed yet, so no signature can be invalidated by a
+                    // full rewrite; `Document::sign` sets both when it signs (§12.7.4.5).
+                    acro.insert(Name::from("SigFlags"), Object::Integer(1));
+                }
                 objects.push((id, Object::Dictionary(acro)));
                 Some(id)
             }
