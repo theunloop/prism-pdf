@@ -113,6 +113,13 @@ fixed here.
   most `MAX_PNG_SIDE`, and the two multiplying to at most `MAX_PNG_PIXELS` (2²⁸, the same sample
   count the old square allowed). It is still checked on the header before any pixel data is read,
   since that is what the sample buffer is sized from.
+- **Fixtures no longer depend on the checkout's line-ending policy.** The repository had no
+  `.gitattributes`, and a PDF carries no NUL byte in its first 8 KiB, so Git classified every
+  corpus file as text and `core.autocrlf=true` — the Git for Windows default, which the CI runners
+  keep — rewrote each `\n` in one on checkout. The reader survives that (a shifted xref is
+  rebuilt by scanning), which is why it went unnoticed for so long; a signature does not, because
+  its CMS covers a byte range (§12.8.1), so `corpus/valid/signed-openssl-cms.pdf` verified
+  everywhere but Windows. The fixture formats are marked binary now.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

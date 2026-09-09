@@ -1,0 +1,20 @@
+# Fixtures must arrive from a checkout byte for byte.
+#
+# A PDF is ASCII enough that Git classifies it as text — no NUL byte in the first 8 KiB is the
+# whole test — so `core.autocrlf=true`, the Git for Windows default the CI runners keep, rewrites
+# every LF in one on checkout. Most of the suite survives that, because the reader rebuilds a
+# broken xref by scanning rather than trusting its offsets (DESIGN.md §3.1, recovery is
+# first-class). A signature does not survive it: a detached CMS covers a byte range (§12.8.1), so
+# `corpus/valid/signed-openssl-cms.pdf` verified on Linux and macOS and failed on Windows alone.
+#
+# Marking the fixture formats binary settles it for every platform and every future fixture. The
+# `-text` is what disables end-of-line conversion; `-diff` keeps `git diff` from printing a
+# mangled PDF at review time.
+*.pdf   -text -diff
+*.der   -text -diff
+*.icc   -text -diff
+*.jpeg  -text -diff
+*.jpg   -text -diff
+*.png   -text -diff
+*.otf   -text -diff
+*.ttf   -text -diff
