@@ -44,6 +44,13 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   raster toolkit emit by default; until now a caller decoded it with a second library first.
   Decoded by `zune-png`, the same family as the `zune-jpeg` already used for DCTDecode, under the
   same licence policy. A new `png` fuzz target covers the decoder-plus-reshaping path.
+- **Images in signature appearances**: `SignatureAppearance::image` draws an image XObject — a
+  rendered signature graphic, an organisation's stamp — in the visible signature widget, fitted
+  into the whole box when there is no caption and into its left part with the caption beside it
+  (§12.5.5, §8.9.5); a soft or stencil mask on the image travels with it (§11.6.5). The appearance
+  used to be Helvetica text and nothing else. On the ABI:
+  `prismpdf_sign_settings_set_appearance_image`, taking any `PrismPdfImageSource` — JPEG, PNG,
+  raw samples — which stays caller-owned.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

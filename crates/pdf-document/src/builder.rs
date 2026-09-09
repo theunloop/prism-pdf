@@ -1413,6 +1413,7 @@ fn text_string_maybe_utf8(s: &str, utf8: bool) -> Vec<u8> {
 
 #[path = "builder_resources.rs"]
 mod resources;
+pub(crate) use resources::image_stream;
 use resources::*;
 
 #[path = "builder_structure.rs"]

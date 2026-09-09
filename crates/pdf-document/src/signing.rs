@@ -21,6 +21,7 @@ use pdf_crypto::{
 };
 use pdf_writer::{write_incremental_signed, write_incremental_signed_with_trailer};
 
+use crate::builder::{ImageXObject, image_stream};
 use crate::{DocError, Document, Result};
 
 /// Bytes reserved for the CMS signature in `/Contents` (so `2 × RESERVE` hex digits). An RSA-2048
@@ -69,6 +70,10 @@ pub struct SignatureAppearance {
     pub rect: [f32; 4],
     /// The text to draw; `None` derives a two-line label from the signer name and signing time.
     pub text: Option<String>,
+    /// An image to draw in the widget — a rendered signature graphic, an organisation's stamp
+    /// (§8.9.5). Fitted into the whole box when there is no text, else into its left part with the
+    /// text beside it; a soft mask or stencil mask on the image is carried along (§11.6.5).
+    pub image: Option<ImageXObject>,
 }
 
 /// Everything `apply_signature_revision` needs to lay out one signature revision, other than the
@@ -295,11 +300,33 @@ impl Document {
                 next += 1;
                 let font_id = ObjectId::new(next, 0);
                 next += 1;
+                // An image in the appearance is its own image XObject (plus one per mask it
+                // carries, §11.6.5), referenced from the form's /Resources.
+                let image_ref = ap.image.as_ref().map(|image| {
+                    let smask_id = image.smask.as_ref().map(|smask| {
+                        let id = ObjectId::new(next, 0);
+                        next += 1;
+                        changed.push((id, Object::Stream(image_stream(smask, None, None))));
+                        id
+                    });
+                    let mask_id = image.mask.as_ref().map(|mask| {
+                        let id = ObjectId::new(next, 0);
+                        next += 1;
+                        changed.push((id, Object::Stream(image_stream(mask, None, None))));
+                        id
+                    });
+                    let id = ObjectId::new(next, 0);
+                    next += 1;
+                    changed.push((id, Object::Stream(image_stream(image, smask_id, mask_id))));
+                    (id, image.width, image.height)
+                });
                 let lines = appearance_lines(ap, name, date);
                 let (width, height) = (ap.rect[2] - ap.rect[0], ap.rect[3] - ap.rect[1]);
                 changed.push((
                     xobject_id,
-                    Object::Stream(appearance_xobject(width, height, font_id, &lines)),
+                    Object::Stream(appearance_xobject(
+                        width, height, font_id, &lines, image_ref,
+                    )),
                 ));
                 changed.push((font_id, Object::Dictionary(helvetica_font())));
                 (ap.rect, Some(xobject_id))
@@ -661,8 +688,15 @@ fn empty_appearance_xobject() -> Stream {
 }
 
 /// Build the appearance Form XObject (§12.5.5 / §8.10): a `/BBox`-bounded box drawing `lines` in
-/// Helvetica. The widget maps this BBox onto its `/Rect`.
-fn appearance_xobject(width: f32, height: f32, font_id: ObjectId, lines: &[String]) -> Stream {
+/// Helvetica and, when given, `image` — `(object id, width, height)` of an image XObject — fitted
+/// into the box. The widget maps this BBox onto its `/Rect`.
+fn appearance_xobject(
+    width: f32,
+    height: f32,
+    font_id: ObjectId,
+    lines: &[String],
+    image: Option<(ObjectId, u32, u32)>,
+) -> Stream {
     let mut dict = Dictionary::new();
     dict.insert(Name::from("Type"), Object::Name(Name::from("XObject")));
     dict.insert(Name::from("Subtype"), Object::Name(Name::from("Form")));
@@ -680,12 +714,41 @@ fn appearance_xobject(width: f32, height: f32, font_id: ObjectId, lines: &[Strin
     fonts.insert(Name::from("Helv"), Object::Reference(font_id));
     let mut resources = Dictionary::new();
     resources.insert(Name::from("Font"), Object::Dictionary(fonts));
+    if let Some((image_id, _, _)) = image {
+        let mut xobjects = Dictionary::new();
+        xobjects.insert(Name::from("Im0"), Object::Reference(image_id));
+        resources.insert(Name::from("XObject"), Object::Dictionary(xobjects));
+    }
     dict.insert(Name::from("Resources"), Object::Dictionary(resources));
 
-    // Draw each line top-to-bottom with a fixed 10-unit leading (§9.4 text operators).
     let mut content = Vec::new();
+    // The image takes the whole box when it is alone and the left 40% when text sits beside it,
+    // scaled to fit and centred in its slot. Image space is the unit square (§8.9.4), so the `cm`
+    // carries both the size and the position.
+    let mut text_x = 2.0f32;
+    if let Some((_, image_width, image_height)) = image {
+        let pad = 2.0f32;
+        let slot = if lines.is_empty() { width } else { width * 0.4 };
+        let (avail_w, avail_h) = ((slot - 2.0 * pad).max(1.0), (height - 2.0 * pad).max(1.0));
+        let scale = (avail_w / image_width.max(1) as f32).min(avail_h / image_height.max(1) as f32);
+        let (drawn_w, drawn_h) = (image_width as f32 * scale, image_height as f32 * scale);
+        let (x, y) = (
+            pad + (avail_w - drawn_w) / 2.0,
+            pad + (avail_h - drawn_h) / 2.0,
+        );
+        content.extend_from_slice(
+            format!("q\n{drawn_w:.2} 0 0 {drawn_h:.2} {x:.2} {y:.2} cm\n/Im0 Do\nQ\n").as_bytes(),
+        );
+        text_x = slot + pad;
+    }
+    if lines.is_empty() {
+        return Stream::new(dict, content);
+    }
+
+    // Draw each line top-to-bottom with a fixed 10-unit leading (§9.4 text operators).
     content.extend_from_slice(b"BT\n/Helv 8 Tf\n10 TL\n");
-    content.extend_from_slice(format!("2 {:.2} Td\n", (height - 10.0).max(0.0)).as_bytes());
+    content
+        .extend_from_slice(format!("{text_x:.2} {:.2} Td\n", (height - 10.0).max(0.0)).as_bytes());
     for (i, line) in lines.iter().enumerate() {
         if i > 0 {
             content.extend_from_slice(b"T*\n");

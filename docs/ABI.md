@@ -411,6 +411,7 @@ Signing takes more optional inputs than one C signature can carry, so `SignSetti
 | `prismpdf_sign_settings_set_signing_time(settings, unix_time)` | Pin the clock instead of reading it — what a reproducible build or a test needs. |
 | `prismpdf_sign_settings_set_pades(settings, pades)` | Produce a PAdES (ETSI EN 319 142) signature. |
 | `prismpdf_sign_settings_set_appearance(settings, page_index, rect, text)` | A visible widget on `page_index` at `rect` (4 floats), optionally captioned. Null `text` gives an unlabelled box. |
+| `prismpdf_sign_settings_set_appearance_image(settings, page_index, rect, image, text)` | The same widget carrying an image source (copied; masks included) — a signature graphic or a stamp — fitted into the left part of the box with the caption beside it. |
 | `prismpdf_sign_settings_set_timestamp(settings, cert, cert_len, key, key_len, gen_time, serial)` | Embed a signature timestamp (§12.8.3.3). |
 | `prismpdf_sign_settings_add_certificate(settings, der, len)` | Carry an extra DER certificate in the CMS — an intermediate of a private issuing chain — so validators without that CA can still chain the signer to a root (§12.8.3.3). Once per certificate. |
 | `prismpdf_document_sign(doc, cert, cert_len, key, key_len, out_data, out_len)` | Sign with DER certificate + key, returning an incremental update (§7.5.6). |

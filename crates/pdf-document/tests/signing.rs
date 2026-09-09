@@ -7,7 +7,9 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use der::Encode;
-use pdf_document::{Document, SignSettings, SignatureAppearance, TsaCredentials};
+use pdf_document::{
+    Document, ImageColorSpace, ImageXObject, SignSettings, SignatureAppearance, TsaCredentials,
+};
 use rsa::pkcs1v15::SigningKey;
 use rsa::pkcs8::EncodePrivateKey;
 use rsa::{RsaPrivateKey, RsaPublicKey};
@@ -140,6 +142,7 @@ fn visible_appearance_emits_form_xobject() {
             page_index: 0,
             rect: [20.0, 20.0, 180.0, 70.0],
             text: None,
+            image: None,
         }),
         ..SignSettings::default()
     };
@@ -162,6 +165,58 @@ fn visible_appearance_emits_form_xobject() {
     let signatures = reopened.verify_signatures().unwrap();
     assert_eq!(signatures.len(), 1);
     assert!(signatures[0].valid, "visible signature still verifies");
+}
+
+#[test]
+fn visible_appearance_can_carry_an_image() {
+    let (cert, key) = self_signed("Stamping Signer");
+    let doc = Document::open(one_page_pdf()).unwrap();
+    // A 2×2 RGB image with a soft mask (§11.6.5.2): the mask must travel too.
+    let stamp = ImageXObject {
+        width: 2,
+        height: 2,
+        color_space: ImageColorSpace::Rgb,
+        bits_per_component: 8,
+        filter: None,
+        data: vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255],
+        smask: Some(Box::new(ImageXObject {
+            width: 2,
+            height: 2,
+            color_space: ImageColorSpace::Gray,
+            bits_per_component: 8,
+            filter: None,
+            data: vec![255, 128, 0, 255],
+            smask: None,
+            mask: None,
+            image_mask: false,
+        })),
+        mask: None,
+        image_mask: false,
+    };
+    let settings = SignSettings {
+        name: Some("Bob".to_string()),
+        appearance: Some(SignatureAppearance {
+            page_index: 0,
+            rect: [20.0, 20.0, 220.0, 80.0],
+            text: None,
+            image: Some(stamp),
+        }),
+        ..SignSettings::default()
+    };
+    let signed = doc.sign_with(&cert, &key, &settings).unwrap();
+
+    // The appearance form references an image XObject, paints it, and the soft mask is wired.
+    assert!(find(&signed, b"/Subtype /Image").is_some(), "image xobject");
+    assert!(find(&signed, b"/Im0 Do").is_some(), "painted");
+    assert!(find(&signed, b"/SMask").is_some(), "soft mask carried");
+    assert!(
+        find(&signed, b"Digitally signed by Bob").is_some(),
+        "caption beside it"
+    );
+    let reopened = Document::open(signed).unwrap();
+    let signatures = reopened.verify_signatures().unwrap();
+    assert_eq!(signatures.len(), 1);
+    assert!(signatures[0].valid, "still verifies");
 }
 
 #[test]

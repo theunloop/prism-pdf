@@ -57,9 +57,9 @@ pub use pdf_document::{
 pub use pdf_content::Content;
 pub use pdf_document::{
     AnnotationSpec, Attachment, AttrValue, Builder, CidFont, DocumentPart, EncryptedPayloadSpec,
-    FormFieldSpec, ImageColorSpace, LinkTarget, ListNumbering, MATHML_STRUCT_NS, PDF2_STRUCT_NS,
-    PageLabelRange, PageLabelStyle, PageSpec, PrintFieldRole, RoleMapEntry, SeparationSpec,
-    StdFont, StructAttr, StructElem, StructKid, ThScope,
+    FormFieldSpec, ImageColorSpace, ImageFilter, ImageXObject, LinkTarget, ListNumbering,
+    MATHML_STRUCT_NS, PDF2_STRUCT_NS, PageLabelRange, PageLabelStyle, PageSpec, PrintFieldRole,
+    RoleMapEntry, SeparationSpec, StdFont, StructAttr, StructElem, StructKid, ThScope,
 };
 
 /// High-level text layout (§9.4): measure/wrap text in Standard-14 fonts, draw an aligned block

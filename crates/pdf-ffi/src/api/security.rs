@@ -488,6 +488,47 @@ pub unsafe extern "C" fn prismpdf_sign_settings_set_appearance(
                 page_index,
                 rect: bounds,
                 text: caption,
+                image: None,
+            });
+        }
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Give the signature a visible appearance that carries an image — a rendered signature graphic,
+/// an organisation's stamp — as a widget on page `page_index` (0-based) at `rect`
+/// (`[llx lly urx ury]`, four floats). The image is copied out of `image`, which stays
+/// caller-owned, with any soft or stencil mask it carries (§11.6.5). With a null `text` the default
+/// caption (signer name and date) is drawn beside it; with text, that text is; the image fills the
+/// left part of the box in either case.
+///
+/// # Safety
+/// `settings` and `image` must be live, `rect` must point to 4 readable `float`s, and `text` must
+/// be a NUL-terminated UTF-8 C string or null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_sign_settings_set_appearance_image(
+    settings: *mut PrismPdfSignSettings,
+    page_index: usize,
+    rect: *const f32,
+    image: *const PrismPdfImageSource,
+    text: *const c_char,
+) -> PrismPdfStatus {
+    if settings.is_null() || rect.is_null() || image.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        let mut bounds = [0.0f32; 4];
+        unsafe { std::ptr::copy_nonoverlapping(rect, bounds.as_mut_ptr(), 4) };
+        let Ok(caption) = (unsafe { read_opt_str(text) }) else {
+            return PrismPdfStatus::NullArgument;
+        };
+        let xobject = unsafe { (*image).0.xobject().clone() };
+        unsafe {
+            (*settings).0.appearance = Some(SignatureAppearance {
+                page_index,
+                rect: bounds,
+                text: caption,
+                image: Some(xobject),
             });
         }
         PrismPdfStatus::Ok

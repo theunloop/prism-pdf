@@ -120,6 +120,7 @@ fn check(algorithm: Algorithm) {
             page_index: 0,
             rect: [10.0, 10.0, 190.0, 60.0],
             text: None,
+            image: None,
         }),
         ..Default::default()
     };

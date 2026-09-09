@@ -303,7 +303,7 @@ pub(super) fn emit_separation(
 
 /// An image XObject stream (§8.9.5): geometry, colour space and (optional) filter, plus the bytes;
 /// with `/ImageMask`, `/SMask` and `/Mask` wired when applicable.
-pub(super) fn image_stream(
+pub(crate) fn image_stream(
     image: &ImageXObject,
     smask_id: Option<ObjectId>,
     mask_id: Option<ObjectId>,

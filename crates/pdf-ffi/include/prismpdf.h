@@ -2262,6 +2262,24 @@ PrismPdfStatus prismpdf_sign_settings_set_appearance(PrismPdfSignSettings *setti
                                                      const char *text);
 
 /**
+ * Give the signature a visible appearance that carries an image — a rendered signature graphic,
+ * an organisation's stamp — as a widget on page `page_index` (0-based) at `rect`
+ * (`[llx lly urx ury]`, four floats). The image is copied out of `image`, which stays
+ * caller-owned, with any soft or stencil mask it carries (§11.6.5). With a null `text` the default
+ * caption (signer name and date) is drawn beside it; with text, that text is; the image fills the
+ * left part of the box in either case.
+ *
+ * # Safety
+ * `settings` and `image` must be live, `rect` must point to 4 readable `float`s, and `text` must
+ * be a NUL-terminated UTF-8 C string or null.
+ */
+PrismPdfStatus prismpdf_sign_settings_set_appearance_image(PrismPdfSignSettings *settings,
+                                                           uintptr_t page_index,
+                                                           const float *rect,
+                                                           const PrismPdfImageSource *image,
+                                                           const char *text);
+
+/**
  * Embed a signature timestamp (§12.8.3.3) produced from the given TSA credentials.
  *
  * # Safety

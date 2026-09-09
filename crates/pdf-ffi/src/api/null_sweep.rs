@@ -295,6 +295,7 @@ fn every_pointer_taking_status_fn_rejects_all_null_arguments() {
     check!(prismpdf_sign_settings_set_pades(null_mut(), false));
     check!(prismpdf_sign_settings_set_appearance(null_mut(), 0, null(), null()));
     check!(prismpdf_sign_settings_add_certificate(null_mut(), null(), 0));
+    check!(prismpdf_sign_settings_set_appearance_image(null_mut(), 0, null(), null(), null()));
     check!(prismpdf_sign_settings_set_timestamp(null_mut(), null(), 0, null(), 0, 0, 0));
     check!(prismpdf_document_sign(null(), null(), 0, null(), 0, null_mut(), null_mut()));
     check!(prismpdf_document_sign_with(null(), null(), 0, null(), 0, null(), null_mut(), null_mut()));

@@ -5187,3 +5187,74 @@ fn png_image_sources_decode_or_return_null() {
     assert!(unsafe { prismpdf_image_source_from_png(RGBA_2X2.as_ptr(), 40) }.is_null());
     assert!(unsafe { prismpdf_image_source_from_png(std::ptr::null(), 0) }.is_null());
 }
+
+#[test]
+fn signature_appearance_carries_an_image() {
+    let doc = open(&sample_pdf());
+    let settings = prismpdf_sign_settings_new();
+    let rgb = [255u8, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255];
+    let image = unsafe { prismpdf_image_source_from_rgb(2, 2, rgb.as_ptr(), rgb.len()) };
+    assert!(!image.is_null());
+    let rect = [10.0f32, 10.0, 210.0, 70.0];
+    let caption = CString::new("Stamped").unwrap();
+    assert_eq!(
+        unsafe {
+            prismpdf_sign_settings_set_appearance_image(
+                settings,
+                0,
+                rect.as_ptr(),
+                image,
+                caption.as_ptr(),
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    // The source was copied; freeing it before signing must not matter.
+    unsafe { prismpdf_image_source_free(image) };
+
+    let mut data: *mut u8 = std::ptr::null_mut();
+    let mut len = 0usize;
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                doc,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                settings,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    let signed = unsafe { std::slice::from_raw_parts(data, len) }.to_vec();
+    unsafe { prismpdf_bytes_free(data, len) };
+    unsafe { prismpdf_sign_settings_free(settings) };
+    unsafe { prismpdf_document_free(doc) };
+
+    let text = String::from_utf8_lossy(&signed);
+    assert!(text.contains("/Subtype /Image"), "image xobject emitted");
+    assert!(text.contains("/Im0 Do"), "image painted");
+    assert!(text.contains("(Stamped)"), "caption beside it");
+    let reopened = open(&signed);
+    let mut list: *mut PrismPdfSignatureList = std::ptr::null_mut();
+    assert_eq!(
+        unsafe { prismpdf_document_verify_signatures(reopened, &mut list) },
+        PrismPdfStatus::Ok
+    );
+    let mut sig: *const PrismPdfSignature = std::ptr::null();
+    assert_eq!(
+        unsafe { prismpdf_signature_list_get(list, 0, &mut sig) },
+        PrismPdfStatus::Ok
+    );
+    let mut valid = false;
+    assert_eq!(
+        unsafe { prismpdf_signature_valid(sig, &mut valid) },
+        PrismPdfStatus::Ok
+    );
+    assert!(valid);
+    unsafe { prismpdf_signature_list_free(list) };
+    unsafe { prismpdf_document_free(reopened) };
+}

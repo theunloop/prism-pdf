@@ -39,4 +39,5 @@ void prismpdf_header_surface(void) {
     (void)&prismpdf_composition_into_builder;
     (void)&prismpdf_sign_settings_add_certificate;
     (void)&prismpdf_image_source_from_png;
+    (void)&prismpdf_sign_settings_set_appearance_image;
 }

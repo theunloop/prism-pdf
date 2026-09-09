@@ -172,6 +172,13 @@ impl Image {
         })
     }
 
+    /// The image XObject this wraps, for callers that place it outside a flow — a signature
+    /// appearance, a hand-assembled page.
+    #[must_use]
+    pub fn xobject(&self) -> &ImageXObject {
+        &self.xobject
+    }
+
     /// Intrinsic width in samples.
     #[must_use]
     pub fn width(&self) -> u32 {
