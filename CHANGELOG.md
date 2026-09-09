@@ -9,6 +9,13 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+## [1.0.0-alpha.2] - 2026-09-09
+
+Second prerelease of the `1.0.0` line: the composition-to-builder handover, whole-program CID font
+embedding, PNG as an image source, form-field geometry, certificate chains and signature-appearance
+images, signing into an existing `/Sig` field — and the defects a review of that work found, each
+fixed here.
+
 ### Added
 
 - **`prismpdf_builder_embed_cid_font`** — the C ABI export the header had been citing since
@@ -240,7 +247,8 @@ prerelease — only the full `1.0.0-alpha.1` string resolves to it.
   read `-p 21` as `--package 21`. The workflow now passes `--platform 21` and pins cargo-ndk to
   `^4.1`.
 
-[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.1...HEAD
+[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.2...HEAD
+[1.0.0-alpha.2]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.1...v1.0.0-alpha.1
 [0.4.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/theunloop/prism-pdf/releases/tag/v0.4.0
