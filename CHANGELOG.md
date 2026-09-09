@@ -24,6 +24,22 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   existed (`Composition::into_builder` → `PreparedComposition::builder_mut`); across the ABI a
   composition could set nothing but its tagged language. `PreparedComposition::into_builder` is
   new, and the type is now re-exported from `prismpdf`.
+- **Form-field geometry**: `FormField` carries `rect` and `page_index` — the first widget's
+  `/Rect`, normalised, and the page it sits on, from `/P` or, failing that, from the page whose
+  `/Annots` lists it (§12.5.2, §12.7.3.1). The reader used to stop at name, type and value, so
+  placing anything relative to a named field meant walking `/AcroForm` by hand. On the ABI:
+  `prismpdf_form_field_rect` and `prismpdf_form_field_page_index`, `NotFound` for a field with no
+  widget.
+
+## [1.0.0-alpha.1] - 2026-08-31
+
+First prerelease of the `1.0.0` stability line. The API surface is the validated `0.4.x` one;
+this tag exists so bindings and downstream consumers can pin and exercise the candidate surface
+while it soaks. Per SemVer, `cargo add prismpdf` and plain version requirements ignore a
+prerelease — only the full `1.0.0-alpha.1` string resolves to it.
+
+### Added
+
 - **One-line CLI installers**: `scripts/install.sh` (macOS/Linux, `curl | sh`) and
   `scripts/install.ps1` (Windows, `irm | iex`) download the prebuilt archive matching the
   machine from GitHub Releases, verify it against the release's `SHA256SUMS-v*.txt`, and install

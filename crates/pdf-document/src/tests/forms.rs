@@ -159,3 +159,45 @@ fn no_acroform_yields_no_fields() {
     let doc = Document::open(assemble(&objects, "")).unwrap();
     assert!(doc.form_fields().unwrap().is_empty());
 }
+
+#[test]
+fn reports_widget_geometry_from_merged_and_kid_widgets() {
+    // Three fields (§12.7.3.1): one merged with its widget and carrying /P; one whose widget is a
+    // /Kids entry that names no /P, so the page has to be found from /Annots; one with no widget.
+    // The merged widget's /Rect names its upper-right corner first, which /Rect allows (§12.5.2).
+    let objects = vec![
+        b"<< /Type /Catalog /Pages 2 0 R /AcroForm 9 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /Annots [5 0 R] >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /Annots [7 0 R] >>".to_vec(),
+        b"<< /FT /Tx /T (merged) /Subtype /Widget /Rect [100 50 10 20] /P 3 0 R >>".to_vec(),
+        b"<< /FT /Sig /T (kids) /Kids [7 0 R] >>".to_vec(),
+        b"<< /Subtype /Widget /Rect [1 2 3 4] /Parent 6 0 R >>".to_vec(),
+        b"<< /FT /Tx /T (bare) >>".to_vec(),
+        b"<< /Fields [5 0 R 6 0 R 8 0 R] >>".to_vec(),
+    ];
+    let doc = Document::open(assemble(&objects, "")).unwrap();
+    let fields = doc.form_fields().unwrap();
+    assert_eq!(fields.len(), 3);
+
+    assert_eq!(fields[0].name, "merged");
+    assert_eq!(
+        fields[0].rect,
+        Some([10.0, 20.0, 100.0, 50.0]),
+        "normalised"
+    );
+    assert_eq!(fields[0].page_index, Some(0), "from /P");
+
+    assert_eq!(fields[1].name, "kids");
+    assert_eq!(fields[1].field_type, "Sig");
+    assert_eq!(fields[1].rect, Some([1.0, 2.0, 3.0, 4.0]));
+    assert_eq!(
+        fields[1].page_index,
+        Some(1),
+        "from the page whose /Annots lists the widget"
+    );
+
+    assert_eq!(fields[2].name, "bare");
+    assert_eq!(fields[2].rect, None);
+    assert_eq!(fields[2].page_index, None);
+}

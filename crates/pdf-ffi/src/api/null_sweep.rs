@@ -119,6 +119,8 @@ fn every_pointer_taking_status_fn_rejects_all_null_arguments() {
     check!(prismpdf_form_field_list_len(null(), null_mut()));
     check!(prismpdf_form_field_list_get(null(), 0, null_mut()));
     check!(prismpdf_form_field_name(null(), null_mut()));
+    check!(prismpdf_form_field_rect(null(), null_mut()));
+    check!(prismpdf_form_field_page_index(null(), null_mut()));
     check!(prismpdf_form_field_type(null(), null_mut()));
     check!(prismpdf_form_field_value(null(), null_mut()));
     check!(prismpdf_document_fill_form(null(), null(), null(), 0, null_mut(), null_mut()));

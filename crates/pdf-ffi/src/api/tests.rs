@@ -4964,6 +4964,36 @@ fn builder_embeds_a_whole_font_program_for_hand_assembled_pages() {
 }
 
 #[test]
+fn form_field_geometry_crosses_the_abi() {
+    // rich_pdf() places its checkbox at [1 2 3 4] on the first page.
+    let doc = open(&rich_pdf());
+    let mut list: *mut PrismPdfFormFieldList = std::ptr::null_mut();
+    assert_eq!(
+        unsafe { prismpdf_document_form_fields(doc, &mut list) },
+        PrismPdfStatus::Ok
+    );
+    let mut field: *const PrismPdfFormField = std::ptr::null();
+    assert_eq!(
+        unsafe { prismpdf_form_field_list_get(list, 0, &mut field) },
+        PrismPdfStatus::Ok
+    );
+    let mut rect = [0.0f32; 4];
+    assert_eq!(
+        unsafe { prismpdf_form_field_rect(field, rect.as_mut_ptr()) },
+        PrismPdfStatus::Ok
+    );
+    assert_eq!(rect, [1.0, 2.0, 3.0, 4.0]);
+    let mut page = usize::MAX;
+    assert_eq!(
+        unsafe { prismpdf_form_field_page_index(field, &mut page) },
+        PrismPdfStatus::Ok
+    );
+    assert_eq!(page, 0);
+    unsafe { prismpdf_form_field_list_free(list) };
+    unsafe { prismpdf_document_free(doc) };
+}
+
+#[test]
 fn composition_hands_over_a_builder_for_metadata() {
     unsafe {
         let composition = prismpdf_composition_new();

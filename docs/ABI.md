@@ -288,6 +288,8 @@ builds the multipage acceptance invoice without Rust callbacks, and is round-tri
 | `prismpdf_form_field_name(field, out_text)` | Fully-qualified field name (§12.7.3.2). |
 | `prismpdf_form_field_type(field, out_text)` | `/FT` — `Tx`, `Btn`, `Ch`, `Sig`; empty when unknown. |
 | `prismpdf_form_field_value(field, out_text)` | Current `/V` as text, or `NotFound` when unset or non-textual. |
+| `prismpdf_form_field_rect(field, out_rect)` | The first widget's `/Rect` (§12.5.2), normalised, as 4 floats; `NotFound` for a field with no widget. |
+| `prismpdf_form_field_page_index(field, out_index)` | The 0-based page that widget sits on — its `/P`, else the page whose `/Annots` lists it; `NotFound` when unknown. |
 | `prismpdf_document_fill_form(doc, names, values, count, out_data, out_len)` | Fill fields by name and re-emit as an incremental update (§7.5.6). `names`/`values` are parallel C-string arrays; unknown names are ignored. |
 | `prismpdf_document_flatten_form(doc, out_data, out_len)` | Stamp widget appearances into page content, drop `/AcroForm`, return the rewritten PDF. |
 

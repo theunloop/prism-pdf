@@ -356,6 +356,55 @@ pub unsafe extern "C" fn prismpdf_form_field_value(
     })
 }
 
+/// The rectangle of the field's first widget annotation (`/Rect`, §12.5.2), normalised to
+/// `[llx lly urx ury]` in default user space — four floats written to `out_rect`. `NotFound` for a
+/// field with no widget.
+///
+/// # Safety
+/// `field` must be borrowed from a live list and `out_rect` must point to 4 writable `float`s.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_form_field_rect(
+    field: *const PrismPdfFormField,
+    out_rect: *mut f32,
+) -> PrismPdfStatus {
+    if field.is_null() || out_rect.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| match unsafe { &(*field).0 }.rect {
+        Some(rect) => {
+            unsafe { std::ptr::copy_nonoverlapping(rect.as_ptr(), out_rect, 4) };
+            PrismPdfStatus::Ok
+        }
+        None => PrismPdfStatus::NotFound,
+    })
+}
+
+/// The 0-based index of the page the field's widget sits on: its `/P` entry, or the page whose
+/// `/Annots` lists it when `/P` is absent (§12.5.2). `NotFound` when neither is known.
+///
+/// # Safety
+/// `field` must be borrowed from a live list and `out_index` a writable `size_t`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_form_field_page_index(
+    field: *const PrismPdfFormField,
+    out_index: *mut usize,
+) -> PrismPdfStatus {
+    if out_index.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    unsafe { *out_index = 0 };
+    if field.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| match unsafe { &(*field).0 }.page_index {
+        Some(index) => {
+            unsafe { *out_index = index };
+            PrismPdfStatus::Ok
+        }
+        None => PrismPdfStatus::NotFound,
+    })
+}
+
 /// Fill form fields by fully-qualified name and re-emit the document as an incremental update
 /// (§7.5.6), writing the new bytes to `*out_data`/`*out_len`.
 ///

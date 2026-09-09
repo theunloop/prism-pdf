@@ -1540,6 +1540,25 @@ PrismPdfStatus prismpdf_form_field_type(const PrismPdfFormField *field, char **o
 PrismPdfStatus prismpdf_form_field_value(const PrismPdfFormField *field, char **out_text);
 
 /**
+ * The rectangle of the field's first widget annotation (`/Rect`, §12.5.2), normalised to
+ * `[llx lly urx ury]` in default user space — four floats written to `out_rect`. `NotFound` for a
+ * field with no widget.
+ *
+ * # Safety
+ * `field` must be borrowed from a live list and `out_rect` must point to 4 writable `float`s.
+ */
+PrismPdfStatus prismpdf_form_field_rect(const PrismPdfFormField *field, float *out_rect);
+
+/**
+ * The 0-based index of the page the field's widget sits on: its `/P` entry, or the page whose
+ * `/Annots` lists it when `/P` is absent (§12.5.2). `NotFound` when neither is known.
+ *
+ * # Safety
+ * `field` must be borrowed from a live list and `out_index` a writable `size_t`.
+ */
+PrismPdfStatus prismpdf_form_field_page_index(const PrismPdfFormField *field, uintptr_t *out_index);
+
+/**
  * Fill form fields by fully-qualified name and re-emit the document as an incremental update
  * (§7.5.6), writing the new bytes to `*out_data`/`*out_len`.
  *

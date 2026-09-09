@@ -9,7 +9,7 @@
 //! Reading is best-effort and bounded against hostile input (DESIGN.md §3.4): depth, field count
 //! and `/Kids` cycles are all capped.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use pdf_cos::{Dictionary, Name, Object, ObjectId, PdfString};
 
@@ -32,14 +32,25 @@ pub struct FormField {
     /// The current value `/V` as text: the string for `Tx`/`Ch`, the selected state name for `Btn`,
     /// comma-joined entries for a multi-select `Ch`. `None` when unset or non-textual (e.g. a `Sig`).
     pub value: Option<String>,
+    /// The rectangle of the field's first widget annotation (`/Rect`, §12.5.2), normalised to
+    /// `[llx lly urx ury]` in default user space. `None` for a field with no widget.
+    pub rect: Option<[f32; 4]>,
+    /// The 0-based index of the page that widget sits on — from its `/P` entry, or from the page
+    /// whose `/Annots` lists it when `/P` is absent (§12.5.2). `None` when neither is known.
+    pub page_index: Option<usize>,
 }
 
 /// A terminal field captured during the tree walk, retaining its object id for editing.
-struct TerminalField {
-    name: String,
-    field_type: Option<Vec<u8>>,
-    value: Option<Object>,
-    id: Option<ObjectId>,
+pub(crate) struct TerminalField {
+    pub(crate) name: String,
+    pub(crate) field_type: Option<Vec<u8>>,
+    pub(crate) value: Option<Object>,
+    pub(crate) id: Option<ObjectId>,
+    /// The field's first widget (§12.7.3.1): the field itself when merged with its annotation,
+    /// else its first `/Kids` entry that is a pure widget. Rectangle, object id, and `/P` page.
+    pub(crate) rect: Option<[f32; 4]>,
+    pub(crate) widget: Option<ObjectId>,
+    pub(crate) page: Option<ObjectId>,
 }
 
 /// Field attributes inherited down the field tree (§12.7.3.1): `/FT` and `/V`.
@@ -60,8 +71,24 @@ impl Document {
     /// Read the document's interactive form fields (§12.7): one [`FormField`] per terminal field.
     /// Empty when the document has no AcroForm.
     pub fn form_fields(&self) -> Result<Vec<FormField>> {
-        Ok(self
-            .collect_terminal_fields()?
+        let terminals = self.collect_terminal_fields()?;
+        // Page lookup for the widgets: by the page object `/P` names, else by the page whose
+        // `/Annots` lists the widget. Built once, not per field.
+        let mut page_of_id = BTreeMap::new();
+        let mut page_of_annot = BTreeMap::new();
+        if terminals.iter().any(|f| f.rect.is_some()) {
+            for (index, (id, page)) in self.page_entries()?.into_iter().enumerate() {
+                if let Some(id) = id {
+                    page_of_id.insert(id, index);
+                }
+                for annot in self.annots_of(&page)? {
+                    if let Some(id) = annot.as_reference() {
+                        page_of_annot.entry(id).or_insert(index);
+                    }
+                }
+            }
+        }
+        Ok(terminals
             .into_iter()
             .map(|field| FormField {
                 name: field.name,
@@ -70,6 +97,11 @@ impl Document {
                     .map(|b| String::from_utf8_lossy(&b).into_owned())
                     .unwrap_or_default(),
                 value: field.value.as_ref().and_then(|v| self.field_value(v)),
+                rect: field.rect,
+                page_index: field
+                    .page
+                    .and_then(|p| page_of_id.get(&p).copied())
+                    .or_else(|| field.widget.and_then(|w| page_of_annot.get(&w).copied())),
             })
             .collect())
     }
@@ -122,7 +154,7 @@ impl Document {
     }
 
     /// Walk the `/AcroForm /Fields` tree and capture every terminal field.
-    fn collect_terminal_fields(&self) -> Result<Vec<TerminalField>> {
+    pub(crate) fn collect_terminal_fields(&self) -> Result<Vec<TerminalField>> {
         let catalog = self.catalog()?;
         let Some(acroform) = catalog.get(&Name::from("AcroForm")) else {
             return Ok(Vec::new());
@@ -194,11 +226,15 @@ impl Document {
         // which do not extend the name tree (so this node is then terminal).
         let field_kids = self.field_children(&dict);
         if field_kids.is_empty() {
+            let (rect, widget, page) = self.widget_geometry(&dict, id);
             walk.out.push(TerminalField {
                 name,
                 field_type: here.field_type,
                 value: here.value,
                 id,
+                rect,
+                widget,
+                page,
             });
         } else {
             for kid in field_kids {
@@ -218,6 +254,52 @@ impl Document {
             changes.push((*id, Object::Dictionary(acroform)));
         }
         Ok(())
+    }
+
+    /// The widget that shows a terminal field (§12.7.3.1): the field dictionary itself when it is
+    /// merged with its annotation (it carries `/Rect`), else its first `/Kids` entry that is a pure
+    /// widget (no `/T`). Returns the widget's rectangle, its object id when indirect, and its `/P`.
+    fn widget_geometry(
+        &self,
+        dict: &Dictionary,
+        id: Option<ObjectId>,
+    ) -> (Option<[f32; 4]>, Option<ObjectId>, Option<ObjectId>) {
+        if dict.get(&Name::from("Rect")).is_some() {
+            return (self.rect_of(dict), id, page_of(dict));
+        }
+        let Some(kids) = dict.get(&Name::from("Kids")) else {
+            return (None, None, None);
+        };
+        let Ok(Object::Array(kids)) = self.resolve(kids) else {
+            return (None, None, None);
+        };
+        for kid in kids.iter() {
+            if let Ok(Object::Dictionary(widget)) = self.resolve(kid)
+                && widget.get(&Name::from("T")).is_none()
+                && widget.get(&Name::from("Rect")).is_some()
+            {
+                return (self.rect_of(&widget), kid.as_reference(), page_of(&widget));
+            }
+        }
+        (None, None, None)
+    }
+
+    /// A widget's `/Rect` (§12.5.2) as four numbers, normalised so the lower-left corner comes
+    /// first — the array may name any two opposite corners.
+    fn rect_of(&self, dict: &Dictionary) -> Option<[f32; 4]> {
+        let Ok(Object::Array(rect)) = self.resolve(dict.get(&Name::from("Rect"))?) else {
+            return None;
+        };
+        let mut v = [0.0f64; 4];
+        for (slot, item) in v.iter_mut().zip(rect.iter()) {
+            *slot = self.resolve(item).ok()?.as_f64()?;
+        }
+        Some([
+            v[0].min(v[2]) as f32,
+            v[1].min(v[3]) as f32,
+            v[0].max(v[2]) as f32,
+            v[1].max(v[3]) as f32,
+        ])
     }
 
     /// This field's partial name `/T` decoded as a text string (§12.7.3.2), if it has one.
@@ -262,6 +344,11 @@ impl Document {
             _ => None,
         }
     }
+}
+
+/// The page an annotation names in `/P` (§12.5.2), when it is an indirect reference.
+fn page_of(dict: &Dictionary) -> Option<ObjectId> {
+    dict.get(&Name::from("P")).and_then(Object::as_reference)
 }
 
 /// Set a terminal field's value `/V` (§12.7.4) for a fill: a state name for a `Btn` (also mirrored

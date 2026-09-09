@@ -531,7 +531,7 @@ impl Document {
     }
 
     /// The page's existing `/Annots` as an owned vector (resolving an indirect array), or empty.
-    fn annots_of(&self, page: &Dictionary) -> Result<Vec<Object>> {
+    pub(crate) fn annots_of(&self, page: &Dictionary) -> Result<Vec<Object>> {
         Ok(match page.get(&Name::from("Annots")) {
             Some(value) => match self.resolve(value)? {
                 Object::Array(array) => array.iter().cloned().collect(),
