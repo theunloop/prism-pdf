@@ -62,7 +62,11 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   side is `FormFieldSpec::Signature` on `Builder` (`prismpdf_builder_add_signature_field`), an
   empty signature field with an empty appearance for a later signer to fill. On the ABI:
   `prismpdf_sign_settings_set_field_name`.
-
+- **Signing journeys the suite had not asked**: a second signature over a signed document, with
+  both verifying and the first revision's bytes untouched; and a signature this engine did not
+  produce — `corpus/valid/signed-openssl-cms.pdf`, whose detached CMS is OpenSSL's over a revision
+  the engine laid out (`tools/gen_external_signature.py`). `verify_signatures` had only ever been
+  run against its own output. Bindings port these as part of their conformance suites.
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

@@ -57,6 +57,7 @@ decoder no corpus file reaches is a decoder the seeded `document` target never f
 | File | Exercises |
 |---|---|
 | `valid/minimal-2page.pdf` | Hand-written two-page classic xref (the original seed). |
+| `valid/signed-openssl-cms.pdf` | `minimal-2page.pdf` signed with the throwaway test signer, its detached CMS produced by **OpenSSL** rather than this engine (`tools/gen_external_signature.py`) — the one signature in the corpus another implementation made (§12.8.1). Not from `gen_corpus`; regenerate only on purpose. |
 | `valid/text-classic-xref.pdf` | Classic xref table + a text content stream (§7.5.4). |
 | `valid/two-pages-text.pdf` | Two pages, each with its own content stream. |
 | `valid/flate-content.pdf` | `/Filter /FlateDecode` content stream (§7.4.4). |
