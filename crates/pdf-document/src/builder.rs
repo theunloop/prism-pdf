@@ -276,6 +276,17 @@ pub enum FormFieldSpec {
         /// and read by assistive technology; PDF/UA-1 (§7.18.4 context) recommends one.
         tooltip: Option<String>,
     },
+    /// An empty signature field (`/FT /Sig`, §12.7.4.5): the slot a template offers a later
+    /// signer, filled by `SignSettings::field_name`. Its widget carries an empty normal appearance
+    /// until it is signed, which is when the signature's appearance replaces it.
+    Signature {
+        /// The widget rectangle `[llx lly urx ury]` in default user space (`/Rect`).
+        rect: [f64; 4],
+        /// The fully-qualified field name (`/T`, §12.7.3.2).
+        name: String,
+        /// Optional alternate field name (`/TU`, §12.7.3.1), read by assistive technology.
+        tooltip: Option<String>,
+    },
 }
 
 /// Options for one page added with [`Builder::add_page`].

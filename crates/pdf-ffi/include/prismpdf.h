@@ -2247,6 +2247,22 @@ PrismPdfStatus prismpdf_sign_settings_add_certificate(PrismPdfSignSettings *sett
                                                       uintptr_t len);
 
 /**
+ * Sign **into** the existing signature field named `name` (fully qualified, §12.7.3.2) instead of
+ * adding a new field — the shape every template-driven workflow has (§12.7.4.5). The field's widget
+ * supplies the rectangle and the page, its `/V` receives the signature, and the appearance replaces
+ * the widget's. A `page_index` or `rect` set through the appearance calls is ignored for such a
+ * signing; their text and image are honoured, and without them the default caption is drawn. The
+ * signing call then reports [`PrismPdfStatus::NotFound`] when no field has that name and
+ * [`PrismPdfStatus::InvalidUse`] when the field is not a signature field, is already signed, or has
+ * no widget — with the reason in [`prismpdf_last_error`].
+ *
+ * # Safety
+ * `settings` must be live and `name` a NUL-terminated UTF-8 C string.
+ */
+PrismPdfStatus prismpdf_sign_settings_set_field_name(PrismPdfSignSettings *settings,
+                                                     const char *name);
+
+/**
  * Give the signature a visible appearance: a widget on page `page_index` (0-based) at `rect`
  * (`[llx lly urx ury]`, four floats), optionally captioned with `text`.
  *
@@ -3406,6 +3422,21 @@ PrismPdfStatus prismpdf_builder_add_checkbox(PrismPdfBuilder *builder,
                                              const char *name,
                                              bool checked,
                                              const char *tooltip);
+
+/**
+ * Add an empty signature field (`/FT /Sig`, §12.7.4.5) as a widget on `page_index` at `rect` — the
+ * slot a template offers a later signer, filled by [`prismpdf_sign_settings_set_field_name`]. Its
+ * normal appearance is empty until it is signed. `tooltip` (`/TU`, §12.7.3.1) may be null.
+ *
+ * # Safety
+ * `builder` must be live, `rect` must point to 4 readable `double`s, `name` must be a
+ * NUL-terminated UTF-8 C string, and `tooltip` such a string or null.
+ */
+PrismPdfStatus prismpdf_builder_add_signature_field(PrismPdfBuilder *builder,
+                                                    uintptr_t page_index,
+                                                    const double *rect,
+                                                    const char *name,
+                                                    const char *tooltip);
 
 /**
  * Set the document title (`/Title`, §14.3.3) — PDF/UA requires one.

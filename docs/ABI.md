@@ -412,6 +412,7 @@ Signing takes more optional inputs than one C signature can carry, so `SignSetti
 | `prismpdf_sign_settings_set_pades(settings, pades)` | Produce a PAdES (ETSI EN 319 142) signature. |
 | `prismpdf_sign_settings_set_appearance(settings, page_index, rect, text)` | A visible widget on `page_index` at `rect` (4 floats), optionally captioned. Null `text` gives an unlabelled box. |
 | `prismpdf_sign_settings_set_appearance_image(settings, page_index, rect, image, text)` | The same widget carrying an image source (copied; masks included) — a signature graphic or a stamp — fitted into the left part of the box with the caption beside it. |
+| `prismpdf_sign_settings_set_field_name(settings, name)` | Sign **into** the existing signature field `name` (§12.7.4.5): its widget supplies rectangle and page, its `/V` takes the signature, its appearance is replaced. The signing call reports `NotFound` (no such field) or `InvalidUse` (not a signature field, already signed, no widget). |
 | `prismpdf_sign_settings_set_timestamp(settings, cert, cert_len, key, key_len, gen_time, serial)` | Embed a signature timestamp (§12.8.3.3). |
 | `prismpdf_sign_settings_add_certificate(settings, der, len)` | Carry an extra DER certificate in the CMS — an intermediate of a private issuing chain — so validators without that CA can still chain the signer to a root (§12.8.3.3). Once per certificate. |
 | `prismpdf_document_sign(doc, cert, cert_len, key, key_len, out_data, out_len)` | Sign with DER certificate + key, returning an incremental update (§7.5.6). |
@@ -530,6 +531,7 @@ Handles are reserved for the one place recursion makes them unavoidable — the 
 | `prismpdf_builder_add_link_document_part(builder, page_index, rect, part_index, contents)` | `Link` + `LinkTarget::DocumentPart` (§14.12, PDF 2.0) |
 | `prismpdf_builder_add_note(builder, page_index, rect, contents)` | `Note` (§12.5.6.4) |
 | `prismpdf_builder_add_checkbox(builder, page_index, rect, name, checked, tooltip)` | `FormFieldSpec::Checkbox` (§12.7.4.2.3) |
+| `prismpdf_builder_add_signature_field(builder, page_index, rect, name, tooltip)` | `FormFieldSpec::Signature` (§12.7.4.5) — an empty signature field for a later signer to fill through `prismpdf_sign_settings_set_field_name`. |
 
 In each, `rect` is 4 doubles `[llx lly urx ury]` and `contents`/`tooltip` may be null. A non-null
 argument that is not valid UTF-8 is **refused** (`PrismPdfStatus_NullArgument`) rather than lossily

@@ -79,6 +79,15 @@ pub enum DocError {
     /// not hold (ISO/TS 32004 §6).
     #[error("could not compute the PDF MAC token")]
     MacFailed,
+    /// [`Document::sign_with`] was asked to sign into a named form field (§12.7.4.5) that the
+    /// document does not have.
+    #[error("no form field named {0:?}")]
+    SignatureFieldNotFound(String),
+    /// The named field cannot take this signature — it is not a signature field, it is already
+    /// signed, it is a direct object rather than an indirect one, or it has no widget to show the
+    /// signature in. The second field says which.
+    #[error("form field {0:?} cannot be signed: {1}")]
+    SignatureFieldUnusable(String, &'static str),
     /// The content contains a construct that requires a PDF version above the declared target
     /// (§7.5.2, M17 construct gate): the diagnostic names the offending construct. Raise the
     /// target, or drop the construct.

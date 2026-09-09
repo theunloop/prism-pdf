@@ -240,6 +240,51 @@ pub(super) fn emit_form_field(
             objects.push((id, Object::Dictionary(d)));
             id
         }
+        FormFieldSpec::Signature {
+            rect,
+            name,
+            tooltip,
+        } => {
+            let w = (rect[2] - rect[0]).max(1.0);
+            let h = (rect[3] - rect[1]).max(1.0);
+            // Unsigned, so the normal appearance draws nothing — but it exists: PDF/A-1 §6.9 wants
+            // an /AP on every field, and signing into the field later replaces it (§12.7.4.5).
+            let ap_id = alloc();
+            objects.push((
+                ap_id,
+                Object::Stream(form_xobject_stream([0.0, 0.0, w, h], Vec::new())),
+            ));
+            let id = alloc();
+            let mut d = Dictionary::new();
+            d.insert(Name::from("Type"), Object::Name(Name::from("Annot")));
+            d.insert(Name::from("Subtype"), Object::Name(Name::from("Widget")));
+            d.insert(Name::from("FT"), Object::Name(Name::from("Sig")));
+            d.insert(
+                Name::from("T"),
+                Object::String(PdfString::from(text_string(name))),
+            );
+            if let Some(tooltip) = tooltip {
+                d.insert(
+                    Name::from("TU"),
+                    Object::String(PdfString::from(text_string(tooltip))),
+                );
+                d.insert(
+                    Name::from("Contents"),
+                    Object::String(PdfString::from(text_string(tooltip))),
+                );
+            }
+            d.insert(Name::from("Rect"), rect_array(rect));
+            d.insert(Name::from("F"), Object::Integer(PRINT_FLAG));
+            d.insert(Name::from("P"), Object::Reference(page_id));
+            let mut ap = Dictionary::new();
+            ap.insert(Name::from("N"), Object::Reference(ap_id));
+            d.insert(Name::from("AP"), Object::Dictionary(ap));
+            if let Some(af) = af {
+                d.insert(Name::from("AF"), af);
+            }
+            objects.push((id, Object::Dictionary(d)));
+            id
+        }
     }
 }
 

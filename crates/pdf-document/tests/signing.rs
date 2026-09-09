@@ -7,8 +7,12 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use der::Encode;
+// The document builder is aliased: `x509_cert::builder::Builder` is the trait behind the
+// certificate builders' `.build()` and keeps its name.
+use pdf_document::Builder as PdfBuilder;
 use pdf_document::{
-    Document, ImageColorSpace, ImageXObject, SignSettings, SignatureAppearance, TsaCredentials,
+    DocError, Document, FormFieldSpec, ImageColorSpace, ImageXObject, PageSpec, SignSettings,
+    SignatureAppearance, TsaCredentials,
 };
 use rsa::pkcs1v15::SigningKey;
 use rsa::pkcs8::EncodePrivateKey;
@@ -217,6 +221,129 @@ fn visible_appearance_can_carry_an_image() {
     let signatures = reopened.verify_signatures().unwrap();
     assert_eq!(signatures.len(), 1);
     assert!(signatures[0].valid, "still verifies");
+}
+
+/// A one-page template with two empty signature fields, `worker` and `company` (§12.7.4.5).
+fn two_field_template() -> Vec<u8> {
+    let mut builder = PdfBuilder::new();
+    builder.add_page(PageSpec::new(Vec::new()));
+    for (name, y) in [("worker", 50.0), ("company", 150.0)] {
+        builder.add_form_field(
+            0,
+            FormFieldSpec::Signature {
+                rect: [50.0, y, 250.0, y + 50.0],
+                name: name.to_string(),
+                tooltip: Some(format!("{name} signature")),
+            },
+            Vec::new(),
+        );
+    }
+    builder.build()
+}
+
+#[test]
+fn signing_into_named_fields_fills_the_template_twice() {
+    let (worker_cert, worker_key) = self_signed("Worker");
+    let (company_cert, company_key) = self_signed("Company");
+    let template = Document::open(two_field_template()).unwrap();
+    let fields = template.form_fields().unwrap();
+    assert_eq!(fields.len(), 2);
+    assert!(
+        fields
+            .iter()
+            .all(|f| f.field_type == "Sig" && f.value.is_none())
+    );
+    assert_eq!(fields[0].rect, Some([50.0, 50.0, 250.0, 100.0]));
+
+    // First party signs into its own field: no field is added, the widget shows the signature.
+    let settings = SignSettings {
+        field_name: Some("worker".to_string()),
+        name: Some("Alice".to_string()),
+        signing_time: Some(1_700_000_000),
+        ..SignSettings::default()
+    };
+    let once = template
+        .sign_with(&worker_cert, &worker_key, &settings)
+        .unwrap();
+    assert!(
+        find(&once, b"Digitally signed by Alice").is_some(),
+        "default caption in the widget"
+    );
+    let once_doc = Document::open(once).unwrap();
+    assert_eq!(once_doc.form_fields().unwrap().len(), 2, "no field added");
+    let statuses = once_doc.verify_signatures().unwrap();
+    assert_eq!(statuses.len(), 1);
+    assert!(statuses[0].valid);
+
+    // The same field again is refused; a field that is not there is refused differently.
+    assert!(matches!(
+        once_doc.sign_with(&worker_cert, &worker_key, &settings),
+        Err(DocError::SignatureFieldUnusable(name, "already signed")) if name == "worker"
+    ));
+    let nobody = SignSettings {
+        field_name: Some("nobody".to_string()),
+        ..SignSettings::default()
+    };
+    assert!(matches!(
+        once_doc.sign_with(&worker_cert, &worker_key, &nobody),
+        Err(DocError::SignatureFieldNotFound(name)) if name == "nobody"
+    ));
+
+    // Second party signs into the other field: both signatures stay intact (§12.8.1 — the second
+    // revision appends and the first one's bytes are untouched).
+    let company = SignSettings {
+        field_name: Some("company".to_string()),
+        name: Some("Bob".to_string()),
+        ..SignSettings::default()
+    };
+    let twice = once_doc
+        .sign_with(&company_cert, &company_key, &company)
+        .unwrap();
+    let twice_doc = Document::open(twice).unwrap();
+    assert_eq!(twice_doc.form_fields().unwrap().len(), 2);
+    let statuses = twice_doc.verify_signatures().unwrap();
+    assert_eq!(statuses.len(), 2);
+    assert!(statuses.iter().all(|s| s.valid), "both signatures verify");
+    assert!(
+        statuses[0]
+            .signer
+            .as_deref()
+            .unwrap_or("")
+            .contains("Worker")
+    );
+    assert!(
+        statuses[1]
+            .signer
+            .as_deref()
+            .unwrap_or("")
+            .contains("Company")
+    );
+}
+
+#[test]
+fn signing_into_a_field_that_is_not_a_signature_field_is_refused() {
+    let (cert, key) = self_signed("Signer");
+    let mut builder = PdfBuilder::new();
+    builder.add_page(PageSpec::new(Vec::new()));
+    builder.add_form_field(
+        0,
+        FormFieldSpec::Checkbox {
+            rect: [10.0, 10.0, 30.0, 30.0],
+            name: "agree".to_string(),
+            checked: false,
+            tooltip: None,
+        },
+        Vec::new(),
+    );
+    let doc = Document::open(builder.build()).unwrap();
+    let settings = SignSettings {
+        field_name: Some("agree".to_string()),
+        ..SignSettings::default()
+    };
+    assert!(matches!(
+        doc.sign_with(&cert, &key, &settings),
+        Err(DocError::SignatureFieldUnusable(_, "not a signature field"))
+    ));
 }
 
 #[test]

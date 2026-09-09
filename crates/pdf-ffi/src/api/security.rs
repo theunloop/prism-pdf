@@ -459,6 +459,46 @@ pub unsafe extern "C" fn prismpdf_sign_settings_add_certificate(
     })
 }
 
+/// Sign **into** the existing signature field named `name` (fully qualified, §12.7.3.2) instead of
+/// adding a new field — the shape every template-driven workflow has (§12.7.4.5). The field's widget
+/// supplies the rectangle and the page, its `/V` receives the signature, and the appearance replaces
+/// the widget's. A `page_index` or `rect` set through the appearance calls is ignored for such a
+/// signing; their text and image are honoured, and without them the default caption is drawn. The
+/// signing call then reports [`PrismPdfStatus::NotFound`] when no field has that name and
+/// [`PrismPdfStatus::InvalidUse`] when the field is not a signature field, is already signed, or has
+/// no widget — with the reason in [`prismpdf_last_error`].
+///
+/// # Safety
+/// `settings` must be live and `name` a NUL-terminated UTF-8 C string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_sign_settings_set_field_name(
+    settings: *mut PrismPdfSignSettings,
+    name: *const c_char,
+) -> PrismPdfStatus {
+    if settings.is_null() || name.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        let Some(name) = (unsafe { utf8(name) }) else {
+            return PrismPdfStatus::NullArgument;
+        };
+        unsafe { (*settings).0.field_name = Some(name.to_string()) };
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Map a signing failure to its status, recording the diagnostic: a named field that is missing is
+/// `NotFound`, one that cannot take the signature is `InvalidUse`, anything else `Parse`.
+fn signing_status(error: prismpdf::DocError) -> PrismPdfStatus {
+    let status = match &error {
+        prismpdf::DocError::SignatureFieldNotFound(_) => PrismPdfStatus::NotFound,
+        prismpdf::DocError::SignatureFieldUnusable(..) => PrismPdfStatus::InvalidUse,
+        _ => PrismPdfStatus::Parse,
+    };
+    record_failure(status, error.to_string());
+    status
+}
+
 /// Give the signature a visible appearance: a widget on page `page_index` (0-based) at `rect`
 /// (`[llx lly urx ury]`, four floats), optionally captioned with `text`.
 ///
@@ -597,7 +637,7 @@ pub unsafe extern "C" fn prismpdf_document_sign(
         let key = unsafe { slice_or_empty(key_der, key_len) };
         match document.sign(&cert, &key) {
             Ok(bytes) => emit_bytes(bytes, out_data, out_len),
-            Err(_) => PrismPdfStatus::Parse,
+            Err(error) => signing_status(error),
         }
     })
 }
@@ -629,7 +669,7 @@ pub unsafe extern "C" fn prismpdf_document_sign_with(
         let settings = unsafe { &(*settings).0 };
         match document.sign_with(&cert, &key, settings) {
             Ok(bytes) => emit_bytes(bytes, out_data, out_len),
-            Err(_) => PrismPdfStatus::Parse,
+            Err(error) => signing_status(error),
         }
     })
 }
@@ -666,7 +706,7 @@ pub unsafe extern "C" fn prismpdf_document_sign_with_mac(
         let settings = unsafe { &(*settings).0 };
         match document.sign_with_mac(&cert, &key, settings, &pass) {
             Ok(bytes) => emit_bytes(bytes, out_data, out_len),
-            Err(_) => PrismPdfStatus::Parse,
+            Err(error) => signing_status(error),
         }
     })
 }

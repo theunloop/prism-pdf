@@ -5258,3 +5258,135 @@ fn signature_appearance_carries_an_image() {
     unsafe { prismpdf_signature_list_free(list) };
     unsafe { prismpdf_document_free(reopened) };
 }
+
+#[test]
+fn signing_into_a_named_field_fills_the_template() {
+    // A template with one empty signature field, authored through the builder.
+    let builder = prismpdf_builder_new();
+    let content = prismpdf_content_new();
+    let page = unsafe { prismpdf_page_spec_new(content) };
+    unsafe { prismpdf_content_free(content) };
+    assert_eq!(
+        unsafe { prismpdf_builder_add_page_spec(builder, page) },
+        PrismPdfStatus::Ok
+    );
+    let rect = [50.0f64, 50.0, 250.0, 100.0];
+    let worker = CString::new("worker").unwrap();
+    assert_eq!(
+        unsafe {
+            prismpdf_builder_add_signature_field(
+                builder,
+                0,
+                rect.as_ptr(),
+                worker.as_ptr(),
+                std::ptr::null(),
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    let mut data: *mut u8 = std::ptr::null_mut();
+    let mut len = 0usize;
+    assert_eq!(
+        unsafe { prismpdf_builder_build(builder, &mut data, &mut len) },
+        PrismPdfStatus::Ok
+    );
+    let template = unsafe { std::slice::from_raw_parts(data, len) }.to_vec();
+    unsafe { prismpdf_bytes_free(data, len) };
+    unsafe { prismpdf_builder_free(builder) };
+
+    // Sign into it: no field is added and the signature verifies.
+    let doc = open(&template);
+    let settings = prismpdf_sign_settings_new();
+    assert_eq!(
+        unsafe { prismpdf_sign_settings_set_field_name(settings, worker.as_ptr()) },
+        PrismPdfStatus::Ok
+    );
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                doc,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                settings,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    let signed = unsafe { std::slice::from_raw_parts(data, len) }.to_vec();
+    unsafe { prismpdf_bytes_free(data, len) };
+    unsafe { prismpdf_document_free(doc) };
+
+    let reopened = open(&signed);
+    let mut fields: *mut PrismPdfFormFieldList = std::ptr::null_mut();
+    assert_eq!(
+        unsafe { prismpdf_document_form_fields(reopened, &mut fields) },
+        PrismPdfStatus::Ok
+    );
+    let mut count = 0usize;
+    assert_eq!(
+        unsafe { prismpdf_form_field_list_len(fields, &mut count) },
+        PrismPdfStatus::Ok
+    );
+    assert_eq!(
+        count, 1,
+        "the template's field was filled, not joined by a new one"
+    );
+    unsafe { prismpdf_form_field_list_free(fields) };
+    let mut list: *mut PrismPdfSignatureList = std::ptr::null_mut();
+    assert_eq!(
+        unsafe { prismpdf_document_verify_signatures(reopened, &mut list) },
+        PrismPdfStatus::Ok
+    );
+    let mut sig: *const PrismPdfSignature = std::ptr::null();
+    assert_eq!(
+        unsafe { prismpdf_signature_list_get(list, 0, &mut sig) },
+        PrismPdfStatus::Ok
+    );
+    let mut valid = false;
+    assert_eq!(
+        unsafe { prismpdf_signature_valid(sig, &mut valid) },
+        PrismPdfStatus::Ok
+    );
+    assert!(valid);
+    unsafe { prismpdf_signature_list_free(list) };
+
+    // The now-signed field is refused as InvalidUse; a name the document lacks as NotFound.
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                reopened,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                settings,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::InvalidUse
+    );
+    let nobody = CString::new("nobody").unwrap();
+    unsafe { prismpdf_sign_settings_set_field_name(settings, nobody.as_ptr()) };
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                reopened,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                settings,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::NotFound
+    );
+    unsafe { prismpdf_sign_settings_free(settings) };
+    unsafe { prismpdf_document_free(reopened) };
+}

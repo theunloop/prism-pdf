@@ -51,6 +51,18 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   used to be Helvetica text and nothing else. On the ABI:
   `prismpdf_sign_settings_set_appearance_image`, taking any `PrismPdfImageSource` — JPEG, PNG,
   raw samples — which stays caller-owned.
+- **Signing into an existing signature field**: `SignSettings::field_name` signs *into* a named
+  `/Sig` field instead of adding a new one — the shape every template-driven workflow has
+  (§12.7.4.5). The field's widget supplies the rectangle and the page, its `/V` receives the
+  signature, and the appearance replaces the widget's, with the default caption drawn when none
+  was configured, because an untouched empty field beside a real signature is the wrong outcome.
+  `DocError::SignatureFieldNotFound` and `DocError::SignatureFieldUnusable` say why a name was
+  refused (missing; not a signature field, already signed, direct object, no widget), and cross
+  the ABI as `NotFound` and `InvalidUse` with the reason in `prismpdf_last_error`. The template
+  side is `FormFieldSpec::Signature` on `Builder` (`prismpdf_builder_add_signature_field`), an
+  empty signature field with an empty appearance for a later signer to fill. On the ABI:
+  `prismpdf_sign_settings_set_field_name`.
+
 
 ## [1.0.0-alpha.1] - 2026-08-31
 

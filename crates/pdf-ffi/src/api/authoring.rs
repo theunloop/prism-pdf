@@ -2039,6 +2039,44 @@ pub unsafe extern "C" fn prismpdf_builder_add_checkbox(
     })
 }
 
+/// Add an empty signature field (`/FT /Sig`, §12.7.4.5) as a widget on `page_index` at `rect` — the
+/// slot a template offers a later signer, filled by [`prismpdf_sign_settings_set_field_name`]. Its
+/// normal appearance is empty until it is signed. `tooltip` (`/TU`, §12.7.3.1) may be null.
+///
+/// # Safety
+/// `builder` must be live, `rect` must point to 4 readable `double`s, `name` must be a
+/// NUL-terminated UTF-8 C string, and `tooltip` such a string or null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_builder_add_signature_field(
+    builder: *mut PrismPdfBuilder,
+    page_index: usize,
+    rect: *const f64,
+    name: *const c_char,
+    tooltip: *const c_char,
+) -> PrismPdfStatus {
+    let Some((handle, name)) = (unsafe { builder_and_str(builder, name) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    let Some(rect) = (unsafe { read_rect(rect) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    guard(|| {
+        let Ok(tooltip) = (unsafe { read_opt_str(tooltip) }) else {
+            return PrismPdfStatus::NullArgument;
+        };
+        handle.add_form_field(
+            page_index,
+            FormFieldSpec::Signature {
+                rect,
+                name: name.to_string(),
+                tooltip,
+            },
+            Vec::new(),
+        );
+        PrismPdfStatus::Ok
+    })
+}
+
 /// Set the document title (`/Title`, §14.3.3) — PDF/UA requires one.
 ///
 /// # Safety

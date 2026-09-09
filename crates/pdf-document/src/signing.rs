@@ -59,6 +59,15 @@ pub struct SignSettings {
     /// itself a trust anchor. Duplicates, the signer's own certificate among them, are ignored; a
     /// member that is not DER fails the signing call.
     pub extra_certificates: Vec<Vec<u8>>,
+    /// Sign **into** this existing signature field (its fully-qualified name, §12.7.3.2) instead
+    /// of adding a new field — the shape every template-driven workflow has (§12.7.4.5). The
+    /// field's widget supplies the rectangle and the page, its `/V` receives the signature, and
+    /// the appearance replaces the widget's: `appearance`'s `page_index` and `rect` are ignored
+    /// for such a signing, its text and image are honoured, and with no `appearance` at all the
+    /// default caption is drawn — an untouched empty field beside a real signature is the wrong
+    /// outcome. Fails with [`DocError::SignatureFieldNotFound`] or
+    /// [`DocError::SignatureFieldUnusable`].
+    pub field_name: Option<String>,
 }
 
 /// A visible signature appearance: where on the page it sits and what it shows.
@@ -93,6 +102,16 @@ struct SignatureRevision<'a> {
     date: &'a str,
     /// Whether a PDF MAC token rides on this signature (ISO/TS 32004 §6.5.2).
     attach_mac: bool,
+    /// An existing signature field to sign into, by fully-qualified name (§12.7.4.5).
+    field_name: Option<&'a str>,
+}
+
+/// An existing signature field a signing fills (§12.7.4.5): the field object, the widget that
+/// shows it (the same object when merged), and that widget's rectangle.
+struct SignatureTarget {
+    field_id: ObjectId,
+    widget_id: ObjectId,
+    rect: [f32; 4],
 }
 
 /// The result of verifying one signature in a document.
@@ -205,6 +224,7 @@ impl Document {
             name: settings.name.as_deref(),
             date: &date,
             attach_mac,
+            field_name: settings.field_name.as_deref(),
         };
         self.apply_signature_revision(&plan, move |message| {
             let cms = sign_digest_with(
@@ -254,6 +274,7 @@ impl Document {
             name: None,
             date: "",
             attach_mac: false,
+            field_name: None,
         };
         self.apply_signature_revision(&plan, move |message| {
             make_timestamp_token(message, &cert, &key, gen_at, DTS_SERIAL)
@@ -277,6 +298,7 @@ impl Document {
             name,
             date,
             attach_mac,
+            field_name,
         } = plan;
         let root = self.xref.root().ok_or(DocError::MissingCatalog)?;
         let info = self
@@ -285,10 +307,32 @@ impl Document {
             .get(&Name::from("Info"))
             .and_then(Object::as_reference);
 
+        // Signing into an existing field (§12.7.4.5): the template's own widget supplies the
+        // geometry and receives the appearance, and no field or annotation is added.
+        let existing = match field_name {
+            Some(name) => Some(self.signature_field_target(name)?),
+            None => None,
+        };
+        // Inside a template's widget the signature is shown by default — an untouched empty field
+        // beside a real signature is the wrong outcome — so the caller's appearance, or a default
+        // one, is fitted to the widget's own rectangle.
+        let resolved = match (&existing, appearance) {
+            (Some(target), Some(ap)) => Some(SignatureAppearance {
+                rect: target.rect,
+                ..ap.clone()
+            }),
+            (Some(target), None) => Some(SignatureAppearance {
+                page_index: 0,
+                rect: target.rect,
+                text: None,
+                image: None,
+            }),
+            (None, ap) => ap.cloned(),
+        };
+        let appearance = resolved.as_ref();
+
         let mut next = self.max_object_number() + 1;
         let sig_id = ObjectId::new(next, 0);
-        next += 1;
-        let field_id = ObjectId::new(next, 0);
         next += 1;
 
         let mut changed: Vec<(ObjectId, Object)> = Vec::new();
@@ -341,50 +385,91 @@ impl Document {
             }
         };
 
-        let target_page = appearance.map_or(0, |ap| ap.page_index);
-        let page_id = self
-            .page_entries()?
-            .get(target_page)
-            .and_then(|(id, _)| *id)
-            .ok_or(DocError::SigningFailed)?;
-
-        // The signature field, merged with its widget annotation (§12.7.4.5).
-        changed.push((
-            field_id,
-            Object::Dictionary(signature_field(sig_id, page_id, rect, appearance_ref)),
-        ));
-
-        // Host the widget on the target page's /Annots.
-        let Object::Dictionary(mut page) = self.get(page_id)? else {
-            return Err(DocError::SigningFailed);
-        };
-        let mut annots = self.annots_of(&page)?;
-        annots.push(Object::Reference(field_id));
-        page.insert(Name::from("Annots"), Object::Array(Array::from_vec(annots)));
-        changed.push((page_id, Object::Dictionary(page)));
-
-        // Register the field with the AcroForm (existing — referenced or inline — or a new one).
         let Object::Dictionary(mut catalog) = self.get(root)? else {
             return Err(DocError::MissingCatalog);
         };
-        match catalog.get(&Name::from("AcroForm")).cloned() {
-            Some(Object::Reference(acro_id)) => {
-                if let Object::Dictionary(mut acroform) = self.get(acro_id)? {
-                    self.add_signature_field(&mut acroform, field_id);
-                    changed.push((acro_id, Object::Dictionary(acroform)));
+        if let Some(target) = &existing {
+            // Fill the template's field: its /V is the signature, its widget's /AP the appearance.
+            // The two are one object when the field is merged with its widget (§12.7.3.1).
+            let mut normal = Dictionary::new();
+            if let Some(ap_id) = appearance_ref {
+                normal.insert(Name::from("N"), Object::Reference(ap_id));
+            }
+            let Object::Dictionary(mut field) = self.get(target.field_id)? else {
+                return Err(DocError::SigningFailed);
+            };
+            field.insert(Name::from("V"), Object::Reference(sig_id));
+            if target.widget_id == target.field_id {
+                field.insert(Name::from("AP"), Object::Dictionary(normal));
+                changed.push((target.field_id, Object::Dictionary(field)));
+            } else {
+                changed.push((target.field_id, Object::Dictionary(field)));
+                let Object::Dictionary(mut widget) = self.get(target.widget_id)? else {
+                    return Err(DocError::SigningFailed);
+                };
+                widget.insert(Name::from("AP"), Object::Dictionary(normal));
+                changed.push((target.widget_id, Object::Dictionary(widget)));
+            }
+            // The form now holds a signature and is append-only (`/SigFlags`, §12.7.2).
+            match catalog.get(&Name::from("AcroForm")).cloned() {
+                Some(Object::Reference(acro_id)) => {
+                    if let Object::Dictionary(mut acroform) = self.get(acro_id)? {
+                        acroform.insert(Name::from("SigFlags"), Object::Integer(3));
+                        changed.push((acro_id, Object::Dictionary(acroform)));
+                    }
                 }
+                Some(Object::Dictionary(mut acroform)) => {
+                    acroform.insert(Name::from("SigFlags"), Object::Integer(3));
+                    catalog.insert(Name::from("AcroForm"), Object::Dictionary(acroform));
+                    changed.push((root, Object::Dictionary(catalog)));
+                }
+                _ => {}
             }
-            Some(Object::Dictionary(mut acroform)) => {
-                self.add_signature_field(&mut acroform, field_id);
-                catalog.insert(Name::from("AcroForm"), Object::Dictionary(acroform));
-                changed.push((root, Object::Dictionary(catalog)));
-            }
-            _ => {
-                let acro_id = ObjectId::new(next, 0);
-                next += 1;
-                changed.push((acro_id, Object::Dictionary(new_acroform(field_id))));
-                catalog.insert(Name::from("AcroForm"), Object::Reference(acro_id));
-                changed.push((root, Object::Dictionary(catalog)));
+        } else {
+            let field_id = ObjectId::new(next, 0);
+            next += 1;
+            let target_page = appearance.map_or(0, |ap| ap.page_index);
+            let page_id = self
+                .page_entries()?
+                .get(target_page)
+                .and_then(|(id, _)| *id)
+                .ok_or(DocError::SigningFailed)?;
+
+            // The signature field, merged with its widget annotation (§12.7.4.5).
+            changed.push((
+                field_id,
+                Object::Dictionary(signature_field(sig_id, page_id, rect, appearance_ref)),
+            ));
+
+            // Host the widget on the target page's /Annots.
+            let Object::Dictionary(mut page) = self.get(page_id)? else {
+                return Err(DocError::SigningFailed);
+            };
+            let mut annots = self.annots_of(&page)?;
+            annots.push(Object::Reference(field_id));
+            page.insert(Name::from("Annots"), Object::Array(Array::from_vec(annots)));
+            changed.push((page_id, Object::Dictionary(page)));
+
+            // Register the field with the AcroForm (existing — referenced or inline — or a new one).
+            match catalog.get(&Name::from("AcroForm")).cloned() {
+                Some(Object::Reference(acro_id)) => {
+                    if let Object::Dictionary(mut acroform) = self.get(acro_id)? {
+                        self.add_signature_field(&mut acroform, field_id);
+                        changed.push((acro_id, Object::Dictionary(acroform)));
+                    }
+                }
+                Some(Object::Dictionary(mut acroform)) => {
+                    self.add_signature_field(&mut acroform, field_id);
+                    catalog.insert(Name::from("AcroForm"), Object::Dictionary(acroform));
+                    changed.push((root, Object::Dictionary(catalog)));
+                }
+                _ => {
+                    let acro_id = ObjectId::new(next, 0);
+                    next += 1;
+                    changed.push((acro_id, Object::Dictionary(new_acroform(field_id))));
+                    catalog.insert(Name::from("AcroForm"), Object::Reference(acro_id));
+                    changed.push((root, Object::Dictionary(catalog)));
+                }
             }
         }
 
@@ -548,6 +633,38 @@ impl Document {
             timestamp_time: verified.timestamp_time,
             pades: verified.pades,
             revocation: verified.revocation,
+        })
+    }
+
+    /// Resolve the existing signature field a signing was pointed at (§12.7.4.5): it must exist,
+    /// be a `/Sig` field, be unsigned, be an indirect object (an incremental update can only
+    /// replace those), and have a widget with a `/Rect` to show the signature in.
+    fn signature_field_target(&self, name: &str) -> Result<SignatureTarget> {
+        let field = self
+            .collect_terminal_fields()?
+            .into_iter()
+            .find(|field| field.name == name)
+            .ok_or_else(|| DocError::SignatureFieldNotFound(name.to_string()))?;
+        let unusable = |why| DocError::SignatureFieldUnusable(name.to_string(), why);
+        if field.field_type.as_deref() != Some(b"Sig".as_slice()) {
+            return Err(unusable("not a signature field"));
+        }
+        if field.value.is_some() {
+            return Err(unusable("already signed"));
+        }
+        let field_id = field
+            .id
+            .ok_or_else(|| unusable("a direct object, not an indirect one"))?;
+        let widget_id = field
+            .widget
+            .ok_or_else(|| unusable("no widget annotation"))?;
+        let rect = field
+            .rect
+            .ok_or_else(|| unusable("its widget has no /Rect"))?;
+        Ok(SignatureTarget {
+            field_id,
+            widget_id,
+            rect,
         })
     }
 
