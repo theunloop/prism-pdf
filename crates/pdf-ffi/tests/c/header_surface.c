@@ -37,4 +37,5 @@ void prismpdf_header_surface(void) {
     (void)&prismpdf_form_field_rect;
     (void)&prismpdf_form_field_page_index;
     (void)&prismpdf_composition_into_builder;
+    (void)&prismpdf_sign_settings_add_certificate;
 }

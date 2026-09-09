@@ -79,6 +79,7 @@ fn ed25519_sign_and_verify_round_trip() {
         signing_time: Some(1_700_000_000),
         timestamp: None,
         pades: true,
+        extra_certificates: Vec::new(),
     };
     let cms = sign_digest_with(message, &cert, &key, &opts).expect("ed25519 sign");
     let verified = verify_detached(&cms, message);
@@ -136,6 +137,7 @@ fn rsa_sha3_signature_verifies() {
         Some(1_700_000_000),
         None,
         false,
+        &[],
     )
     .expect("sha3 CMS");
     let verified = verify_detached(&cms, message);
@@ -228,6 +230,7 @@ fn ecdsa_sign_and_verify_round_trip() {
             signing_time: Some(1_700_000_000),
             timestamp: None,
             pades: true,
+            extra_certificates: Vec::new(),
         };
         let cms =
             sign_digest_with(message, &cert, &key, &opts).unwrap_or_else(|| panic!("{label} sign"));
@@ -313,6 +316,7 @@ fn signing_time_is_carried_and_read_back() {
         signing_time: Some(1_700_000_000),
         timestamp: None,
         pades: false,
+        extra_certificates: Vec::new(),
     };
     let cms = sign_digest_with(message, &cert, &key, &opts).expect("sign");
     let verified = verify_detached(&cms, message);
@@ -328,6 +332,7 @@ fn trust_store_validates_self_signed_anchor() {
         signing_time: Some(now_secs()),
         timestamp: None,
         pades: false,
+        extra_certificates: Vec::new(),
     };
     let cms = sign_digest_with(message, &cert, &key, &opts).expect("sign");
 
@@ -362,6 +367,7 @@ fn chain_to_ca_root_is_trusted_but_not_to_a_stranger() {
         signing_time: Some(now_secs()),
         timestamp: None,
         pades: false,
+        extra_certificates: Vec::new(),
     };
     // The signer is the CA-issued leaf (not self-signed); the CA is the only trust anchor.
     let cms = sign_digest_with(message, &leaf_der, &leaf_key, &opts).expect("sign");
@@ -388,6 +394,126 @@ fn chain_to_ca_root_is_trusted_but_not_to_a_stranger() {
     );
 }
 
+/// A private issuing chain: a root, an intermediate it issues (`cA=TRUE`, RFC 5280 §4.2.1.9), and
+/// a leaf the intermediate issues. Returns (root DER, intermediate DER, leaf DER, leaf key DER).
+fn root_intermediate_leaf() -> (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>) {
+    let (root_key, root_spki) = rsa_key();
+    let root_name = X509Name::from_str("CN=Prism PDF Private Root").unwrap();
+    let root_signer = SigningKey::<Sha256>::new(root_key);
+    let root = CertificateBuilder::new(
+        Profile::Root,
+        SerialNumber::from(1u32),
+        Validity::from_now(Duration::from_secs(7200)).unwrap(),
+        root_name.clone(),
+        root_spki,
+        &root_signer,
+    )
+    .unwrap()
+    .build()
+    .unwrap();
+
+    let (intermediate_key, intermediate_spki) = rsa_key();
+    let intermediate_name = X509Name::from_str("CN=Prism PDF Issuing CA").unwrap();
+    let intermediate = CertificateBuilder::new(
+        Profile::SubCA {
+            issuer: root_name,
+            path_len_constraint: None,
+        },
+        SerialNumber::from(2u32),
+        Validity::from_now(Duration::from_secs(7200)).unwrap(),
+        intermediate_name.clone(),
+        intermediate_spki,
+        &root_signer,
+    )
+    .unwrap()
+    .build()
+    .unwrap();
+
+    let intermediate_signer = SigningKey::<Sha256>::new(intermediate_key);
+    let (leaf_key, leaf_spki) = rsa_key();
+    let leaf = CertificateBuilder::new(
+        Profile::Leaf {
+            issuer: intermediate_name,
+            enable_key_agreement: false,
+            enable_key_encipherment: false,
+        },
+        SerialNumber::from(3u32),
+        Validity::from_now(Duration::from_secs(3600)).unwrap(),
+        X509Name::from_str("CN=Prism PDF Chained Signer").unwrap(),
+        leaf_spki,
+        &intermediate_signer,
+    )
+    .unwrap()
+    .build()
+    .unwrap();
+
+    (
+        root.to_der().unwrap(),
+        intermediate.to_der().unwrap(),
+        leaf.to_der().unwrap(),
+        leaf_key.to_pkcs8_der().unwrap().as_bytes().to_vec(),
+    )
+}
+
+#[test]
+fn intermediates_in_the_cms_complete_a_private_chain() {
+    let (root, intermediate, leaf, leaf_key) = root_intermediate_leaf();
+    let message = b"chained through an intermediate";
+    let trusting = VerifyOptions {
+        roots: vec![root.clone()],
+        ..Default::default()
+    };
+
+    // With only the leaf embedded, a verifier holding the root cannot close the path.
+    let bare = SignOptions {
+        signing_time: Some(now_secs()),
+        timestamp: None,
+        pades: false,
+        extra_certificates: Vec::new(),
+    };
+    let cms = sign_digest_with(message, &leaf, &leaf_key, &bare).expect("sign");
+    assert_eq!(
+        verify_detached_with(&cms, message, &trusting).trusted,
+        Some(false),
+        "leaf alone: the intermediate is missing from the path"
+    );
+
+    // With the intermediate riding in the CMS, root → intermediate → leaf closes.
+    let chained = SignOptions {
+        extra_certificates: vec![intermediate.clone()],
+        ..bare.clone()
+    };
+    let cms = sign_digest_with(message, &leaf, &leaf_key, &chained).expect("sign");
+    let verified = verify_detached_with(&cms, message, &trusting);
+    assert!(verified.valid, "signature intact");
+    assert_eq!(
+        verified.trusted,
+        Some(true),
+        "intermediate completes the chain"
+    );
+
+    // The whole chain, leaf included and the intermediate twice: duplicates are dropped rather
+    // than encoded into a SET that must not hold them, and the path still closes. The same chain
+    // as above — a fresh one would post-date the pinned signing time and fail validity, not trust.
+    let whole_chain = SignOptions {
+        extra_certificates: vec![leaf.clone(), intermediate.clone(), intermediate, root],
+        ..bare.clone()
+    };
+    let cms = sign_digest_with(message, &leaf, &leaf_key, &whole_chain).expect("sign");
+    assert_eq!(
+        verify_detached_with(&cms, message, &trusting).trusted,
+        Some(true),
+        "duplicates and the root itself do not get in the way"
+    );
+
+    // A member that is not a certificate refuses the signature rather than being dropped.
+    let junk = SignOptions {
+        extra_certificates: vec![b"not a certificate".to_vec()],
+        ..bare
+    };
+    assert!(sign_digest_with(message, &leaf, &leaf_key, &junk).is_none());
+}
+
 #[test]
 fn embedded_timestamp_verifies() {
     let (cert, key) = keypair("Stamped Signer");
@@ -402,6 +528,7 @@ fn embedded_timestamp_verifies() {
             serial: 42,
         }),
         pades: false,
+        extra_certificates: Vec::new(),
     };
     let cms = sign_digest_with(message, &cert, &key, &opts).expect("sign");
     let verified = verify_detached(&cms, message);

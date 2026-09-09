@@ -5070,3 +5070,95 @@ fn composition_hands_over_a_builder_for_metadata() {
         prismpdf_document_free(doc);
     }
 }
+
+#[test]
+fn extra_certificates_ride_in_the_cms() {
+    // The test signer is self-signed, so the only chain available here is itself. Handing it over
+    // again as an "extra" is what a caller passing a whole chain does, and it is exactly the input
+    // the CMS builder would refuse as a duplicate SET member: the engine drops it, and the
+    // signature still verifies. Chain semantics are proven in pdf-crypto and pdf-document.
+    let doc = open(&sample_pdf());
+    let settings = prismpdf_sign_settings_new();
+    assert_eq!(
+        unsafe {
+            prismpdf_sign_settings_add_certificate(settings, TEST_CERT.as_ptr(), TEST_CERT.len())
+        },
+        PrismPdfStatus::Ok
+    );
+    let mut data: *mut u8 = std::ptr::null_mut();
+    let mut len = 0usize;
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                doc,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                settings,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    let signed = unsafe { std::slice::from_raw_parts(data, len) }.to_vec();
+    unsafe { prismpdf_bytes_free(data, len) };
+    unsafe { prismpdf_document_free(doc) };
+
+    let reopened = open(&signed);
+    let mut list: *mut PrismPdfSignatureList = std::ptr::null_mut();
+    let roots = [TEST_CERT.as_ptr()];
+    let root_lens = [TEST_CERT.len()];
+    assert_eq!(
+        unsafe {
+            prismpdf_document_verify_signatures_with(
+                reopened,
+                roots.as_ptr(),
+                root_lens.as_ptr(),
+                1,
+                &mut list,
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    let mut sig: *const PrismPdfSignature = std::ptr::null();
+    assert_eq!(
+        unsafe { prismpdf_signature_list_get(list, 0, &mut sig) },
+        PrismPdfStatus::Ok
+    );
+    let mut trusted = false;
+    assert_eq!(
+        unsafe { prismpdf_signature_trusted(sig, &mut trusted) },
+        PrismPdfStatus::Ok
+    );
+    assert!(trusted);
+    unsafe { prismpdf_signature_list_free(list) };
+    unsafe { prismpdf_document_free(reopened) };
+
+    // A member that is not a certificate surfaces at signing time, not when it is added.
+    let junk = prismpdf_sign_settings_new();
+    assert_eq!(
+        unsafe { prismpdf_sign_settings_add_certificate(junk, b"junk".as_ptr(), 4) },
+        PrismPdfStatus::Ok
+    );
+    let doc = open(&sample_pdf());
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                doc,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                junk,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::Parse
+    );
+    unsafe { prismpdf_sign_settings_free(junk) };
+    unsafe { prismpdf_sign_settings_free(settings) };
+    unsafe { prismpdf_document_free(doc) };
+}

@@ -412,6 +412,7 @@ Signing takes more optional inputs than one C signature can carry, so `SignSetti
 | `prismpdf_sign_settings_set_pades(settings, pades)` | Produce a PAdES (ETSI EN 319 142) signature. |
 | `prismpdf_sign_settings_set_appearance(settings, page_index, rect, text)` | A visible widget on `page_index` at `rect` (4 floats), optionally captioned. Null `text` gives an unlabelled box. |
 | `prismpdf_sign_settings_set_timestamp(settings, cert, cert_len, key, key_len, gen_time, serial)` | Embed a signature timestamp (§12.8.3.3). |
+| `prismpdf_sign_settings_add_certificate(settings, der, len)` | Carry an extra DER certificate in the CMS — an intermediate of a private issuing chain — so validators without that CA can still chain the signer to a root (§12.8.3.3). Once per certificate. |
 | `prismpdf_document_sign(doc, cert, cert_len, key, key_len, out_data, out_len)` | Sign with DER certificate + key, returning an incremental update (§7.5.6). |
 | `prismpdf_document_sign_with(…, settings, …)` | Sign with the settings above. |
 | `prismpdf_document_sign_with_mac(…, settings, password, password_len, …)` | Sign an encrypted document and refresh its PDF MAC in the same revision. |

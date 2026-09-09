@@ -2233,6 +2233,20 @@ PrismPdfStatus prismpdf_sign_settings_set_signing_time(PrismPdfSignSettings *set
 PrismPdfStatus prismpdf_sign_settings_set_pades(PrismPdfSignSettings *settings, bool pades);
 
 /**
+ * Carry an additional certificate (DER X.509) in the signature's CMS alongside the signer's — an
+ * intermediate of a private issuing chain, so a validator that does not hold that CA can still
+ * chain the signer to a root it trusts (RFC 5652 §10.2.3, §12.8.3.3). Call once per certificate;
+ * order is immaterial. The bytes are not checked here: a member that is not a DER certificate
+ * makes the later signing call fail with [`PrismPdfStatus::Parse`].
+ *
+ * # Safety
+ * `settings` must be live and `der` must point to `len` readable bytes.
+ */
+PrismPdfStatus prismpdf_sign_settings_add_certificate(PrismPdfSignSettings *settings,
+                                                      const uint8_t *der,
+                                                      uintptr_t len);
+
+/**
  * Give the signature a visible appearance: a widget on page `page_index` (0-based) at `rect`
  * (`[llx lly urx ury]`, four floats), optionally captioned with `text`.
  *

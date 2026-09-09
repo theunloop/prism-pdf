@@ -121,6 +121,13 @@ pub struct SignOptions {
     /// attribute binding the signer certificate (RFC 5035). The caller pairs this with the
     /// `/SubFilter /ETSI.CAdES.detached` signature-dictionary entry.
     pub pades: bool,
+    /// Additional certificates (DER X.509) to carry in the CMS `certificates` set alongside the
+    /// signer's — the intermediates of a private issuing chain, so a validator that does not hold
+    /// that CA can still build the path from the signer to a root it trusts (RFC 5652 §10.2.3,
+    /// ISO 32000-1 §12.8.3.3). Order is immaterial: the set is unordered by definition. Duplicates,
+    /// the signer's own certificate among them, are ignored, so handing over a whole chain is fine.
+    /// A member that is not a DER certificate fails the signature rather than being dropped silently.
+    pub extra_certificates: Vec<Vec<u8>>,
 }
 
 /// A local time-stamping authority's material — used to mint an RFC 3161 token over a signature so
@@ -211,6 +218,18 @@ pub fn sign_digest_with(
     opts: &SignOptions,
 ) -> Option<Vec<u8>> {
     let cert = Certificate::from_der(cert_der).ok()?;
+    // A caller will often hand over the whole chain, leaf included, or list an intermediate twice.
+    // `certificates` is a DER SET, and the `cms` builder panics on a duplicate member rather than
+    // encoding one, so dedupe by bytes — against the signer's own certificate too — before parsing.
+    let mut seen: Vec<&[u8]> = vec![cert_der];
+    let mut extra: Vec<Certificate> = Vec::with_capacity(opts.extra_certificates.len());
+    for der in &opts.extra_certificates {
+        if seen.contains(&der.as_slice()) {
+            continue;
+        }
+        seen.push(der);
+        extra.push(Certificate::from_der(der).ok()?);
+    }
 
     // First pass: the signature with no timestamp. If a timestamp is requested, this signature is
     // what the TSA stamps; both RSA PKCS#1 v1.5 and Ed25519 are deterministic, so re-signing with
@@ -224,6 +243,7 @@ pub fn sign_digest_with(
         opts.signing_time,
         None,
         opts.pades,
+        &extra,
     )?;
 
     let Some(tsa) = &opts.timestamp else {
@@ -246,6 +266,7 @@ pub fn sign_digest_with(
         opts.signing_time,
         Some(&token),
         opts.pades,
+        &extra,
     )
 }
 
@@ -261,6 +282,7 @@ fn build_signed_data(
     signing_time: Option<u64>,
     timestamp_token: Option<&[u8]>,
     pades: bool,
+    extra_certs: &[Certificate],
 ) -> Option<Vec<u8>> {
     // Dispatch on the PKCS#8 key algorithm: Ed25519 (1.3.101.112), ECDSA P-256/P-384/P-521
     // (id-ecPublicKey + curve), else RSA. Each key type only parses with its own loader.
@@ -274,6 +296,7 @@ fn build_signed_data(
             signing_time,
             timestamp_token,
             pades,
+            extra_certs,
         )
     } else if let Ok(ec) = p256::ecdsa::SigningKey::from_pkcs8_der(key_der) {
         assemble_signed_data::<_, EcBitSig>(
@@ -285,6 +308,7 @@ fn build_signed_data(
             signing_time,
             timestamp_token,
             pades,
+            extra_certs,
         )
     } else if let Ok(ec) = p384::ecdsa::SigningKey::from_pkcs8_der(key_der) {
         assemble_signed_data::<_, EcBitSig>(
@@ -296,6 +320,7 @@ fn build_signed_data(
             signing_time,
             timestamp_token,
             pades,
+            extra_certs,
         )
     } else if let Ok(ec) = ecdsa::SigningKey::<p521::NistP521>::from_pkcs8_der(key_der) {
         assemble_signed_data::<_, EcBitSig>(
@@ -307,6 +332,7 @@ fn build_signed_data(
             signing_time,
             timestamp_token,
             pades,
+            extra_certs,
         )
     } else {
         let rsa = RsaPrivateKey::from_pkcs8_der(key_der).ok()?;
@@ -320,6 +346,7 @@ fn build_signed_data(
             signing_time,
             timestamp_token,
             pades,
+            extra_certs,
         )
     }
 }
@@ -468,6 +495,7 @@ fn assemble_signed_data<S, Sig>(
     signing_time: Option<u64>,
     timestamp_token: Option<&[u8]>,
     pades: bool,
+    extra_certs: &[Certificate],
 ) -> Option<Vec<u8>>
 where
     S: Keypair + DynSignatureAlgorithmIdentifier + Signer<Sig>,
@@ -505,15 +533,22 @@ where
             .ok()?;
     }
 
-    let content_info = SignedDataBuilder::new(&encap)
-        .add_digest_algorithm(digest_alg)
-        .ok()?
+    let mut builder = SignedDataBuilder::new(&encap);
+    builder.add_digest_algorithm(digest_alg).ok()?;
+    // The signer, then whatever leads from it towards a root (RFC 5652 §10.2.3). The set carries
+    // no order — a verifier locates the signer through `sid` — so a private CA's intermediates
+    // simply travel with the signature, which is what lets a validator without that CA on hand
+    // still close the path (§12.8.3.3).
+    builder
         .add_certificate(CertificateChoices::Certificate(cert.clone()))
-        .ok()?
-        .add_signer_info::<S, Sig>(signer_info)
-        .ok()?
-        .build()
         .ok()?;
+    for extra in extra_certs {
+        builder
+            .add_certificate(CertificateChoices::Certificate(extra.clone()))
+            .ok()?;
+    }
+    builder.add_signer_info::<S, Sig>(signer_info).ok()?;
+    let content_info = builder.build().ok()?;
 
     content_info.to_der().ok()
 }

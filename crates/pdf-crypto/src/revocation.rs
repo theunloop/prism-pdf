@@ -693,6 +693,7 @@ mod tests {
             signing_time: Some(NOW()),
             timestamp: None,
             pades: true,
+            extra_certificates: Vec::new(),
         };
         let cms =
             sign_digest_with(message, &leaf.to_der().unwrap(), &leaf_key, &opts).expect("sign");

@@ -52,6 +52,12 @@ pub struct SignSettings {
     /// Produce a **PAdES-B** signature (§12.8.3.3): emit `/SubFilter /ETSI.CAdES.detached` and add
     /// the `signing-certificate-v2` signed attribute binding the signer certificate (RFC 5035).
     pub pades: bool,
+    /// Additional certificates (DER X.509) to embed alongside the signer's — the intermediates of a
+    /// private issuing chain, so a validator that does not hold that CA can still chain the
+    /// signer to a root (RFC 5652 §10.2.3, §12.8.3.3). Required whenever the issuing CA is not
+    /// itself a trust anchor. Duplicates, the signer's own certificate among them, are ignored; a
+    /// member that is not DER fails the signing call.
+    pub extra_certificates: Vec<Vec<u8>>,
 }
 
 /// A visible signature appearance: where on the page it sits and what it shows.
@@ -185,6 +191,7 @@ impl Document {
         let key = key_der.to_vec();
         let timestamp = settings.timestamp.clone();
         let pades = settings.pades;
+        let extra_certificates = settings.extra_certificates.clone();
         let attach_mac = mac.is_some();
         let plan = SignatureRevision {
             sig_prefix: &prefix,
@@ -203,6 +210,7 @@ impl Document {
                     signing_time: Some(signing_time),
                     timestamp,
                     pades,
+                    extra_certificates,
                 },
             )?;
             // Attach the PDF MAC (§6.6.3): dataDigest over the ByteRange (= `message`), and

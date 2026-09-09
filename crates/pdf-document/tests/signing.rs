@@ -186,6 +186,125 @@ fn trust_store_reports_trust() {
     assert_eq!(untrusted[0].trusted, Some(false));
 }
 
+/// A private issuing chain — root, an intermediate it issues, a leaf the intermediate issues — as
+/// (root DER, intermediate DER, leaf DER, leaf key DER). RSA-2048 throughout.
+fn private_chain() -> (Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>) {
+    let mut rng = rand_core::OsRng;
+    let keypair = |rng: &mut rand_core::OsRng| {
+        let key = RsaPrivateKey::new(rng, 2048).expect("rsa keygen");
+        let spki = SubjectPublicKeyInfoOwned::try_from(
+            RsaPublicKey::from(&key)
+                .to_public_key_der()
+                .unwrap()
+                .as_bytes(),
+        )
+        .unwrap();
+        (key, spki)
+    };
+    let validity = || Validity::from_now(Duration::from_secs(7200)).unwrap();
+
+    let (root_key, root_spki) = keypair(&mut rng);
+    let root_name = Name::from_str("CN=Private Root").unwrap();
+    let root_signer = SigningKey::<Sha256>::new(root_key);
+    let root = CertificateBuilder::new(
+        Profile::Root,
+        SerialNumber::from(1u32),
+        validity(),
+        root_name.clone(),
+        root_spki,
+        &root_signer,
+    )
+    .unwrap()
+    .build()
+    .unwrap();
+
+    let (intermediate_key, intermediate_spki) = keypair(&mut rng);
+    let intermediate_name = Name::from_str("CN=Private Issuing CA").unwrap();
+    let intermediate = CertificateBuilder::new(
+        Profile::SubCA {
+            issuer: root_name,
+            path_len_constraint: None,
+        },
+        SerialNumber::from(2u32),
+        validity(),
+        intermediate_name.clone(),
+        intermediate_spki,
+        &root_signer,
+    )
+    .unwrap()
+    .build()
+    .unwrap();
+
+    let intermediate_signer = SigningKey::<Sha256>::new(intermediate_key);
+    let (leaf_key, leaf_spki) = keypair(&mut rng);
+    let leaf = CertificateBuilder::new(
+        Profile::Leaf {
+            issuer: intermediate_name,
+            enable_key_agreement: false,
+            enable_key_encipherment: false,
+        },
+        SerialNumber::from(3u32),
+        validity(),
+        Name::from_str("CN=Chained Signer").unwrap(),
+        leaf_spki,
+        &intermediate_signer,
+    )
+    .unwrap()
+    .build()
+    .unwrap();
+
+    (
+        root.to_der().unwrap(),
+        intermediate.to_der().unwrap(),
+        leaf.to_der().unwrap(),
+        leaf_key.to_pkcs8_der().unwrap().as_bytes().to_vec(),
+    )
+}
+
+#[test]
+fn embedded_intermediates_let_a_private_chain_verify() {
+    let (root, intermediate, leaf, leaf_key) = private_chain();
+    let doc = Document::open(one_page_pdf()).unwrap();
+    let roots = vec![root];
+
+    // The leaf alone: intact, but a verifier holding only the root cannot reach it.
+    let bare = doc.sign(&leaf, &leaf_key).unwrap();
+    let status = Document::open(bare)
+        .unwrap()
+        .verify_signatures_with(&roots)
+        .unwrap();
+    assert!(status[0].valid);
+    assert_eq!(
+        status[0].trusted,
+        Some(false),
+        "no path without the intermediate"
+    );
+
+    // With the intermediate embedded (§12.8.3.3), the same root now anchors the signer.
+    let settings = SignSettings {
+        extra_certificates: vec![intermediate],
+        ..SignSettings::default()
+    };
+    let chained = doc.sign_with(&leaf, &leaf_key, &settings).unwrap();
+    let status = Document::open(chained)
+        .unwrap()
+        .verify_signatures_with(&roots)
+        .unwrap();
+    assert!(status[0].valid);
+    assert_eq!(
+        status[0].trusted,
+        Some(true),
+        "intermediate completes the chain"
+    );
+
+    // Something that is not a certificate is refused, not dropped.
+    let junk = SignSettings {
+        extra_certificates: vec![b"junk".to_vec()],
+        ..SignSettings::default()
+    };
+    assert!(doc.sign_with(&leaf, &leaf_key, &junk).is_err());
+}
+
 #[test]
 fn embedded_timestamp_round_trips() {
     let (cert, key) = self_signed("Stamped Signer");
