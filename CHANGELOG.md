@@ -9,6 +9,14 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+## [1.0.0-alpha.3] - 2026-09-10
+
+A defect release. A decorated box that met the foot of a page failed the whole document instead of
+moving to the next one — under every table cell in the engine, on trees whose every size, margin and
+leading was finite and positive — together with the two diagnostic defects that hid it: the C ABI
+dropped the cause of a composition failure on the way out, and the causes themselves did not say
+whether the fault was the caller's or the engine's.
+
 ### Fixed
 
 - **A decorated box at the foot of a page now paginates instead of failing the document.**
@@ -313,7 +321,8 @@ prerelease — only the full `1.0.0-alpha.1` string resolves to it.
   read `-p 21` as `--package 21`. The workflow now passes `--platform 21` and pins cargo-ndk to
   `^4.1`.
 
-[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.2...HEAD
+[Unreleased]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.3...HEAD
+[1.0.0-alpha.3]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
 [1.0.0-alpha.2]: https://github.com/theunloop/prism-pdf/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.1...v1.0.0-alpha.1
 [0.4.1]: https://github.com/theunloop/prism-pdf/compare/v0.4.0...v0.4.1
