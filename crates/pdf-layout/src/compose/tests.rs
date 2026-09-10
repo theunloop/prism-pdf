@@ -774,3 +774,121 @@ fn semantic_content_spans_pages_with_per_page_mcids() {
     assert_eq!(pdf.matches("/Type /MCR").count(), 2);
     assert_eq!(pdf.matches("/S /P").count(), 1);
 }
+
+/// A decorated box that does not fit the room left on the page belongs on the next one. It used to
+/// fail the whole document with `InvalidGeometry` instead, on a tree whose every size, margin and
+/// leading was finite and positive — and the band was only as wide as the box's own padding, so
+/// which documents hit it looked arbitrary from outside.
+#[test]
+fn padded_child_wraps_when_the_page_has_less_room_than_its_padding() {
+    let tree = |height: f64| {
+        Composition::new()
+            .page(short_style(height), |page| {
+                page.content().column(|column| {
+                    column
+                        .item()
+                        .text("first\nsecond", TextStyle::new().leading(14.0));
+                    column.item().padding(4.0, |cell| {
+                        cell.text("after", TextStyle::new().leading(14.0));
+                    });
+                });
+            })
+            .build()
+    };
+
+    // The padded box is 22pt tall and fits a fresh page either way. Only the room left under the
+    // first child differs: 10pt at a content height of 38, 2pt at 30 — and 2pt is under the box's
+    // own 8pt of vertical padding, which is what used to be fatal.
+    for content_height in [38.0, 30.0] {
+        let output = tree(content_height).unwrap();
+        let document = Document::open(output.pdf().to_vec()).unwrap();
+        assert_eq!(document.page_count().unwrap(), 2, "at {content_height}");
+        let text = output
+            .trace()
+            .events()
+            .iter()
+            .filter(|event| event.kind == "Text")
+            .map(|event| event.text.as_deref().unwrap_or_default().to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(text, ["first\nsecond", "after"], "at {content_height}");
+    }
+}
+
+/// The same for a fixed height, which had no working window at all: the box fits a fresh page with
+/// room to spare, so it is a page break and not an over-tall element.
+#[test]
+fn fixed_height_child_wraps_to_the_next_page() {
+    let output = Composition::new()
+        .page(short_style(38.0), |page| {
+            page.content().column(|column| {
+                column
+                    .item()
+                    .text("first\nsecond", TextStyle::new().leading(14.0));
+                column.item().height(20.0, |box_| {
+                    box_.text("after", TextStyle::new().leading(14.0));
+                });
+            });
+        })
+        .build()
+        .unwrap();
+    let document = Document::open(output.pdf().to_vec()).unwrap();
+    assert_eq!(document.page_count().unwrap(), 2);
+}
+
+/// The other half of the same branch: a box no page can hold is still an error, and now reports the
+/// variant that says so rather than `InvalidGeometry`.
+#[test]
+fn a_box_no_page_can_hold_is_still_over_tall() {
+    let cases = [
+        Composition::new().page(short_style(40.0), |page| {
+            page.content().height(500.0, |child| {
+                child.text("tall", TextStyle::new());
+            });
+        }),
+        Composition::new().page(short_style(40.0), |page| {
+            page.content().padding(300.0, |child| {
+                child.text("padded", TextStyle::new());
+            });
+        }),
+        // A running header is measured against the whole content area and never paginates.
+        Composition::new().page(short_style(40.0), |page| {
+            page.header().height(500.0, |child| {
+                child.text("header", TextStyle::new());
+            });
+            page.content().text("body", TextStyle::new());
+        }),
+    ];
+    for case in cases {
+        assert_eq!(case.build().unwrap_err(), ComposeError::OverTallElement);
+    }
+}
+
+/// A decoration that is not a decoration at all stays `InvalidGeometry`, however much room the page
+/// has left. This pins the ordering: the finite/non-negative validation has to run before the
+/// height comparison, because every comparison against a NaN is false and would otherwise read as
+/// "does not fit" — turning bad input into a silent page break.
+#[test]
+fn a_non_finite_decoration_is_still_invalid_geometry() {
+    for value in [f64::NAN, f64::INFINITY, -1.0] {
+        let padding = Composition::new().page(short_style(40.0), |page| {
+            page.content().padding(value, |child| {
+                child.text("bad", TextStyle::new());
+            });
+        });
+        assert_eq!(
+            padding.build().unwrap_err(),
+            ComposeError::InvalidGeometry,
+            "padding {value}"
+        );
+        let height = Composition::new().page(short_style(40.0), |page| {
+            page.content().height(value, |child| {
+                child.text("bad", TextStyle::new());
+            });
+        });
+        assert_eq!(
+            height.build().unwrap_err(),
+            ComposeError::InvalidGeometry,
+            "height {value}"
+        );
+    }
+}

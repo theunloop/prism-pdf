@@ -9,6 +9,27 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Fixed
+
+- **A decorated box at the foot of a page now paginates instead of failing the document.**
+  `DecoratedNode::constraints` — the wrapper under `padding()`, `height()`, `align()`, `border()`
+  and `background()`, and so under every table cell — folded two height comparisons in with its
+  finite/non-negative validation and returned `InvalidGeometry` for both. But a box taller than
+  what is left of the page is not a mis-specified box; it is one that belongs on the next page,
+  which is exactly what `Plan::Wrap` already says, and which `TextNode` and `TableNode` already
+  return in the same situation. The failure band was only as wide as the box's own vertical
+  padding and recurred once per row height, so which documents hit it looked arbitrary from the
+  outside: for 20pt rows with 4pt padding, 8 points in every 20 were fatal, and one reporter
+  measured 49 of 60 realistic datasets failing outright, none recoverable by nudging the margins.
+  The height comparisons move to `DecoratedNode::fits_offered_height`, which yields `Plan::Wrap`;
+  the width comparisons stay errors, because a column is as wide as it is and no amount of
+  paginating widens it. A box that cannot fit even an empty page still fails, and now as
+  `OverTallElement` — the accurate variant — via the `Plan::Wrap` arms already in `checked_size`
+  and `measure_repeating`. The finite/non-negative validation is split into `DecoratedNode::validate`
+  and runs *ahead* of the fit test: every comparison against a NaN is false, so a non-finite
+  decoration would otherwise read as "does not fit" and turn bad input into a silent page break.
+  Reported against `1.0.0-alpha.2` from the .NET binding.
+
 ## [1.0.0-alpha.2] - 2026-09-09
 
 Second prerelease of the `1.0.0` line: the composition-to-builder handover, whole-program CID font

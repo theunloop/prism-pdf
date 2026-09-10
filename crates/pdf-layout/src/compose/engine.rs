@@ -1092,7 +1092,12 @@ impl DecoratedNode {
         }
     }
 
-    fn constraints(&self, available: Size) -> Result<(Size, f64, f64), ComposeError> {
+    /// Reject a decoration that is not a decoration at all: a non-finite or negative padding,
+    /// width, height or border, or a colour outside its range. This is the caller's input being
+    /// wrong, and stays an error however much room the page has left — so it must run *before*
+    /// [`Self::fits_offered_height`], whose comparisons would otherwise read a NaN as "does not
+    /// fit" and quietly turn bad input into a page break.
+    fn validate(&self, available: Size) -> Result<(), ComposeError> {
         let decoration = self.decoration;
         if !available.is_valid()
             || decoration
@@ -1112,14 +1117,33 @@ impl DecoratedNode {
         {
             return Err(ComposeError::InvalidGeometry);
         }
+        Ok(())
+    }
+
+    /// Whether the box could be placed in the height on offer. A box taller than what is left of
+    /// the page is not a mis-specified box — it is one that belongs on the next page, which is what
+    /// [`Plan::Wrap`] says. Width has no equivalent: a column is as wide as it is, and no amount of
+    /// paginating widens it, so those comparisons stay in [`Self::constraints`] as errors.
+    ///
+    /// Only meaningful once [`Self::validate`] has passed; on a non-finite decoration every
+    /// comparison here is false, which would read as "does not fit".
+    fn fits_offered_height(&self, available: Size) -> bool {
+        let outer_height = self.decoration.height.unwrap_or(available.height);
+        let vertical_padding = self.decoration.padding[0] + self.decoration.padding[2];
+        outer_height <= available.height + EPSILON && vertical_padding <= outer_height + EPSILON
+    }
+
+    fn constraints(&self, available: Size) -> Result<(Size, f64, f64), ComposeError> {
+        self.validate(available)?;
+        let decoration = self.decoration;
         let outer_width = decoration.width.unwrap_or(available.width);
         let outer_height = decoration.height.unwrap_or(available.height);
-        if outer_width > available.width + EPSILON || outer_height > available.height + EPSILON {
+        if outer_width > available.width + EPSILON {
             return Err(ComposeError::InvalidGeometry);
         }
         let horizontal_padding = decoration.padding[1] + decoration.padding[3];
         let vertical_padding = decoration.padding[0] + decoration.padding[2];
-        if horizontal_padding > outer_width + EPSILON || vertical_padding > outer_height + EPSILON {
+        if horizontal_padding > outer_width + EPSILON {
             return Err(ComposeError::InvalidGeometry);
         }
         Ok((
@@ -1135,6 +1159,11 @@ impl DecoratedNode {
 
 impl Element for DecoratedNode {
     fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+        self.validate(available)?;
+        if !self.fits_offered_height(available) {
+            self.measured = None;
+            return Ok(Plan::Wrap);
+        }
         let (inner, horizontal_padding, vertical_padding) = self.constraints(available)?;
         let child_plan = self.child.measure(inner, metrics)?;
         let child_size = match child_plan {
