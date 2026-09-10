@@ -247,25 +247,50 @@ impl ComposedDocument {
 }
 
 /// Composition failures detected before an invalid PDF or an infinite loop can be produced.
+///
+/// Every variant reaches the C ABI as the single status `PrismPdfStatus::Layout`, so the `Display`
+/// message is the only thing that separates them — see `docs/ABI.md`. It therefore says which
+/// **side** the fault is on, because that is the first question a caller has:
+///
+/// - [`InvalidGeometry`](Self::InvalidGeometry), [`MissingFont`](Self::MissingFont),
+///   [`InvalidFont`](Self::InvalidFont) and [`OverTallElement`](Self::OverTallElement) are the
+///   caller's input — something in the element tree, its style, or its page geometry.
+/// - [`NoProgress`](Self::NoProgress) and [`MeasurementMismatch`](Self::MeasurementMismatch) are
+///   violations of this engine's own measure/draw protocol. No sequence of public API calls is
+///   supposed to produce them, so they are defects here, not caller mistakes, and they say so.
 #[derive(Clone, Debug, PartialEq, thiserror::Error)]
 pub enum ComposeError {
     /// Page geometry, a constraint, or a text size/leading was non-finite or non-positive.
-    #[error("invalid composition geometry")]
+    #[error(
+        "invalid composition geometry: a page size, margin, padding, width, text size or leading \
+         was either not a finite positive number, or wider than the space it has to fit. A box \
+         merely taller than the room left on the page is not this — it paginates"
+    )]
     InvalidGeometry,
     /// A text element references a font resource that was not registered.
-    #[error("font resource {0} is not registered")]
+    #[error("font resource {0} is not registered on this composition")]
     MissingFont(String),
     /// An element cannot fit even in a fresh page content region.
-    #[error("element cannot fit in a fresh page content region")]
+    #[error(
+        "element cannot fit in a fresh page content region: it is taller than the page's content \
+         box even with the whole page to itself"
+    )]
     OverTallElement,
     /// Measurement returned a drawable plan that consumed no space.
-    #[error("composition made no observable progress")]
+    #[error(
+        "composition made no observable progress: an element measured as drawable but consumed no \
+         space. This is a defect in Prism PDF rather than a fault in the document being composed \
+         — please report it"
+    )]
     NoProgress,
     /// Drawing did not receive the size from its immediately preceding measurement.
-    #[error("drawing diverged from its preceding measurement")]
+    #[error(
+        "drawing diverged from its preceding measurement. This is a defect in Prism PDF rather \
+         than a fault in the document being composed — please report it"
+    )]
     MeasurementMismatch,
     /// Embedded-font bytes are not a valid TrueType/OpenType font.
-    #[error("invalid embedded font program")]
+    #[error("invalid embedded font program: not a TrueType or OpenType (sfnt) font")]
     InvalidFont,
 }
 

@@ -186,15 +186,21 @@ pub struct PrismPdfCompositionContainer {
     generation: u64,
 }
 
+/// Map a composition failure to its status, recording the diagnostic. Every variant is `Layout` —
+/// the match is spelled out so that a new `ComposeError` has to be classified here rather than
+/// silently inheriting it — but each carries its own message, and dropping that leaves a caller
+/// with nothing but the generic "layout failed" to debug a whole element tree from.
 pub(crate) fn composition_status(error: prismpdf::ComposeError) -> PrismPdfStatus {
-    match error {
+    let status = match &error {
         prismpdf::ComposeError::MissingFont(_) => PrismPdfStatus::Layout,
         prismpdf::ComposeError::InvalidFont
         | prismpdf::ComposeError::InvalidGeometry
         | prismpdf::ComposeError::OverTallElement
         | prismpdf::ComposeError::NoProgress
         | prismpdf::ComposeError::MeasurementMismatch => PrismPdfStatus::Layout,
-    }
+    };
+    record_failure(status, error.to_string());
+    status
 }
 
 pub(crate) fn allocate_slot(arena: &mut CompositionArena) -> usize {

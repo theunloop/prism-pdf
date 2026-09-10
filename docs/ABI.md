@@ -45,7 +45,10 @@ The header `crates/pdf-ffi/include/prismpdf.h` is generated from the Rust source
 
 Status codes remain the stable control-flow contract. After a guarded call fails,
 `prismpdf_last_error` clones that thread's diagnostic into an owned `PrismPdfErrorInfo`; its status
-matches the failed call and its message carries parser/serializer detail when available. A later
+matches the failed call and its message carries parser, layout, or serializer detail when
+available. This is the only channel for such detail where one status covers many causes: every
+composition failure is `PrismPdfStatus_Layout`, so the message is what separates an unregistered
+font resource from invalid geometry or an element too tall for a fresh page. A later
 successful guarded call clears the thread-local slot, but previously cloned snapshots remain valid.
 
 | Function | Ownership |

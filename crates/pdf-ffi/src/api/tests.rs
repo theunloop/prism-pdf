@@ -4372,6 +4372,82 @@ fn composition_children_detect_a_released_owner_and_failed_build_finalises() {
     }
 }
 
+/// A `Layout` status is the same for every composition failure, so the diagnostic is the only thing
+/// that says *which* one it was. Both finalising calls must leave it holding the `ComposeError`'s
+/// own message rather than the generic default `guard` would otherwise fill in.
+#[test]
+fn composition_layout_failures_report_their_cause() {
+    unsafe fn fails_with_bad_text_size(
+        finalise: impl FnOnce(*mut PrismPdfComposition) -> PrismPdfStatus,
+    ) -> String {
+        unsafe {
+            let composition = prismpdf_composition_new();
+            let style = PrismPdfCompositionPageStyle {
+                width: 100.0,
+                height: 100.0,
+                margin_left: 10.0,
+                margin_right: 10.0,
+                margin_top: 10.0,
+                margin_bottom: 10.0,
+            };
+            let mut content = std::ptr::null_mut();
+            assert_eq!(
+                prismpdf_composition_add_page(composition, &style, &mut content),
+                PrismPdfStatus::Ok
+            );
+            let text = CString::new("bad").unwrap();
+            let bad_style = PrismPdfCompositionTextStyle {
+                size: f64::NAN,
+                leading: 14.0,
+            };
+            assert_eq!(
+                prismpdf_composition_container_set_text(content, text.as_ptr(), &bad_style),
+                PrismPdfStatus::Ok
+            );
+            assert_eq!(finalise(composition), PrismPdfStatus::Layout);
+
+            let mut error = std::ptr::null_mut();
+            assert_eq!(prismpdf_last_error(&mut error), PrismPdfStatus::Ok);
+            let mut status = PrismPdfStatus::Ok;
+            assert_eq!(
+                prismpdf_error_info_status(error, &mut status),
+                PrismPdfStatus::Ok
+            );
+            assert_eq!(status, PrismPdfStatus::Layout);
+            let mut message = std::ptr::null_mut();
+            assert_eq!(
+                prismpdf_error_info_message(error, &mut message),
+                PrismPdfStatus::Ok
+            );
+            let diagnostic = take_string(message);
+
+            prismpdf_error_info_free(error);
+            prismpdf_composition_container_free(content);
+            prismpdf_composition_free(composition);
+            diagnostic
+        }
+    }
+
+    let expected = prismpdf::ComposeError::InvalidGeometry.to_string();
+    assert_ne!(expected, default_status_message(PrismPdfStatus::Layout));
+
+    let built = unsafe {
+        fails_with_bad_text_size(|composition| {
+            let (mut data, mut len) = (std::ptr::null_mut(), 0usize);
+            prismpdf_composition_build(composition, &mut data, &mut len)
+        })
+    };
+    assert_eq!(built, expected);
+
+    let converted = unsafe {
+        fails_with_bad_text_size(|composition| {
+            let mut builder = std::ptr::null_mut();
+            prismpdf_composition_into_builder(composition, &mut builder)
+        })
+    };
+    assert_eq!(converted, expected);
+}
+
 #[test]
 fn composition_rows_and_decorators_replay_through_the_abi() {
     unsafe {

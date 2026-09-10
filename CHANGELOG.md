@@ -30,6 +30,25 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   decoration would otherwise read as "does not fit" and turn bad input into a silent page break.
   Reported against `1.0.0-alpha.2` from the .NET binding.
 
+- **A composition failure now reports which failure it was.** `prismpdf_composition_build` and
+  `prismpdf_composition_into_builder` mapped every `ComposeError` to `PrismPdfStatus::Layout` and
+  dropped the error itself, so the thread-local diagnostic fell back to `guard`'s generic
+  `"layout failed"`. Since one status covers all six causes, that left a caller with no way to tell
+  an unregistered font resource from invalid geometry, an over-tall element or a measurement
+  mismatch — the message is the only channel that distinguishes them, and a binding surfacing it
+  faithfully (`PrismPdf.PrismPdfException`, for one) could still only say `Layout. layout failed`
+  about an entire element tree. `composition_status` now records `error.to_string()` the way
+  `signing_status` already did, so `prismpdf_last_error` carries the cause. Statuses are unchanged.
+
+- **`ComposeError`'s messages now say which side the fault is on.** Because one status covers all
+  six causes, the message is the only place that can, and "are we holding it wrong?" is the first
+  question a `Layout` failure raises. `InvalidGeometry`, `MissingFont`, `InvalidFont` and
+  `OverTallElement` now name what to look at in the element tree; `NoProgress` and
+  `MeasurementMismatch` state outright that they are defects in this engine — no sequence of public
+  API calls is meant to reach them — and ask for a report, rather than sending the caller to audit
+  input that was never at fault. Variants, and so the `PartialEq` any caller matches on, are
+  unchanged.
+
 ## [1.0.0-alpha.2] - 2026-09-09
 
 Second prerelease of the `1.0.0` line: the composition-to-builder handover, whole-program CID font
