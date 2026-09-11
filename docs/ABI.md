@@ -251,6 +251,7 @@ The current lifecycle/protocol slice exposes:
 | `prismpdf_composition_row_add_fixed` / `_relative` / `_auto` | Append a row child with the corresponding width policy. |
 | `prismpdf_composition_container_set_padding` / `_alignment` / `_width` / `_height` / `_extend` | Consume a slot as a one-child layout decorator and return the empty child. |
 | `prismpdf_composition_container_set_border` / `_background` | Consume a slot as a painted decorator using `PrismPdfCompositionColor`. |
+| `prismpdf_composition_container_set_border_sides` | As `_set_border`, with per-side widths in the order `top`, `right`, `bottom`, `left`; a side of zero width is not painted. |
 | `prismpdf_composition_container_set_semantic` / `_heading` / `_link` / `_figure` | Wrap a child in the corresponding §14.7–§14.8 logical-structure role. |
 | `prismpdf_composition_container_set_table` | Consume a slot as a paginating element-tree table. |
 | `prismpdf_composition_table_add_fixed_column` / `_relative_column` / `_auto_column` | Add a table column width policy. |

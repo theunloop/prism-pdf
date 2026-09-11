@@ -768,11 +768,26 @@ impl Container<'_> {
         );
     }
 
-    /// Paint a border around a child.
+    /// Paint a border of one width around all four sides of a child.
     pub fn border(&mut self, width: f64, color: Color, configure: impl FnOnce(&mut Container<'_>)) {
+        self.border_sides([width; 4], color, configure);
+    }
+
+    /// Paint a border whose sides may differ, in the order `padding` uses — top, right, bottom,
+    /// left. A side of zero width is not drawn, so a single rule above a table row is
+    /// `[2.0, 0.0, 0.0, 0.0]`; banded rows need that, and a uniform box turns them into a grid.
+    ///
+    /// The border is painted on the box's own edges and takes no space: it never moves the child,
+    /// and a stroke is centred on the edge it names, so half of it falls outside the box.
+    pub fn border_sides(
+        &mut self,
+        widths: [f64; 4],
+        color: Color,
+        configure: impl FnOnce(&mut Container<'_>),
+    ) {
         self.decorate(
             Decoration {
-                border: Some((width, color)),
+                border: Some((widths, color)),
                 ..Decoration::default()
             },
             configure,
@@ -919,7 +934,9 @@ struct Decoration {
     height: Option<f64>,
     extend_width: bool,
     extend_height: bool,
-    border: Option<(f64, Color)>,
+    /// Stroke widths in the order `padding` uses — top, right, bottom, left. A side of zero
+    /// width is not drawn, which is what makes a single rule above a row expressible.
+    border: Option<([f64; 4], Color)>,
     background: Option<Color>,
 }
 

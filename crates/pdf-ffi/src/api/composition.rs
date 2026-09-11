@@ -111,7 +111,8 @@ pub(crate) enum CompositionDraftDecoration {
     Width(f64),
     Height(f64),
     Extend,
-    Border(f64, LayoutColor),
+    /// Stroke widths in the order `padding` uses — top, right, bottom, left.
+    Border([f64; 4], LayoutColor),
     Background(LayoutColor),
 }
 
@@ -314,8 +315,9 @@ pub(crate) fn emit_draft_node(
             CompositionDraftDecoration::Extend => {
                 container.extend(|item| emit_draft_node(item, *child, slots));
             }
-            CompositionDraftDecoration::Border(width, color) => {
-                container.border(*width, *color, |item| emit_draft_node(item, *child, slots));
+            CompositionDraftDecoration::Border(widths, color) => {
+                container
+                    .border_sides(*widths, *color, |item| emit_draft_node(item, *child, slots));
             }
             CompositionDraftDecoration::Background(color) => {
                 container.background(*color, |item| emit_draft_node(item, *child, slots));
@@ -1257,7 +1259,7 @@ pub(crate) fn composition_color(color: PrismPdfCompositionColor) -> LayoutColor 
     LayoutColor::rgb(color.red, color.green, color.blue)
 }
 
-/// Paint a border around a child and return its empty slot.
+/// Paint a border of one width around all four sides of a child and return its empty slot.
 ///
 /// # Safety
 /// `container` and `out_child` must be live/writable.
@@ -1270,7 +1272,32 @@ pub unsafe extern "C" fn prismpdf_composition_container_set_border(
 ) -> PrismPdfStatus {
     decorate_slot(
         container,
-        CompositionDraftDecoration::Border(width, composition_color(color)),
+        CompositionDraftDecoration::Border([width; 4], composition_color(color)),
+        out_child,
+    )
+}
+
+/// Paint a border whose sides may differ and return the child's empty slot.
+///
+/// A side of zero width is not drawn, so a single rule above a row is `top` alone — the shape a
+/// banded table needs, and the one a uniform box turns into a grid. The border is painted on the
+/// box's own edges and takes no space, so per-side widths never move the child.
+///
+/// # Safety
+/// `container` and `out_child` must be live/writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_composition_container_set_border_sides(
+    container: *mut PrismPdfCompositionContainer,
+    top: f64,
+    right: f64,
+    bottom: f64,
+    left: f64,
+    color: PrismPdfCompositionColor,
+    out_child: *mut *mut PrismPdfCompositionContainer,
+) -> PrismPdfStatus {
+    decorate_slot(
+        container,
+        CompositionDraftDecoration::Border([top, right, bottom, left], composition_color(color)),
         out_child,
     )
 }

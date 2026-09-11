@@ -9,6 +9,31 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Added
+
+- **A composed border can name its sides.** `Container::border` painted one width on all four
+  sides and `prismpdf_composition_container_set_border` did the same, so the only border a
+  composed box could have was a box. A banded table — a rule above each row and nothing else, the
+  shape most report tables have had since before PDF — was not expressible, and a report drawn
+  with the border that *was* available reads as a spreadsheet grid instead. `Container::border_sides`
+  and `prismpdf_composition_container_set_border_sides` take four widths in the order `padding`
+  already uses, top-right-bottom-left; `border` is now the convenience that fills all four, so it
+  means exactly what it always did. Each side is its own stroked segment rather than a corner of
+  one rectangle, which is what lets the widths differ.
+
+  This costs no layout. `DecoratedNode::constraints` insets for padding alone, so a border has
+  never moved the child it surrounds and per-side widths still do not; the change is confined to
+  validation and painting.
+
+### Changed
+
+- **A zero-width composed border side is no longer painted.** PDF reads a line width of zero as
+  the thinnest line the device can draw (§8.4.3.2), not as no line, so
+  `prismpdf_composition_container_set_border(container, 0.0, …)` used to stroke a hairline box
+  where the caller had asked for nothing. It now paints nothing, which is what per-side widths
+  require — `[2.0, 0.0, 0.0, 0.0]` has to mean a top rule and three absent sides — and what
+  `Flow`'s table has always done with a zero grid width.
+
 ## [1.0.0-alpha.3] - 2026-09-10
 
 A defect release. A decorated box that met the foot of a page failed the whole document instead of

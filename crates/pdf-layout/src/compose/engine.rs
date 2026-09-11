@@ -1110,8 +1110,11 @@ impl DecoratedNode {
             || decoration
                 .height
                 .is_some_and(|value| !value.is_finite() || value < 0.0)
-            || decoration.border.is_some_and(|(width, color)| {
-                !width.is_finite() || width < 0.0 || !color.is_valid()
+            || decoration.border.is_some_and(|(widths, color)| {
+                widths
+                    .iter()
+                    .any(|width| !width.is_finite() || *width < 0.0)
+                    || !color.is_valid()
             })
             || decoration.background.is_some_and(|color| !color.is_valid())
         {
@@ -1254,17 +1257,38 @@ impl Element for DecoratedNode {
         }
         let mut child_context = context.translated(measure.child_offset.x, measure.child_offset.y);
         self.child.draw(&mut child_context, measure.child_size)?;
-        if let Some((width, color)) = self.decoration.border {
+        if let Some((widths, color)) = self.decoration.border
+            && widths.iter().any(|width| *width > 0.0)
+        {
             if context.tagged {
                 context.content.begin_artifact();
             }
             context.content.save();
             context
                 .content
-                .set_line_width(width)
-                .set_stroke_rgb(color.red, color.green, color.blue)
-                .rect(context.origin.x, pdf_y, space.width, space.height)
-                .stroke();
+                .set_stroke_rgb(color.red, color.green, color.blue);
+            let (left, bottom) = (context.origin.x, pdf_y);
+            let (right, top) = (left + space.width, bottom + space.height);
+            // One stroked segment per side, in the order `padding` uses, so the widths may
+            // differ. A zero-width side is skipped rather than stroked: PDF reads a line width of
+            // zero as the thinnest line the device can draw (§8.4.3.2), so stroking it would put
+            // a hairline exactly where the caller asked for nothing.
+            for (width, from, to) in [
+                (widths[0], (left, top), (right, top)),
+                (widths[1], (right, top), (right, bottom)),
+                (widths[2], (left, bottom), (right, bottom)),
+                (widths[3], (left, top), (left, bottom)),
+            ] {
+                if width <= 0.0 {
+                    continue;
+                }
+                context
+                    .content
+                    .set_line_width(width)
+                    .move_to(from.0, from.1)
+                    .line_to(to.0, to.1)
+                    .stroke();
+            }
             context.content.restore();
             if context.tagged {
                 context.content.end_marked_content();

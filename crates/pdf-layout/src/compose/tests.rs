@@ -301,6 +301,76 @@ fn over_tall_or_invalid_row_fails_cleanly() {
     }
 }
 
+/// A banded table wants one rule above each row, which the single-width border could not express:
+/// the only shape available was a box on all four sides, and a report of banded rows drawn that
+/// way reads as a spreadsheet grid instead.
+#[test]
+fn a_border_paints_only_the_sides_it_names() {
+    fn painted(widths: [f64; 4]) -> String {
+        let output = Composition::new()
+            .page(short_style(120.0), |page| {
+                page.content().column(|column| {
+                    for label in ["first", "second"] {
+                        column
+                            .item()
+                            .border_sides(widths, Color::rgb(0.1, 0.2, 0.3), |cell| {
+                                cell.text(label, TextStyle::new().size(12.0).leading(14.0));
+                            });
+                    }
+                });
+            })
+            .build()
+            .unwrap();
+        let document = Document::open(output.into_pdf()).unwrap();
+        let page = &document.pages().unwrap()[0];
+        String::from_utf8(document.page_content_bytes(page).unwrap()).unwrap()
+    }
+
+    // A rule above each row: one stroked segment per row, at the width that row asked for.
+    let top_only = painted([2.0, 0.0, 0.0, 0.0]);
+    assert_eq!(top_only.matches("S\n").count(), 2, "one rule per row");
+    assert_eq!(top_only.matches("2 w\n").count(), 2);
+    assert!(
+        !top_only.contains("re\n"),
+        "a named side is a segment, not a rectangle"
+    );
+
+    // All four sides still paint, and the sides may differ from one another.
+    let mixed = painted([2.0, 1.0, 0.5, 1.0]);
+    assert_eq!(
+        mixed.matches("S\n").count(),
+        8,
+        "four sides on each of two rows"
+    );
+    assert_eq!(mixed.matches("2 w\n").count(), 2, "top");
+    assert_eq!(mixed.matches("1 w\n").count(), 4, "right and left");
+    assert_eq!(mixed.matches("0.5 w\n").count(), 2, "bottom");
+
+    // Nothing named is nothing painted. PDF reads a line width of zero as the thinnest line the
+    // device can draw (§8.4.3.2), so this is the one case that has to be skipped rather than
+    // stroked — otherwise a caller asking for no border gets a hairline.
+    assert_eq!(painted([0.0; 4]).matches("S\n").count(), 0);
+}
+
+/// The convenience wrapper still means what it always did: the same width on all four sides.
+#[test]
+fn a_uniform_border_is_four_equal_sides() {
+    let output = Composition::new()
+        .page(short_style(60.0), |page| {
+            page.content()
+                .border(1.5, Color::rgb(0.2, 0.2, 0.2), |border| {
+                    border.text("boxed", TextStyle::new().size(12.0).leading(14.0));
+                });
+        })
+        .build()
+        .unwrap();
+    let document = Document::open(output.into_pdf()).unwrap();
+    let page = &document.pages().unwrap()[0];
+    let content = String::from_utf8(document.page_content_bytes(page).unwrap()).unwrap();
+    assert_eq!(content.matches("S\n").count(), 4);
+    assert_eq!(content.matches("1.5 w\n").count(), 4);
+}
+
 #[test]
 fn decorators_compose_constraints_alignment_and_paint() {
     let output = Composition::new()

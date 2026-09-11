@@ -4528,6 +4528,11 @@ fn composition_rows_and_decorators_replay_through_the_abi() {
         }
         wrap!(|out| prismpdf_composition_container_set_padding(decorated, 4.0, out));
         wrap!(|out| prismpdf_composition_container_set_border(decorated, 1.0, color, out));
+        // Only the top side, which is what a banded row asks for: the painting itself is covered
+        // in `pdf-layout`, so what matters here is that the widths reach it in the right order.
+        wrap!(|out| prismpdf_composition_container_set_border_sides(
+            decorated, 3.0, 0.0, 0.0, 0.0, color, out
+        ));
         wrap!(|out| prismpdf_composition_container_set_background(decorated, color, out));
         wrap!(|out| prismpdf_composition_container_set_width(decorated, 180.0, out));
         wrap!(|out| prismpdf_composition_container_set_height(decorated, 60.0, out));
@@ -4550,6 +4555,13 @@ fn composition_rows_and_decorators_replay_through_the_abi() {
             PrismPdfStatus::Ok
         );
         let document = Document::open(take_bytes(data, len)).unwrap();
+        let page = &document.pages().unwrap()[0];
+        let painted = String::from_utf8(document.page_content_bytes(page).unwrap()).unwrap();
+        assert_eq!(
+            painted.matches("3 w\n").count(),
+            1,
+            "the top side reached the page at the width the ABI named"
+        );
         let text = prismpdf::page_text(&document, 0).unwrap().unwrap();
         for expected in ["fixed", "relative", "auto", "decorated"] {
             assert!(text.contains(expected));
