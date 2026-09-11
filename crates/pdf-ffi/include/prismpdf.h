@@ -3964,7 +3964,8 @@ PrismPdfImageSource *prismpdf_image_source_from_rgba(uint32_t width,
  * # Safety
  * `data` must point to `len` readable bytes.
  */
-PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data, uintptr_t len);
+PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data,
+                                                    uintptr_t len);
 
 /**
  * The image's pixel dimensions.
@@ -4679,7 +4680,7 @@ PrismPdfStatus prismpdf_composition_container_set_extend(PrismPdfCompositionCont
                                                          PrismPdfCompositionContainer **out_child);
 
 /**
- * Paint a border around a child and return its empty slot.
+ * Paint a border of one width around all four sides of a child and return its empty slot.
  *
  * # Safety
  * `container` and `out_child` must be live/writable.
@@ -4688,6 +4689,24 @@ PrismPdfStatus prismpdf_composition_container_set_border(PrismPdfCompositionCont
                                                          double width,
                                                          PrismPdfCompositionColor color,
                                                          PrismPdfCompositionContainer **out_child);
+
+/**
+ * Paint a border whose sides may differ and return the child's empty slot.
+ *
+ * A side of zero width is not drawn, so a single rule above a row is `top` alone — the shape a
+ * banded table needs, and the one a uniform box turns into a grid. The border is painted on the
+ * box's own edges and takes no space, so per-side widths never move the child.
+ *
+ * # Safety
+ * `container` and `out_child` must be live/writable.
+ */
+PrismPdfStatus prismpdf_composition_container_set_border_sides(PrismPdfCompositionContainer *container,
+                                                               double top,
+                                                               double right,
+                                                               double bottom,
+                                                               double left,
+                                                               PrismPdfCompositionColor color,
+                                                               PrismPdfCompositionContainer **out_child);
 
 /**
  * Paint a background behind a child and return its empty slot.

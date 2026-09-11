@@ -44,7 +44,7 @@ EXCEPTIONS = {
         "caller previously had to walk /AcroForm by hand to find (§12.5.2, §12.7.3.1).",
     ),
     "crates/pdf-ffi/src/api/composition.rs": (
-        1_423,
+        1_450,
         "C ABI composition arena and operations; frozen capability-module budget, +2 on "
         "2026-08-25 for the catch_unwind wrapper that prismpdf_composition_new was missing "
         "(pdf-ffi's no-unwind contract, DESIGN.md §6.1), +2 on 2026-08-27 for the rustfmt "
@@ -54,7 +54,9 @@ EXCEPTIONS = {
         "Builder so /Info, attachments, outlines and the conformance passes can reach it, "
         "+6 on 2026-09-10 for the doc comment on composition_status explaining why it records "
         "the ComposeError message: one Layout status covers six causes, so dropping the "
-        "message left a caller nothing to debug an element tree from.",
+        "message left a caller nothing to debug an element tree from. +27 on 2026-09-11 "
+        "for composition_container_set_border_sides, the per-side border a banded table "
+        "needs.",
     ),
     "crates/pdf-ffi/src/api/core.rs": (
         1_889,
@@ -82,7 +84,7 @@ EXCEPTIONS = {
         "field) and sign_settings_set_appearance_image.",
     ),
     "crates/pdf-ffi/src/api/tests.rs": (
-        5_468,
+        5_480,
         "cross-capability ABI and standalone C acceptance tests, +39 on 2026-08-27: 4 lines "
         "predate the rename (this budget was already stale at 4_861); 35 are reflow "
         "at the 100-col limit. No logic added. +496 on 2026-09-09 covering the eight exports "
@@ -91,29 +93,36 @@ EXCEPTIONS = {
         "a named field. This is the one exception here that a split would genuinely improve: "
         "the module is tests, so `api/tests/` per capability costs nothing but the move. "
         "+76 on 2026-09-10 for composition_layout_failures_report_their_cause, which drives "
-        "both finalising calls into a failure and asserts the diagnostic carries the cause.",
+        "both finalising calls into a failure and asserts the diagnostic carries the cause. "
+        "+12 on 2026-09-11 driving the per-side border through the decorator chain; the "
+        "painting itself is asserted in pdf-layout, so only the plumbing is tested here.",
     ),
     "crates/pdf-fonts/src/standard_metrics.rs": (
         1_993,
         "mostly static Standard-14 font metric tables",
     ),
     "crates/pdf-layout/src/compose.rs": (
-        1_070,
+        1_087,
         "public composition model and page orchestration, +13 on 2026-09-09: "
         "PreparedComposition::into_builder, the handover a caller takes to reach everything "
         "Builder offers, and the §9.9 outline check embedded_font now makes before it "
         "accepts a program. +25 on 2026-09-10 for the ComposeError messages, which now name "
         "what to look at and say whether the fault is the caller's input or a violation of "
         "this engine's own measure/draw protocol — the only channel that can, since every "
-        "variant reaches the ABI as the single status Layout.",
+        "variant reaches the ABI as the single status Layout. +17 on 2026-09-11 for "
+        "Container::border_sides, the per-side border a banded table needs; border stays as "
+        "the convenience that fills all four.",
     ),
     "crates/pdf-layout/src/compose/engine.rs": (
-        1_478,
+        1_502,
         "private measurement and rendering engine; frozen post-extraction budget, +18 on "
         "2026-09-10 splitting DecoratedNode::constraints into validate, fits_offered_height "
         "and the width checks that remain. A box taller than the room left on the page is a "
         "page break rather than an error, and separating the three keeps the finite/negative "
-        "validation ahead of a height comparison that reads every NaN as `does not fit`.",
+        "validation ahead of a height comparison that reads every NaN as `does not fit`. "
+        "+24 on 2026-09-11 painting a border as four independent segments instead of one "
+        "rectangle, so the sides may differ and a zero-width side is skipped rather than "
+        "stroked as a hairline.",
     ),
 }
 
