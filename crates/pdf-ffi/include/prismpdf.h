@@ -2309,7 +2309,10 @@ PrismPdfStatus prismpdf_caption_style_set_enabled(PrismPdfCaptionStyle *style, b
 PrismPdfStatus prismpdf_caption_style_set_font(PrismPdfCaptionStyle *style, PrismPdfStdFont font);
 
 /**
- * Set the caption's size in points.
+ * Set the caption's size in points. `size` must be finite and above zero; anything else is
+ * rejected with `NullArgument`, as `prismpdf_object_new_real` rejects a non-finite real. A size
+ * that is not a number cannot be written to a content stream, and a signed revision carrying one
+ * cannot be corrected without signing again.
  *
  * # Safety
  * `style` must be a live caption-style handle.
@@ -2318,7 +2321,8 @@ PrismPdfStatus prismpdf_caption_style_set_size(PrismPdfCaptionStyle *style, doub
 
 /**
  * Set the caption's baseline-to-baseline spacing in points. A value at or below zero follows the
- * size at 1.25×, which is what a fresh style does.
+ * size at 1.25×, which is what a fresh style does. A non-finite value is rejected with
+ * `NullArgument` rather than treated as unset: it is a caller's mistake, not a request.
  *
  * # Safety
  * `style` must be a live caption-style handle.

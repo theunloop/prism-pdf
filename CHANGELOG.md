@@ -31,7 +31,13 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
   Over the C ABI this is `prismpdf_caption_style_new` with one setter per aspect and
   `prismpdf_sign_settings_set_appearance_image_styled`, whose `image` may be null for a
-  caption-only widget. The style is an opaque handle rather than a `repr(C)` struct, following
+  caption-only widget. `_size` takes a finite size above zero and `_leading` a finite one, and
+  reject anything else with `NullArgument`, as `prismpdf_object_new_real` rejects a non-finite
+  real; a size that is not a number cannot be written to a content stream, and a signed revision
+  carrying one cannot be corrected in place. `CaptionStyle` resolves the same way in Rust, where
+  the fields are public and clamping with `max` is no guard: `f32::max` returns the other operand
+  for a NaN but hands an infinity straight back. The style is an opaque handle rather than a
+  `repr(C)` struct, following
   `PrismPdfOpenOptions`, so a later option does not change a layout that compiled code already
   depends on; the two existing appearance exports are untouched and keep drawing the historical
   caption.

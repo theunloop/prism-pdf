@@ -117,7 +117,14 @@ pub(super) fn empty_appearance_xobject() -> Stream {
 
 /// Format a coordinate for a content stream: two decimals, without the trailing zeros that make
 /// an appearance stream tedious to read against a specification.
+///
+/// A non-finite value formats as `0` rather than as `inf` or `NaN`, neither of which is a number
+/// in PDF syntax (§7.3.3). The callers resolve their geometry before they get here; this is the
+/// last line of defence for a stream that, once signed, cannot be corrected in place.
 fn num(value: f32) -> String {
+    if !value.is_finite() {
+        return "0".to_string();
+    }
     let text = format!("{value:.2}");
     let text = text.trim_end_matches('0').trim_end_matches('.');
     if text.is_empty() || text == "-" {
@@ -136,7 +143,7 @@ fn num(value: f32) -> String {
 /// `ZapfDingbats` — measures as zero, so everything fits and nothing wraps.
 fn wrap_caption_line(line: &str, style: &CaptionStyle, max_width: f64) -> Vec<String> {
     let base = style.font.base_name();
-    let size = f64::from(style.size);
+    let size = f64::from(style.resolved_size());
     let measure = |text: &str| pdf_fonts::standard_text_width(base, text, size).unwrap_or(0.0);
     if max_width <= 0.0 || measure(line) <= max_width {
         return vec![line.to_string()];
@@ -271,7 +278,7 @@ pub(super) fn appearance_xobject(
     content.extend_from_slice(
         format!(
             "BT\n/Helv {} Tf\n{} TL\n",
-            num(style.size.max(1.0)),
+            num(style.resolved_size()),
             num(leading)
         )
         .as_bytes(),

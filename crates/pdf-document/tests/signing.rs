@@ -341,6 +341,46 @@ fn a_caption_carries_its_own_face_and_size() {
 }
 
 #[test]
+fn a_caption_size_that_is_not_a_number_still_draws() {
+    // `CaptionStyle` is public, and the clamp this used to rely on is no guard: `f32::max` returns
+    // the other operand for a NaN but hands an infinity straight back. `/Helv inf Tf` is not a
+    // number in PDF syntax, and a signed revision carrying one cannot be corrected in place —
+    // the byte range is what the signature covers.
+    for size in [f32::INFINITY, f32::NEG_INFINITY, f32::NAN, 0.0, -6.0] {
+        let signed = signed_with(
+            CaptionStyle {
+                size,
+                ..CaptionStyle::default()
+            },
+            "Firmato",
+        );
+        assert!(
+            find(&signed, b"/Helv 8 Tf").is_some(),
+            "a size of {size} falls back to the default"
+        );
+        for token in [b"inf".as_slice(), b"NaN".as_slice()] {
+            assert!(
+                find(&signed, token).is_none(),
+                "a size of {size} reached the content stream"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_caption_leading_that_is_not_a_number_follows_the_size() {
+    let signed = signed_with(
+        CaptionStyle {
+            size: 6.0,
+            leading: Some(f32::INFINITY),
+            ..CaptionStyle::default()
+        },
+        "Firmato",
+    );
+    assert!(find(&signed, b"7.5 TL").is_some(), "6 at 1.25x");
+}
+
+#[test]
 fn a_caption_can_be_declined_without_the_empty_string() {
     // `text: Some("")` has always meant "no caption", which is not something a caller guesses —
     // and `None` means "draw the default", so getting it wrong put a raw PDF date in front of a

@@ -569,7 +569,10 @@ pub unsafe extern "C" fn prismpdf_caption_style_set_font(
     })
 }
 
-/// Set the caption's size in points.
+/// Set the caption's size in points. `size` must be finite and above zero; anything else is
+/// rejected with `NullArgument`, as `prismpdf_object_new_real` rejects a non-finite real. A size
+/// that is not a number cannot be written to a content stream, and a signed revision carrying one
+/// cannot be corrected without signing again.
 ///
 /// # Safety
 /// `style` must be a live caption-style handle.
@@ -578,7 +581,7 @@ pub unsafe extern "C" fn prismpdf_caption_style_set_size(
     style: *mut PrismPdfCaptionStyle,
     size: f64,
 ) -> PrismPdfStatus {
-    if style.is_null() {
+    if style.is_null() || !size.is_finite() || size <= 0.0 {
         return PrismPdfStatus::NullArgument;
     }
     guard(|| {
@@ -588,7 +591,8 @@ pub unsafe extern "C" fn prismpdf_caption_style_set_size(
 }
 
 /// Set the caption's baseline-to-baseline spacing in points. A value at or below zero follows the
-/// size at 1.25×, which is what a fresh style does.
+/// size at 1.25×, which is what a fresh style does. A non-finite value is rejected with
+/// `NullArgument` rather than treated as unset: it is a caller's mistake, not a request.
 ///
 /// # Safety
 /// `style` must be a live caption-style handle.
@@ -597,7 +601,7 @@ pub unsafe extern "C" fn prismpdf_caption_style_set_leading(
     style: *mut PrismPdfCaptionStyle,
     leading: f64,
 ) -> PrismPdfStatus {
-    if style.is_null() {
+    if style.is_null() || !leading.is_finite() {
         return PrismPdfStatus::NullArgument;
     }
     guard(|| {

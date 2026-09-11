@@ -115,7 +115,7 @@ impl Default for CaptionStyle {
         Self {
             draw: true,
             font: StdFont::Helvetica,
-            size: 8.0,
+            size: Self::DEFAULT_SIZE,
             leading: None,
             wrap: false,
             placement: CaptionPlacement::Beside,
@@ -124,9 +124,34 @@ impl Default for CaptionStyle {
 }
 
 impl CaptionStyle {
+    /// The size a caption draws at when it is not told otherwise.
+    const DEFAULT_SIZE: f32 = 8.0;
+
+    /// The size to draw at, in points.
+    ///
+    /// This struct's fields are public, so nothing stops a caller storing a size no content stream
+    /// can carry, and clamping with `max` is no guard: `f32::max` returns the other operand for a
+    /// NaN but passes an infinity straight through. `Tf` would then be written `inf`, which is not
+    /// a content stream a viewer will accept — and written into a signed revision it cannot be
+    /// repaired without signing again. Anything that is not a finite positive size falls back to
+    /// the default rather than reaching the stream.
+    pub(super) fn resolved_size(&self) -> f32 {
+        if self.size.is_finite() && self.size > 0.0 {
+            self.size
+        } else {
+            Self::DEFAULT_SIZE
+        }
+    }
+
     /// The baseline-to-baseline spacing to draw with, resolving `leading: None`.
     pub(super) fn resolved_leading(&self) -> f32 {
-        self.leading.unwrap_or(self.size * 1.25).max(1.0)
+        let size = self.resolved_size();
+        let leading = self.leading.unwrap_or(size * 1.25);
+        if leading.is_finite() {
+            leading.max(1.0)
+        } else {
+            size * 1.25
+        }
     }
 }
 

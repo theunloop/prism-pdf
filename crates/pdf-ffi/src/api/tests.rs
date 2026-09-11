@@ -5336,6 +5336,40 @@ fn signature_appearance_carries_an_image() {
 }
 
 #[test]
+fn a_caption_size_that_is_not_a_number_is_refused() {
+    // A caption size reaches a content stream as a literal, so `inf` or `NaN` is a syntactically
+    // broken appearance — and inside a signed revision the byte range covers it, so it cannot be
+    // corrected afterwards. `prismpdf_object_new_real` already refuses a non-finite real; these
+    // setters follow it rather than defaulting quietly.
+    let style = prismpdf_caption_style_new();
+    assert!(!style.is_null());
+    for size in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN, 0.0, -6.0] {
+        assert_eq!(
+            unsafe { prismpdf_caption_style_set_size(style, size) },
+            PrismPdfStatus::NullArgument,
+            "a size of {size} is refused"
+        );
+    }
+    assert_eq!(
+        unsafe { prismpdf_caption_style_set_size(style, 6.0) },
+        PrismPdfStatus::Ok
+    );
+    for leading in [f64::INFINITY, f64::NAN] {
+        assert_eq!(
+            unsafe { prismpdf_caption_style_set_leading(style, leading) },
+            PrismPdfStatus::NullArgument,
+            "a leading of {leading} is refused"
+        );
+    }
+    // Zero keeps its documented meaning: follow the size, rather than being an error.
+    assert_eq!(
+        unsafe { prismpdf_caption_style_set_leading(style, 0.0) },
+        PrismPdfStatus::Ok
+    );
+    unsafe { prismpdf_caption_style_free(style) };
+}
+
+#[test]
 fn a_styled_caption_reaches_the_appearance_stream() {
     // The historical caption is Helvetica 8 beside the graphic on one unwrapped line, which in a
     // 200-point widget leaves it about 118 points — not enough for a fiscal code and an IP
