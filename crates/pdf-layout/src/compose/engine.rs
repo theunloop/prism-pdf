@@ -76,8 +76,29 @@ impl<'a> Metrics<'a> {
     }
 }
 
+/// Which height a measurement reports for a box that would otherwise consume everything offered.
+///
+/// A table row has to know how tall its cells need to be before it can know how tall it is, and
+/// only then can it tell a cell that fills its box what "its box" actually is. Measuring the same
+/// tree both ways is what separates the two questions.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum HeightMode {
+    /// Report the height the box asks for, extension included. The ordinary measurement, and what
+    /// a page column wants: a box centred there is centred in the room left on the page.
+    Offered,
+    /// Report what the box's content needs, as though nothing extended. A cell that only extends
+    /// so it can align its content cannot drive its row's height this way, which is what keeps a
+    /// vertical alignment inside a table from claiming the rest of the page.
+    Natural,
+}
+
 pub(super) trait Element {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError>;
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError>;
     fn draw(&mut self, context: &mut DrawCtx<'_>, space: Size) -> Result<(), ComposeError>;
     fn reset(&mut self);
 }
@@ -194,16 +215,21 @@ impl Node {
 }
 
 impl Element for Node {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         match self {
-            Node::Column(column) => column.measure(available, metrics),
-            Node::Decorated(decorated) => decorated.measure(available, metrics),
-            Node::Image(image) => image.measure(available, metrics),
-            Node::PageBreak(page_break) => page_break.measure(available, metrics),
-            Node::Row(row) => row.measure(available, metrics),
-            Node::Semantic(semantic) => semantic.measure(available, metrics),
-            Node::Table(table) => table.measure(available, metrics),
-            Node::Text(text) => text.measure(available, metrics),
+            Node::Column(column) => column.measure(available, metrics, mode),
+            Node::Decorated(decorated) => decorated.measure(available, metrics, mode),
+            Node::Image(image) => image.measure(available, metrics, mode),
+            Node::PageBreak(page_break) => page_break.measure(available, metrics, mode),
+            Node::Row(row) => row.measure(available, metrics, mode),
+            Node::Semantic(semantic) => semantic.measure(available, metrics, mode),
+            Node::Table(table) => table.measure(available, metrics, mode),
+            Node::Text(text) => text.measure(available, metrics, mode),
         }
     }
 
@@ -260,7 +286,12 @@ impl ColumnNode {
 }
 
 impl Element for ColumnNode {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         if !available.is_valid() || !self.spacing.is_finite() || self.spacing < 0.0 {
             return Err(ComposeError::InvalidGeometry);
         }
@@ -287,8 +318,11 @@ impl Element for ColumnNode {
                 continue;
             }
             let remaining = (available.height - used - spacing).max(0.0);
-            let child_plan =
-                self.children[index].measure(Size::new(available.width, remaining), metrics)?;
+            let child_plan = self.children[index].measure(
+                Size::new(available.width, remaining),
+                metrics,
+                mode,
+            )?;
             match child_plan {
                 Plan::Empty => {}
                 Plan::Wrap => {
@@ -411,7 +445,12 @@ impl ImageNode {
 }
 
 impl Element for ImageNode {
-    fn measure(&mut self, available: Size, _metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        _metrics: &Metrics,
+        _mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         if self.complete {
             self.measured = Some(Plan::Empty);
             return Ok(Plan::Empty);
@@ -516,7 +555,12 @@ impl Element for ImageNode {
 }
 
 impl Element for PageBreakNode {
-    fn measure(&mut self, _available: Size, _metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        _available: Size,
+        _metrics: &Metrics,
+        _mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         Ok(Plan::Empty)
     }
 
@@ -543,19 +587,40 @@ pub(super) struct RowNode {
     planned: Vec<PlannedRowChild>,
     measured: Option<Plan>,
     complete: bool,
+    /// Settle the row's height on what its cells need before letting them fill it.
+    ///
+    /// True only for a table row. A standalone row is offered the room a caller means — the rest
+    /// of the page, usually — and a cell that fills should take it, as every other container does.
+    settles_height: bool,
 }
 
 impl RowNode {
+    /// A row a caller placed directly, which fills the height it is offered.
     pub(super) fn new(children: Vec<(RowWidth, Node)>) -> Self {
+        Self::with_settling(children, false)
+    }
+
+    /// A row of a table, whose height settles on its tallest cell before the cells fill it.
+    pub(super) fn table_row(children: Vec<(RowWidth, Node)>) -> Self {
+        Self::with_settling(children, true)
+    }
+
+    fn with_settling(children: Vec<(RowWidth, Node)>, settles_height: bool) -> Self {
         Self {
             children,
             planned: Vec::new(),
             measured: None,
             complete: false,
+            settles_height,
         }
     }
 
-    fn widths(&mut self, available: Size, metrics: &Metrics) -> Result<Vec<f64>, ComposeError> {
+    fn widths(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Vec<f64>, ComposeError> {
         let mut fixed = 0.0;
         let mut relative = 0.0;
         let mut auto_widths = vec![0.0; self.children.len()];
@@ -574,7 +639,7 @@ impl RowNode {
                     relative += factor;
                 }
                 RowWidth::Auto => {
-                    let plan = child.measure(available, metrics)?;
+                    let plan = child.measure(available, metrics, mode)?;
                     auto_widths[index] = match plan {
                         Plan::Full(size) | Plan::Partial(size) => size.width,
                         Plan::Empty | Plan::Wrap => 0.0,
@@ -600,18 +665,20 @@ impl RowNode {
             .collect())
     }
 
-    fn measure_at_widths(
+    /// Measure every cell once at the given widths, taking the row's height from the tallest.
+    fn measure_cells(
         &mut self,
         available: Size,
         widths: &[f64],
         metrics: &Metrics,
+        mode: HeightMode,
     ) -> Result<Plan, ComposeError> {
         self.planned.clear();
         let mut offset = 0.0;
         let mut height = 0.0f64;
         let mut any = false;
         for ((_, child), width) in self.children.iter_mut().zip(widths.iter().copied()) {
-            let plan = child.measure(Size::new(width, available.height), metrics)?;
+            let plan = child.measure(Size::new(width, available.height), metrics, mode)?;
             let size = match plan {
                 Plan::Empty => None,
                 Plan::Full(size) => {
@@ -639,10 +706,71 @@ impl RowNode {
         self.measured = Some(plan);
         Ok(plan)
     }
+
+    /// Measure the row, in two passes when it settles its height and a cell has room left over.
+    ///
+    /// The first pass asks every cell what its content needs, so a cell that fills its box cannot
+    /// answer "everything you are offering" and make the row as tall as the rest of the page. That
+    /// gives the row a height. The second pass hands that height back to the cells, so a box that
+    /// fills — a vertical alignment, an explicit extend — fills the row it is actually in.
+    ///
+    /// Without it, `align(_, Center)` inside a table cell turned a forty-row table into a forty-page
+    /// document, because the height a row offers during measurement is a pagination budget, not a
+    /// box. The second pass is skipped when every cell already stands at the row's height, which is
+    /// the common case and has nothing to even out.
+    ///
+    /// Only a table row settles. A row a caller placed themselves is offered the box they meant, so
+    /// it measures once in the mode it was given and a cell that fills still fills the page.
+    fn measure_at_widths(
+        &mut self,
+        available: Size,
+        widths: &[f64],
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
+        if !self.settles_height {
+            return self.measure_cells(available, widths, metrics, mode);
+        }
+        let natural = self.measure_cells(available, widths, metrics, HeightMode::Natural)?;
+        let Plan::Full(row) = natural else {
+            return Ok(natural);
+        };
+        if mode != HeightMode::Offered
+            || !self.planned.iter().any(|cell| {
+                cell.size
+                    .is_some_and(|size| size.height + EPSILON < row.height)
+            })
+        {
+            return Ok(natural);
+        }
+        for (_, child) in &mut self.children {
+            child.reset();
+        }
+        let settled = self.measure_cells(
+            Size::new(available.width, row.height),
+            widths,
+            metrics,
+            mode,
+        )?;
+        if matches!(settled, Plan::Full(size) if (size.height - row.height).abs() <= EPSILON) {
+            return Ok(settled);
+        }
+        // A cell that cannot be measured inside the row it produced is not something to guess at:
+        // fall back to the natural pass, which is self-consistent by construction.
+        for (_, child) in &mut self.children {
+            child.reset();
+        }
+        self.measure_cells(available, widths, metrics, HeightMode::Natural)
+    }
 }
 
 impl Element for RowNode {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         if self.complete {
             self.measured = Some(Plan::Empty);
             return Ok(Plan::Empty);
@@ -650,8 +778,8 @@ impl Element for RowNode {
         if !available.is_valid() {
             return Err(ComposeError::InvalidGeometry);
         }
-        let widths = self.widths(available, metrics)?;
-        self.measure_at_widths(available, &widths, metrics)
+        let widths = self.widths(available, metrics, mode)?;
+        self.measure_at_widths(available, &widths, metrics, mode)
     }
 
     fn draw(&mut self, context: &mut DrawCtx<'_>, space: Size) -> Result<(), ComposeError> {
@@ -771,9 +899,14 @@ impl SemanticNode {
 }
 
 impl Element for SemanticNode {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         let _ = self.tag()?;
-        self.child.measure(available, metrics)
+        self.child.measure(available, metrics, mode)
     }
 
     fn draw(&mut self, context: &mut DrawCtx<'_>, space: Size) -> Result<(), ComposeError> {
@@ -848,7 +981,7 @@ impl TableNode {
             .is_some_and(|cells| cells.len() != columns.len())
             || rows.iter().any(|cells| cells.len() != columns.len());
         let make_row = |cells: Vec<Option<Node>>| {
-            RowNode::new(
+            RowNode::table_row(
                 columns
                     .iter()
                     .copied()
@@ -888,7 +1021,12 @@ impl TableNode {
         Ok(())
     }
 
-    fn widths(&mut self, available: Size, metrics: &Metrics) -> Result<Vec<f64>, ComposeError> {
+    fn widths(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Vec<f64>, ComposeError> {
         self.validate()?;
         if let Some((width, resolved)) = &self.resolved_widths
             && (*width - available.width).abs() <= EPSILON
@@ -911,7 +1049,7 @@ impl TableNode {
                         .chain(self.rows[self.row_index..].iter_mut());
                     for row in rows {
                         let child = &mut row.children[index].1;
-                        let plan = child.measure(available, metrics)?;
+                        let plan = child.measure(available, metrics, mode)?;
                         if let Plan::Full(size) | Plan::Partial(size) = plan {
                             automatic[index] = automatic[index].max(size.width);
                         }
@@ -944,7 +1082,12 @@ impl TableNode {
 }
 
 impl Element for TableNode {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         if self.row_index >= self.rows.len() {
             self.measured = Some(TableMeasure {
                 plan: Plan::Empty,
@@ -956,11 +1099,11 @@ impl Element for TableNode {
         if !available.is_valid() {
             return Err(ComposeError::InvalidGeometry);
         }
-        let widths = self.widths(available, metrics)?;
+        let widths = self.widths(available, metrics, mode)?;
         let mut used = 0.0;
         let header_size = if let Some(header) = &mut self.header {
             header.reset();
-            match header.measure_at_widths(available, &widths, metrics)? {
+            match header.measure_at_widths(available, &widths, metrics, mode)? {
                 Plan::Full(size) => {
                     used = size.height;
                     Some(size)
@@ -978,6 +1121,7 @@ impl Element for TableNode {
                 Size::new(available.width, remaining),
                 &widths,
                 metrics,
+                mode,
             )? {
                 Plan::Full(size) => {
                     used += size.height;
@@ -1158,14 +1302,19 @@ impl DecoratedNode {
 }
 
 impl Element for DecoratedNode {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         self.validate(available)?;
         if !self.fits_offered_height(available) {
             self.measured = None;
             return Ok(Plan::Wrap);
         }
         let (inner, horizontal_padding, vertical_padding) = self.constraints(available)?;
-        let child_plan = self.child.measure(inner, metrics)?;
+        let child_plan = self.child.measure(inner, metrics, mode)?;
         let child_size = match child_plan {
             Plan::Empty => {
                 self.measured = Some(DecoratedMeasure {
@@ -1192,7 +1341,10 @@ impl Element for DecoratedNode {
         } else {
             child_size.width + horizontal_padding
         };
-        let height = if self.decoration.height.is_some() || self.decoration.extend_height {
+        // An explicit height is the caller's own number and always stands. Extension is a claim on
+        // the box, which a natural measurement is asking the box to set aside — see [`HeightMode`].
+        let extends = self.decoration.extend_height && mode == HeightMode::Offered;
+        let height = if self.decoration.height.is_some() || extends {
             inner.height + vertical_padding
         } else {
             child_size.height + vertical_padding
@@ -1332,7 +1484,12 @@ impl TextNode {
 }
 
 impl Element for TextNode {
-    fn measure(&mut self, available: Size, metrics: &Metrics) -> Result<Plan, ComposeError> {
+    fn measure(
+        &mut self,
+        available: Size,
+        metrics: &Metrics,
+        _mode: HeightMode,
+    ) -> Result<Plan, ComposeError> {
         if !available.is_valid()
             || !self.style.size.is_finite()
             || self.style.size <= 0.0

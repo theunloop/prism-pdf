@@ -9,6 +9,31 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Fixed
+
+- **A vertical alignment inside a table cell no longer claims the rest of the page.**
+  `Container::align` implements vertical alignment by filling the box it is given — that is how
+  alignment works — and a table row offered each cell the room left on the page, because that is
+  the budget pagination has to work with. The two together meant a cell asking to centre its text
+  became as tall as the page, the row took its height from that cell, and every row of the table
+  started a page of its own. A forty-row table was one `align` call away from a forty-page
+  document, and nothing at the call site suggested it; `extend` inside a cell did the same thing
+  for the same reason. The reporter who found it had recorded it as "composes without error but
+  silently drops rows", which is what it looks like from the outside when you read page 0.
+
+  A row now measures in two passes. The first asks every cell what its content needs, with
+  extension suppressed — the new `HeightMode::Natural` — so a cell that fills its box cannot answer
+  "everything you are offering" and set the row's height by doing so. That settles the row's
+  height. The second hands that height back to the cells, so a box that fills fills the row it is
+  actually in, and a vertical alignment aligns against its neighbours. The second pass is skipped
+  when every cell already stands at the row's height, and a row whose cells cannot be measured
+  inside the height they produced falls back to the first pass rather than guessing.
+
+  Outside a table nothing changes: a page column, and a row a caller placed themselves, offer the
+  room left on the page, and that genuinely is the box a caller means when they centre or extend a
+  block there. `HeightMode::Natural` is reached only from a table row, so neither page-level
+  alignment nor a full-height two-pane row is touched — there is a test for each.
+
 ## [1.0.0-alpha.3] - 2026-09-10
 
 A defect release. A decorated box that met the foot of a page failed the whole document instead of

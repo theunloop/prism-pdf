@@ -98,22 +98,41 @@ EXCEPTIONS = {
         "mostly static Standard-14 font metric tables",
     ),
     "crates/pdf-layout/src/compose.rs": (
-        1_070,
+        1_074,
         "public composition model and page orchestration, +13 on 2026-09-09: "
         "PreparedComposition::into_builder, the handover a caller takes to reach everything "
         "Builder offers, and the §9.9 outline check embedded_font now makes before it "
         "accepts a program. +25 on 2026-09-10 for the ComposeError messages, which now name "
         "what to look at and say whether the fault is the caller's input or a violation of "
         "this engine's own measure/draw protocol — the only channel that can, since every "
-        "variant reaches the ABI as the single status Layout.",
+        "variant reaches the ABI as the single status Layout. +4 on 2026-09-11 naming the "
+        "HeightMode a measurement runs in at the three places that start one.",
     ),
     "crates/pdf-layout/src/compose/engine.rs": (
-        1_478,
+        1_635,
         "private measurement and rendering engine; frozen post-extraction budget, +18 on "
         "2026-09-10 splitting DecoratedNode::constraints into validate, fits_offered_height "
         "and the width checks that remain. A box taller than the room left on the page is a "
         "page break rather than an error, and separating the three keeps the finite/negative "
-        "validation ahead of a height comparison that reads every NaN as `does not fit`.",
+        "validation ahead of a height comparison that reads every NaN as `does not fit`. "
+        "+135 on 2026-09-11 for HeightMode and the row's two-pass measurement: a row asks its "
+        "cells what they need before it tells them how tall it is, so a vertical alignment "
+        "inside a cell fills the row instead of the rest of the page. The mode threads through "
+        "every measure signature, which is most of the count. +22 on 2026-09-11 confining that "
+        "settling to table rows, which a review caught: a row a caller placed themselves was "
+        "settling too, so an extended cell in a two-pane page row collapsed to its text.",
+    ),
+    # NEW EXCEPTION, 2026-09-11. The compose tests crossed 1000 lines adding the three cases that
+    # pin the row's two-pass measurement — the reporter's own repro, the page-level behaviour it
+    # must not disturb, and a mixed-height row. Like `pdf-ffi/src/api/tests.rs`, this is a test
+    # module rather than logic, so `compose/tests/` per concern would be a better answer than a
+    # raised budget; it is recorded rather than split so the split is its own change.
+    "crates/pdf-layout/src/compose/tests.rs": (
+        1_042,
+        "declarative-composition test module; crossed MAX_LINES on 2026-09-11 for the row "
+        "two-pass measurement cases, +24 the same day for the standalone row that must keep "
+        "filling the page. A split into per-concern modules is the better fix and is "
+        "deliberately left as its own change.",
     ),
 }
 

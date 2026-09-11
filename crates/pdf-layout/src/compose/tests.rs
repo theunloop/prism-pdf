@@ -85,8 +85,12 @@ fn repeated_measurement_is_deterministic_and_reset_rewinds_consumption() {
     let metrics = Metrics::new(&fonts);
     let available = Size::new(100.0, 14.0);
     let mut text = TextNode::new("first\nsecond", TextStyle::new().size(12.0).leading(14.0));
-    let first = text.measure(available, &metrics).unwrap();
-    let repeated = text.measure(available, &metrics).unwrap();
+    let first = text
+        .measure(available, &metrics, HeightMode::Offered)
+        .unwrap();
+    let repeated = text
+        .measure(available, &metrics, HeightMode::Offered)
+        .unwrap();
     assert_eq!(first, repeated);
 
     let mut content = Content::new();
@@ -115,7 +119,9 @@ fn repeated_measurement_is_deterministic_and_reset_rewinds_consumption() {
     assert_eq!(trace.events()[0].text.as_deref(), Some("first"));
 
     text.reset();
-    let reset_plan = text.measure(available, &metrics).unwrap();
+    let reset_plan = text
+        .measure(available, &metrics, HeightMode::Offered)
+        .unwrap();
     assert_eq!(reset_plan, first);
 }
 
@@ -124,7 +130,9 @@ fn draw_rejects_a_size_other_than_the_measured_size() {
     let fonts = BTreeMap::from([("F1".to_string(), FontSlot::Standard(StdFont::Helvetica))]);
     let metrics = Metrics::new(&fonts);
     let mut text = TextNode::new("line", TextStyle::new());
-    let _ = text.measure(Size::new(100.0, 100.0), &metrics).unwrap();
+    let _ = text
+        .measure(Size::new(100.0, 100.0), &metrics, HeightMode::Offered)
+        .unwrap();
     let mut content = Content::new();
     let mut images = Vec::new();
     let mut mcid_next = 0;
@@ -299,6 +307,122 @@ fn over_tall_or_invalid_row_fails_cleanly() {
     ] {
         assert_eq!(invalid.build().unwrap_err(), ComposeError::InvalidGeometry);
     }
+}
+
+/// The reporter's own repro, from a .NET integration: a three-row, one-column table whose cells
+/// ask to centre their text vertically. Every row used to become a full page, because the height a
+/// row offers a cell during measurement is the rest of the page — a pagination budget, not a box —
+/// and vertical alignment is implemented by filling the box. A forty-row table was one call away
+/// from a forty-page document, and nothing at the call site said so.
+#[test]
+fn a_vertical_alignment_in_a_table_cell_fills_the_row_not_the_page() {
+    fn pages(cell: fn(&mut Container<'_>, &str)) -> usize {
+        let output = Composition::new()
+            .page(short_style(400.0), |page| {
+                page.content().table(|table| {
+                    table.relative_column(1.0);
+                    for label in ["ROW1", "ROW2", "ROW3"] {
+                        table.row(|row| cell(&mut row.cell(), label));
+                    }
+                });
+            })
+            .build()
+            .unwrap();
+        Document::open(output.into_pdf())
+            .unwrap()
+            .page_count()
+            .unwrap()
+    }
+
+    // The baseline every other case is judged against.
+    assert_eq!(
+        pages(|cell, label| cell.text(label, TextStyle::new().size(12.0).leading(14.0))),
+        1
+    );
+    for aligned in [VerticalAlign::Center, VerticalAlign::Bottom] {
+        assert_eq!(
+            pages(match aligned {
+                VerticalAlign::Center => |cell: &mut Container<'_>, label: &str| {
+                    cell.align(HorizontalAlign::Left, VerticalAlign::Center, |inner| {
+                        inner.text(label, TextStyle::new().size(12.0).leading(14.0));
+                    });
+                },
+                _ => |cell: &mut Container<'_>, label: &str| {
+                    cell.align(HorizontalAlign::Left, VerticalAlign::Bottom, |inner| {
+                        inner.text(label, TextStyle::new().size(12.0).leading(14.0));
+                    });
+                },
+            }),
+            1,
+            "{aligned:?} alignment stays inside its row"
+        );
+    }
+    // An explicit extend is the same claim by a different name, and now means the same box.
+    assert_eq!(
+        pages(|cell, label| {
+            cell.extend(|inner| {
+                inner.text(label, TextStyle::new().size(12.0).leading(14.0));
+            });
+        }),
+        1
+    );
+}
+
+/// The counterpart: outside a table nothing changes. A page column offers the room left on the
+/// page, and that genuinely is the box a caller means when they centre a block there.
+#[test]
+fn a_vertical_alignment_on_a_page_still_uses_the_page() {
+    let output = Composition::new()
+        .page(short_style(200.0), |page| {
+            page.content()
+                .align(HorizontalAlign::Center, VerticalAlign::Center, |aligned| {
+                    aligned.text("centred", TextStyle::new().size(12.0).leading(14.0));
+                });
+        })
+        .build()
+        .unwrap();
+    let text = output
+        .trace()
+        .events()
+        .iter()
+        .find(|event| event.kind == "Text")
+        .unwrap();
+    // Content runs from y=10 for 200 points; a 14-point line centred in it starts at 103.
+    assert_eq!(text.bounds.origin.y, 103.0);
+}
+
+/// A row takes its height from the cell that needs the most, and the shorter cells are told what
+/// that height is — which is what lets one of them align its content against the others.
+#[test]
+fn a_row_settles_on_the_height_its_tallest_cell_needs() {
+    let output = Composition::new()
+        .page(short_style(400.0), |page| {
+            page.content().table(|table| {
+                table.relative_column(1.0);
+                table.relative_column(1.0);
+                table.row(|row| {
+                    row.cell()
+                        .text("one\ntwo\nthree", TextStyle::new().size(12.0).leading(14.0));
+                    row.cell()
+                        .align(HorizontalAlign::Left, VerticalAlign::Bottom, |inner| {
+                            inner.text("last", TextStyle::new().size(12.0).leading(14.0));
+                        });
+                });
+            });
+        })
+        .build()
+        .unwrap();
+    let texts: Vec<_> = output
+        .trace()
+        .events()
+        .iter()
+        .filter(|event| event.kind == "Text")
+        .collect();
+    assert_eq!(texts.len(), 2);
+    // Three lines at 14 points make the row 42 tall; the bottom-aligned cell sits on its last
+    // line rather than on the foot of the page.
+    assert_eq!(texts[0].bounds.size.height, 42.0);
+    assert_eq!(texts[1].bounds.origin.y, texts[0].bounds.origin.y + 28.0);
 }
 
 #[test]
@@ -891,4 +1015,28 @@ fn a_non_finite_decoration_is_still_invalid_geometry() {
             "height {value}"
         );
     }
+}
+
+/// Settling a row's height is a table's business. A row a caller placed themselves is offered the
+/// box they meant — the rest of the page — and a cell that fills still fills it.
+#[test]
+fn a_row_outside_a_table_still_fills_the_page() {
+    let output = Composition::new()
+        .page(short_style(400.0), |page| {
+            page.content().row(|row| {
+                row.relative(1.0)
+                    .extend(|cell| cell.text("left", TextStyle::new().size(12.0).leading(14.0)));
+                row.relative(1.0)
+                    .text("right", TextStyle::new().size(12.0).leading(14.0));
+            });
+        })
+        .build()
+        .unwrap();
+    let row = output
+        .trace()
+        .events()
+        .iter()
+        .find(|event| event.kind == "Row")
+        .unwrap();
+    assert_eq!(row.bounds.size.height, 400.0);
 }
