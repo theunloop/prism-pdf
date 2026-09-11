@@ -245,6 +245,8 @@ The current lifecycle/protocol slice exposes:
 | `prismpdf_composition_add_page` | Add page geometry and return its empty content slot. |
 | `prismpdf_composition_page_set_header` / `_footer` | Add a repeating region to a page design; text expands `{page}` and `{pages}`. |
 | `prismpdf_composition_set_tagged_language` | Enable tagged output and set the document language. |
+| `prismpdf_composition_set_standard_font` | Register a Standard-14 face under a resource name. `F1` (Helvetica) is registered by construction and may be replaced. |
+| `prismpdf_composition_set_embedded_font` | Register a TrueType/OpenType program under a resource name; `PrismPdfStatus_Parse` when it is not a supported sfnt. |
 | `prismpdf_composition_container_set_column` | Consume a slot as a column and return the new-generation column handle. |
 | `prismpdf_composition_column_add_item` | Append and return an empty child slot. |
 | `prismpdf_composition_container_set_row` | Consume a slot as a row and return its append handle. |
@@ -256,7 +258,8 @@ The current lifecycle/protocol slice exposes:
 | `prismpdf_composition_table_add_fixed_column` / `_relative_column` / `_auto_column` | Add a table column width policy. |
 | `prismpdf_composition_table_set_header` / `_add_row` / `_row_add_cell` | Construct repeating header and body row cell trees using stable handles. |
 | `prismpdf_composition_container_set_image` | Clone an existing `PrismPdfImageSource` into fit, fill, or exact-size layout. |
-| `prismpdf_composition_container_set_text` | Consume a slot as wrapping Helvetica text. |
+| `prismpdf_composition_container_set_text` | Consume a slot as wrapping text in the default `F1` resource. |
+| `prismpdf_composition_container_set_text_with_font` | As above, drawn in a named registered resource; `PrismPdfStatus_InvalidUse` when the name is not registered. |
 | `prismpdf_composition_container_set_page_break` | Consume a slot as an explicit break. |
 | `prismpdf_composition_build` | Finalise once and return owned PDF bytes. |
 | `prismpdf_composition_into_builder` | Finalise once and hand the composed document over as an owned `PrismPdfBuilder`, so `/Info`, attachments, outlines and the PDF/A and PDF/UA passes apply before serialising through `prismpdf_builder_build`. |

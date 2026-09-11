@@ -9,6 +9,35 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Added
+
+- **Declarative composition can name a font.** `Composition::standard_font`, `embedded_font` and
+  `TextStyle::font` have existed in the layout crate since composition shipped, and every
+  registered resource was already attached to every composed page — but the C ABI exposed no way
+  to register one and no way to name one, so `prismpdf_composition_container_set_text` built its
+  style with `TextStyle::new().size(…).leading(…)` and every composed leaf in every binding drew
+  in Helvetica regular. A .NET integrator migrating a banded-table report off iTextSharp reported
+  it as three-quarters of what they could not express. `prismpdf_composition_set_standard_font`
+  and `prismpdf_composition_set_embedded_font` register a resource on the arena, and
+  `prismpdf_composition_container_set_text_with_font` draws a leaf in one — so composed text now
+  reaches the Standard-14 set *and* embedded TrueType/OpenType faces, which is more than the
+  request asked for and falls out of the same plumbing. `F1` is registered as Helvetica by
+  construction, mirroring `Composition::new`, so the default resource is nameable and stays one
+  fact rather than two.
+
+  The font is a sibling export rather than a field on `PrismPdfCompositionTextStyle`: that struct
+  is `repr(C)` and passed by pointer, so a fourth member would change its layout under code
+  compiled against an older header, which the append-only rule in `docs/ABI.md` forbids. An
+  unregistered resource name is rejected by the call that names it, as `InvalidUse`, instead of
+  surfacing at build as one `Layout` status over an entire element tree; an unparseable font
+  program is rejected by the call that supplies it, as `Parse`, matching
+  `prismpdf_flow_embed_font`. Styled runs *within* one text leaf remain out of reach — `TextNode`
+  holds one string and one style — and are not what this adds.
+
+  Regenerating `include/prismpdf.h` with the pinned `cbindgen 0.29.4` also rewrapped the
+  declaration of `prismpdf_image_source_from_png`, which the committed header carried on one line;
+  the tool's output is now what is committed.
+
 ## [1.0.0-alpha.3] - 2026-09-10
 
 A defect release. A decorated box that met the foot of a page failed the whole document instead of

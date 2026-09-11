@@ -44,7 +44,7 @@ EXCEPTIONS = {
         "caller previously had to walk /AcroForm by hand to find (§12.5.2, §12.7.3.1).",
     ),
     "crates/pdf-ffi/src/api/composition.rs": (
-        1_423,
+        1_600,
         "C ABI composition arena and operations; frozen capability-module budget, +2 on "
         "2026-08-25 for the catch_unwind wrapper that prismpdf_composition_new was missing "
         "(pdf-ffi's no-unwind contract, DESIGN.md §6.1), +2 on 2026-08-27 for the rustfmt "
@@ -54,7 +54,11 @@ EXCEPTIONS = {
         "Builder so /Info, attachments, outlines and the conformance passes can reach it, "
         "+6 on 2026-09-10 for the doc comment on composition_status explaining why it records "
         "the ComposeError message: one Layout status covers six causes, so dropping the "
-        "message left a caller nothing to debug an element tree from.",
+        "message left a caller nothing to debug an element tree from, +177 on 2026-09-11 for "
+        "the font registry the declarative API had no way to reach: two registration exports, "
+        "the text export that names a resource, and the with_live_arena helper the "
+        "composition-level setters now share instead of open-coding the same lock and "
+        "liveness check.",
     ),
     "crates/pdf-ffi/src/api/core.rs": (
         1_889,
@@ -82,7 +86,7 @@ EXCEPTIONS = {
         "field) and sign_settings_set_appearance_image.",
     ),
     "crates/pdf-ffi/src/api/tests.rs": (
-        5_468,
+        5_665,
         "cross-capability ABI and standalone C acceptance tests, +39 on 2026-08-27: 4 lines "
         "predate the rename (this budget was already stale at 4_861); 35 are reflow "
         "at the 100-col limit. No logic added. +496 on 2026-09-09 covering the eight exports "
@@ -91,7 +95,9 @@ EXCEPTIONS = {
         "a named field. This is the one exception here that a split would genuinely improve: "
         "the module is tests, so `api/tests/` per capability costs nothing but the move. "
         "+76 on 2026-09-10 for composition_layout_failures_report_their_cause, which drives "
-        "both finalising calls into a failure and asserts the diagnostic carries the cause.",
+        "both finalising calls into a failure and asserts the diagnostic carries the cause. "
+        "+197 on 2026-09-11 for the two composition font tests, which cover registration, an "
+        "unregistered name, the nameable default resource and an embedded program end to end."
     ),
     "crates/pdf-fonts/src/standard_metrics.rs": (
         1_993,

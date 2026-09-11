@@ -104,6 +104,15 @@ pub(crate) enum CompositionDraftRowWidth {
     Auto,
 }
 
+/// A font resource registered on a composition, held until the arena is realised. Embedded
+/// programs keep their bytes: the arena is snapshotted at finalisation, and a borrowed program
+/// would tie that snapshot to the caller's buffer.
+#[derive(Clone)]
+pub(crate) enum CompositionDraftFont {
+    Standard(StdFont),
+    Embedded(Vec<u8>),
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum CompositionDraftDecoration {
     Padding(f64),
@@ -148,6 +157,9 @@ pub(crate) enum CompositionDraftNode {
     Text {
         text: String,
         style: PrismPdfCompositionTextStyle,
+        /// The registered resource to draw in; `None` is the default `F1` Helvetica, which is
+        /// what `prismpdf_composition_container_set_text` has always used.
+        font: Option<String>,
     },
     PageBreak,
 }
@@ -173,6 +185,7 @@ pub(crate) struct CompositionArena {
     slots: Vec<CompositionDraftSlot>,
     pages: Vec<CompositionDraftPage>,
     lang: Option<String>,
+    fonts: std::collections::BTreeMap<String, CompositionDraftFont>,
 }
 
 /// Opaque declarative-composition handle. Build is one-way finalisation.
@@ -226,6 +239,25 @@ pub(crate) fn container_handle(
     }))
 }
 
+/// Run `body` against a live, unfinalised arena. The composition-level counterpart to
+/// [`with_live_container`]: the same liveness rule, without a slot to address.
+pub(crate) fn with_live_arena(
+    composition: *mut PrismPdfComposition,
+    body: impl FnOnce(&mut CompositionArena) -> PrismPdfStatus,
+) -> PrismPdfStatus {
+    if composition.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    let handle = unsafe { &*composition };
+    let Ok(mut arena) = handle.0.lock() else {
+        return PrismPdfStatus::Internal;
+    };
+    if !arena.alive || arena.finalised {
+        return PrismPdfStatus::InvalidUse;
+    }
+    body(&mut arena)
+}
+
 pub(crate) fn with_live_container(
     container: *mut PrismPdfCompositionContainer,
     body: impl FnOnce(&mut CompositionArena, usize) -> PrismPdfStatus,
@@ -255,6 +287,18 @@ pub(crate) fn fill_slot(
     node: CompositionDraftNode,
 ) -> PrismPdfStatus {
     with_live_container(container, |arena, index| {
+        // A text leaf names a font resource, but the name is only resolved when the tree is
+        // realised — where an unregistered one is `ComposeError::MissingFont`, one `Layout` status
+        // among six causes for an entire element tree. Reject it at the call that names it, while
+        // the caller still knows which leaf they were filling.
+        if let CompositionDraftNode::Text {
+            font: Some(resource),
+            ..
+        } = &node
+            && !arena.fonts.contains_key(resource)
+        {
+            return PrismPdfStatus::InvalidUse;
+        }
         let Some(slot) = arena.slots.get_mut(index) else {
             return PrismPdfStatus::InvalidUse;
         };
@@ -366,28 +410,37 @@ pub(crate) fn emit_draft_node(
         }),
         CompositionDraftNode::TableRow { .. } => container.column(|_| {}),
         CompositionDraftNode::Image { image, sizing } => container.image(image, *sizing),
-        CompositionDraftNode::Text { text, style } => {
-            container.text(
-                text,
-                TextStyle::new().size(style.size).leading(style.leading),
-            );
+        CompositionDraftNode::Text { text, style, font } => {
+            let mut text_style = TextStyle::new().size(style.size).leading(style.leading);
+            if let Some(resource) = font {
+                text_style = text_style.font(resource);
+            }
+            container.text(text, text_style);
         }
         CompositionDraftNode::PageBreak => container.page_break(),
     }
 }
 
 pub(crate) fn build_draft(arena: &CompositionArena) -> Result<Vec<u8>, prismpdf::ComposeError> {
-    compose_draft(arena)
+    compose_draft(arena)?
         .build()
         .map(prismpdf::ComposedDocument::into_pdf)
 }
 
 /// Realise a finalised arena as the facade's declarative [`Composition`], ready to build or to
 /// hand over as a builder.
-fn compose_draft(arena: &CompositionArena) -> Composition {
+fn compose_draft(arena: &CompositionArena) -> Result<Composition, prismpdf::ComposeError> {
     let mut composition = Composition::new();
     if let Some(lang) = &arena.lang {
         composition = composition.tagged(lang);
+    }
+    for (resource, font) in &arena.fonts {
+        composition = match font {
+            CompositionDraftFont::Standard(font) => composition.standard_font(resource, *font),
+            CompositionDraftFont::Embedded(program) => {
+                composition.embedded_font(resource, program)?
+            }
+        };
     }
     for draft_page in &arena.pages {
         let slots = &arena.slots;
@@ -404,7 +457,7 @@ fn compose_draft(arena: &CompositionArena) -> Composition {
             }
         });
     }
-    composition
+    Ok(composition)
 }
 
 /// Create an empty declarative composition.
@@ -420,6 +473,14 @@ pub extern "C" fn prismpdf_composition_new() -> *mut PrismPdfComposition {
                 slots: Vec::new(),
                 pages: Vec::new(),
                 lang: None,
+                // `Composition::new` registers `F1` as Helvetica and `TextStyle` defaults to it,
+                // so seeding the same entry here is what lets a caller name `F1` explicitly
+                // without having registered it — and keeps that default one fact, not two.
+                fonts: std::iter::once((
+                    "F1".to_string(),
+                    CompositionDraftFont::Standard(StdFont::Helvetica),
+                ))
+                .collect(),
             },
         )))))
     })
@@ -459,6 +520,78 @@ pub unsafe extern "C" fn prismpdf_composition_container_free(
         drop(unsafe { Box::from_raw(container) });
         PrismPdfStatus::Ok
     });
+}
+
+/// Register a Standard-14 font resource, available to every text leaf that names it (§9.6.2.2).
+///
+/// Registering a name twice keeps the last registration, and `F1` — the resource a composition
+/// starts with and the one plain `prismpdf_composition_container_set_text` draws in — may be
+/// replaced like any other.
+///
+/// # Safety
+/// `composition` must be live and `resource` a valid NUL-terminated UTF-8 string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_composition_set_standard_font(
+    composition: *mut PrismPdfComposition,
+    resource: *const c_char,
+    font: PrismPdfStdFont,
+) -> PrismPdfStatus {
+    if composition.is_null() || resource.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    let Some(resource) = (unsafe { utf8(resource) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    guard(|| {
+        with_live_arena(composition, |arena| {
+            arena.fonts.insert(
+                resource.to_string(),
+                CompositionDraftFont::Standard(font.into()),
+            );
+            PrismPdfStatus::Ok
+        })
+    })
+}
+
+/// Register a TrueType/OpenType program as a composite embedded font resource (§9.7/§9.9) — the
+/// registration that makes composed text PDF/A-conformant and lets it carry glyphs outside the
+/// Standard-14 faces.
+///
+/// Returns [`PrismPdfStatus::Parse`] when the program is not a supported sfnt face. The check runs
+/// here, against the same call that will consume the bytes at build, so a bad program is reported
+/// where the caller supplied it rather than as one `Layout` status over the whole tree.
+///
+/// # Safety
+/// `composition` must be live, `resource` a valid NUL-terminated UTF-8 string, and `program` must
+/// point to `len` readable bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_composition_set_embedded_font(
+    composition: *mut PrismPdfComposition,
+    resource: *const c_char,
+    program: *const u8,
+    len: usize,
+) -> PrismPdfStatus {
+    if composition.is_null() || resource.is_null() || program.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    let Some(resource) = (unsafe { utf8(resource) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    let bytes = unsafe { slice_or_empty(program, len) };
+    guard(|| {
+        // Validated through the very call that will run at build, so the two can never disagree
+        // about what a usable face is.
+        if Composition::new().embedded_font(resource, &bytes).is_err() {
+            return PrismPdfStatus::Parse;
+        }
+        with_live_arena(composition, |arena| {
+            arena.fonts.insert(
+                resource.to_string(),
+                CompositionDraftFont::Embedded(bytes.to_vec()),
+            );
+            PrismPdfStatus::Ok
+        })
+    })
 }
 
 /// Add a page and return its empty content slot.
@@ -585,15 +718,10 @@ pub unsafe extern "C" fn prismpdf_composition_set_tagged_language(
         return PrismPdfStatus::NullArgument;
     };
     guard(|| {
-        let composition = unsafe { &*composition };
-        let Ok(mut arena) = composition.0.lock() else {
-            return PrismPdfStatus::Internal;
-        };
-        if !arena.alive || arena.finalised {
-            return PrismPdfStatus::InvalidUse;
-        }
-        arena.lang = Some(lang.to_string());
-        PrismPdfStatus::Ok
+        with_live_arena(composition, |arena| {
+            arena.lang = Some(lang.to_string());
+            PrismPdfStatus::Ok
+        })
     })
 }
 
@@ -1315,6 +1443,50 @@ pub unsafe extern "C" fn prismpdf_composition_container_set_text(
             CompositionDraftNode::Text {
                 text: text.to_string(),
                 style,
+                font: None,
+            },
+        )
+    })
+}
+
+/// Fill an empty slot with wrapping text drawn in a registered font resource.
+///
+/// `font` names a resource registered with [`prismpdf_composition_set_standard_font`] or
+/// [`prismpdf_composition_set_embedded_font`], or the built-in `F1` (Helvetica) that every
+/// composition starts with. An unregistered name returns [`PrismPdfStatus::InvalidUse`] here
+/// rather than failing the whole tree at build.
+///
+/// This is the sibling of [`prismpdf_composition_container_set_text`] rather than a new argument
+/// on it: `PrismPdfCompositionTextStyle` is a `repr(C)` struct callers pass by pointer, so a new
+/// field would change its layout under code compiled against an older header.
+///
+/// # Safety
+/// `container` must be live; `text` and `font` must be valid NUL-terminated UTF-8 strings;
+/// `style` readable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_composition_container_set_text_with_font(
+    container: *mut PrismPdfCompositionContainer,
+    text: *const c_char,
+    font: *const c_char,
+    style: *const PrismPdfCompositionTextStyle,
+) -> PrismPdfStatus {
+    if container.is_null() || text.is_null() || font.is_null() || style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    let Some(text) = (unsafe { utf8(text) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    let Some(font) = (unsafe { utf8(font) }) else {
+        return PrismPdfStatus::NullArgument;
+    };
+    let style = unsafe { *style };
+    guard(|| {
+        fill_slot(
+            container,
+            CompositionDraftNode::Text {
+                text: text.to_string(),
+                style,
+                font: Some(font.to_string()),
             },
         )
     })
@@ -1391,7 +1563,11 @@ pub unsafe extern "C" fn prismpdf_composition_into_builder(
             Ok(snapshot) => snapshot,
             Err(status) => return status,
         };
-        match compose_draft(&snapshot).into_builder() {
+        let draft = match compose_draft(&snapshot) {
+            Ok(draft) => draft,
+            Err(error) => return composition_status(error),
+        };
+        match draft.into_builder() {
             Ok(prepared) => {
                 let builder = PrismPdfBuilder(prepared.into_builder());
                 unsafe { *out_builder = Box::into_raw(Box::new(builder)) };
@@ -1419,5 +1595,6 @@ fn finalise(composition: &PrismPdfComposition) -> Result<CompositionArena, Prism
         slots: arena.slots.clone(),
         pages: arena.pages.clone(),
         lang: arena.lang.clone(),
+        fonts: arena.fonts.clone(),
     })
 }
