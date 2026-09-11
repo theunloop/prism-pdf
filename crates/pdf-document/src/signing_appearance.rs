@@ -68,9 +68,36 @@ pub(super) fn appearance_lines(
                 Some(name) => format!("Digitally signed by {name}"),
                 None => "Digitally signed".to_string(),
             },
-            format!("Date: {date}"),
+            format!("Date: {}", readable_date(date)),
         ],
     }
+}
+
+/// Render a PDF date string (§7.9.4) for someone reading the document.
+///
+/// The default caption used to carry the wire form — `Date: D:20260911074751Z` — into a signature
+/// a person is meant to read, because the same string goes into the signature dictionary's `/M`
+/// and was reused here unchanged. The offset is shown when the string declares one; a value that
+/// does not parse is passed through as it stands, since an unparseable date is better shown
+/// verbatim than guessed at.
+fn readable_date(date: &str) -> String {
+    let Some(parsed) = PdfDate::parse(date.as_bytes()) else {
+        return date.to_string();
+    };
+    let zone = match parsed.utc_offset_minutes {
+        Some(0) => " UTC".to_string(),
+        Some(offset) => format!(
+            " UTC{}{:02}:{:02}",
+            if offset < 0 { '-' } else { '+' },
+            offset.abs() / 60,
+            offset.abs() % 60
+        ),
+        None => String::new(),
+    };
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}{zone}",
+        parsed.year, parsed.month, parsed.day, parsed.hour, parsed.minute, parsed.second
+    )
 }
 
 /// An empty zero-size appearance Form XObject for an **invisible** signature widget: it draws

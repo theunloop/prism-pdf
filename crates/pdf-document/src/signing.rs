@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::StdFont;
 use pdf_cos::syntax::escape_literal_string;
-use pdf_cos::{Array, Dictionary, Name, Object, ObjectId, PdfString, Stream};
+use pdf_cos::{Array, Dictionary, Name, Object, ObjectId, PdfDate, PdfString, Stream};
 pub use pdf_crypto::TsaCredentials;
 use pdf_crypto::{
     SignOptions, VerifyOptions, attach_pdf_mac_to_signature, make_timestamp_token, pdf_date,

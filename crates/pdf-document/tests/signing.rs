@@ -363,6 +363,39 @@ fn a_caption_can_be_declined_without_the_empty_string() {
 }
 
 #[test]
+fn the_default_caption_shows_a_date_a_person_can_read() {
+    // The same string goes into the signature dictionary's `/M`, where the wire form is required,
+    // and it used to be reused verbatim in the caption — so an untouched default appearance put
+    // `Date: D:20231114221320Z` in front of whoever the document was for.
+    let (cert, key) = self_signed("Dated Signer");
+    let doc = Document::open(one_page_pdf()).unwrap();
+    let settings = SignSettings {
+        name: Some("Rossi".to_string()),
+        signing_time: Some(1_700_000_000),
+        appearance: Some(SignatureAppearance {
+            page_index: 0,
+            rect: [20.0, 20.0, 220.0, 80.0],
+            text: None,
+            image: None,
+            caption: CaptionStyle::default(),
+        }),
+        ..SignSettings::default()
+    };
+    let signed = doc.sign_with(&cert, &key, &settings).unwrap();
+
+    assert!(
+        find(&signed, b"(Date: 2023-11-14 22:13:20 UTC)").is_some(),
+        "the caption reads as a date"
+    );
+    assert!(
+        find(&signed, b"(Date: D:").is_none(),
+        "and not as a PDF date string"
+    );
+    // `/M` still carries the wire form, which §12.8.1 requires.
+    assert!(find(&signed, b"/M (D:20231114221320Z)").is_some());
+}
+
+#[test]
 fn visible_appearance_can_carry_an_image() {
     let (cert, key) = self_signed("Stamping Signer");
     let doc = Document::open(one_page_pdf()).unwrap();

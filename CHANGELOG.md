@@ -42,6 +42,16 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
   `prismpdf_caption_style_set_enabled` over the ABI, says so outright. The empty string keeps
   working.
 
+### Changed
+
+- **The default signature caption shows a date a person can read.** The caption's second line was
+  `format!("Date: {date}")` over the PDF date string (§7.9.4) that the signature dictionary's `/M`
+  takes — so an appearance left at its default put `Date: D:20260911074751Z` in front of whoever
+  the document was for. It now reads `Date: 2023-11-14 22:13:20 UTC`, with the declared UTC offset
+  when the string carries one, and passes an unparseable value through unchanged rather than
+  guessing at it. `/M` is untouched and keeps the wire form §12.8.1 requires. This changes the
+  bytes of every default appearance, which is why it is here and not under Fixed.
+
 ### Fixed
 
 - **A visible signature's caption now survives a non-ASCII character.** The appearance stream
