@@ -1128,6 +1128,7 @@ dependencies = [
  "prismpdf-cos",
  "prismpdf-crypto",
  "prismpdf-filters",
+ "prismpdf-fonts",
  "prismpdf-reader",
  "prismpdf-writer",
  "rand_core",

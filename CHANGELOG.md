@@ -9,6 +9,25 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Fixed
+
+- **A visible signature's caption now survives a non-ASCII character.** The appearance stream
+  handed the caller's caption to `escape_literal_string` as raw UTF-8 and the Helvetica font
+  object it referenced carried no `/Encoding`, so a viewer fell back to that font's built-in
+  StandardEncoding and read each of the two bytes behind `à` as a separate glyph. An Italian
+  caption — `Firmato da Società …`, the shape every signing workflow in that market writes —
+  therefore showed mojibake wherever it was accented, and a caller had no way to reach the
+  behaviour from the API: nothing in `SignatureAppearance` selects an encoding. This was the only
+  text path in the engine that did not encode. `Flow`, `Table`, the standalone text block and the
+  declarative composition all call `pdf_fonts::winansi_encode` at the point they show a line, and
+  `builder_resources`'s font dictionaries have always tagged Standard-14 faces
+  `/WinAnsiEncoding`; `signing_appearance` now does both, so the string holds cp1252 codes and the
+  font says so (§9.6.6.1). `pdf-document` gains a `pdf-fonts` dependency for the encoder, which
+  the architecture graph in `AGENTS.md` records — the crates below it, `pdf-cos` and
+  `pdf-content`, were already in the tree, so the layering is unchanged in substance. Characters
+  with no cp1252 code become `?`, as they do on every other path. Found while reviewing the
+  signature appearance against an integration report from the .NET binding.
+
 ## [1.0.0-alpha.3] - 2026-09-10
 
 A defect release. A decorated box that met the foot of a page failed the whole document instead of

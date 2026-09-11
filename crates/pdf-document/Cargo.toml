@@ -27,6 +27,7 @@ pdf-filters.workspace = true
 pdf-reader.workspace = true
 pdf-writer.workspace = true
 pdf-crypto.workspace = true
+pdf-fonts.workspace = true
 thiserror.workspace = true
 tracing = { workspace = true, optional = true }
 

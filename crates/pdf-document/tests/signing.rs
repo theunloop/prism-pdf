@@ -172,6 +172,47 @@ fn visible_appearance_emits_form_xobject() {
 }
 
 #[test]
+fn caption_is_encoded_to_winansi() {
+    // The caption is drawn with a Standard-14 simple font, so the literal string in the appearance
+    // stream carries cp1252 codes and the font says so (§9.6.6.1). Handing the caller's UTF-8 bytes
+    // over raw — which is what this path used to do — shows every accented character as two wrong
+    // glyphs, and an Italian signature caption is exactly where that bites.
+    let (cert, key) = self_signed("Accented Signer");
+    let doc = Document::open(one_page_pdf()).unwrap();
+    let settings = SignSettings {
+        name: Some("Rossi".to_string()),
+        signing_time: Some(1_700_000_000),
+        appearance: Some(SignatureAppearance {
+            page_index: 0,
+            rect: [20.0, 20.0, 220.0, 80.0],
+            text: Some("Firmato da Società Rossi".to_string()),
+            image: None,
+        }),
+        ..SignSettings::default()
+    };
+    let signed = doc.sign_with(&cert, &key, &settings).unwrap();
+
+    assert!(
+        find(&signed, b"/Encoding /WinAnsiEncoding").is_some(),
+        "the caption font names the encoding its codes are written in"
+    );
+    // U+00E0 is 0xE0 in cp1252, which `escape_literal_string` writes as the octal escape \340.
+    assert!(
+        find(&signed, br"Societ\340").is_some(),
+        "the caption holds cp1252 codes"
+    );
+    // The same character as raw UTF-8 would be 0xC3 0xA0 — the bytes this path used to emit.
+    assert!(
+        find(&signed, br"Societ\303\240").is_none(),
+        "the caption no longer holds undecoded UTF-8"
+    );
+
+    let reopened = Document::open(signed).unwrap();
+    let signatures = reopened.verify_signatures().unwrap();
+    assert!(signatures[0].valid, "encoded caption still verifies");
+}
+
+#[test]
 fn visible_appearance_can_carry_an_image() {
     let (cert, key) = self_signed("Stamping Signer");
     let doc = Document::open(one_page_pdf()).unwrap();
