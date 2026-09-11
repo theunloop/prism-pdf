@@ -475,7 +475,9 @@ impl Composition {
                     total_pages,
                 )?;
                 let available = body_size(content_area, header_size, footer_size)?;
-                let plan = definition.root.measure(available, &metrics)?;
+                let plan = definition
+                    .root
+                    .measure(available, &metrics, HeightMode::Offered)?;
                 let measured = match checked_size(plan, definition.root.has_remaining())? {
                     None => {
                         if produced_for_design {
@@ -969,7 +971,7 @@ fn measure_repeating(
     };
     node.reset();
     node.set_page_numbers(page, pages);
-    match node.measure(available, metrics)? {
+    match node.measure(available, metrics, HeightMode::Offered)? {
         Plan::Empty => Ok(Size::default()),
         Plan::Full(size) if size.is_valid() && size.width <= available.width + EPSILON => Ok(size),
         Plan::Full(_) => Err(ComposeError::MeasurementMismatch),
@@ -1009,7 +1011,9 @@ fn preflight_pages(
     definition.root.reset();
     let mut pages = 0usize;
     loop {
-        let plan = definition.root.measure(available, metrics)?;
+        let plan = definition
+            .root
+            .measure(available, metrics, HeightMode::Offered)?;
         let measured = match checked_size(plan, definition.root.has_remaining())? {
             None if pages > 0 => break,
             None => Size::default(),
