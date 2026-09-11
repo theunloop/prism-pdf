@@ -89,7 +89,7 @@ content      →  cos                    # pdf-content: content-stream operators
 crypto       →  cos                    # pdf-crypto: encryption (RC4/AES) + signatures
 graphics     →  cos, filters           # pdf-graphics: colour spaces, image XObjects, §7.10 functions
 fonts        →  cos, content           # pdf-fonts: metrics, encodings, CMaps, subsetting
-document     →  cos, filters, reader, writer, content, crypto   # DOM: catalog, page tree, merge/split
+document     →  cos, filters, reader, writer, content, crypto, fonts  # DOM: catalog, page tree, merge/split
 layout       →  filters, document, content, fonts
 standards    →  cos, document          # pdf-standards: PDF/A, PDF/UA, XMP, output intents
 pdf (facade) →  all of the above except writer   # idiomatic Rust public API

@@ -152,7 +152,10 @@ pub(super) fn appearance_xobject(
             content.extend_from_slice(b"T*\n");
         }
         content.push(b'(');
-        escape_literal_string(line.as_bytes(), &mut content);
+        // The caption is shown with a `/WinAnsiEncoding` simple font, so the literal string holds
+        // cp1252 codes rather than the caller's UTF-8 bytes (§9.6.6.1). Every other text path in
+        // the engine encodes at exactly this point; this one used to hand the bytes over raw.
+        escape_literal_string(&pdf_fonts::winansi_encode(line), &mut content);
         content.extend_from_slice(b") Tj\n");
     }
     content.extend_from_slice(b"ET");
@@ -160,6 +163,10 @@ pub(super) fn appearance_xobject(
 }
 
 /// The standard-14 Helvetica font object (§9.6.2.2), referenced by the appearance stream.
+///
+/// `/WinAnsiEncoding` (§9.6.6.1) is what makes the caption's bytes legible: without the entry a
+/// viewer falls back to the font's built-in StandardEncoding, and a caption carrying anything
+/// outside ASCII is shown as the wrong glyphs.
 pub(super) fn helvetica_font() -> Dictionary {
     let mut font = Dictionary::new();
     font.insert(Name::from("Type"), Object::Name(Name::from("Font")));
@@ -167,6 +174,10 @@ pub(super) fn helvetica_font() -> Dictionary {
     font.insert(
         Name::from("BaseFont"),
         Object::Name(Name::from("Helvetica")),
+    );
+    font.insert(
+        Name::from("Encoding"),
+        Object::Name(Name::from("WinAnsiEncoding")),
     );
     font
 }
