@@ -45,16 +45,17 @@ use std::sync::{Arc, Mutex};
 
 use prismpdf::cos::{Array, Dictionary, Name, Object, ObjectId, PdfDate, PdfString, Stream};
 use prismpdf::{
-    Algorithm, Align, Annotation, AnnotationSpec, Attachment, AttrValue, Builder,
-    Color as LayoutColor, ColorSpace, Composition, Container as ComposeContainer, Content,
-    Document, Error as PdfError, ExtractedAttachment, ExtractedImage, Flow, FontProgramFormat,
-    FontReport, FormField, FormFieldSpec, HorizontalAlign as LayoutHorizontalAlign, Image,
-    ImageData, ImageSizing, Limits, LinkTarget, ListStyle, OpenMode, OpenReport, OutlineItem,
-    OutputIntentProfile, PageSpec, PageStyle, PdfAConformance, PdfAError, PdfUaError, Permissions,
-    RecoveryReason, RevocationSummary, RewriteMode, Semantic, SignSettings, SignatureAppearance,
-    SignatureEffect, SignatureStatus, Size as LayoutSize, StdFont, StructElem, StructureEffect,
-    Table, TextBlock, TextStyle, TransformReport, TsaCredentials,
-    VerticalAlign as LayoutVerticalAlign, XmpMetadata, measure_text, wrap_text,
+    Algorithm, Align, Annotation, AnnotationSpec, Attachment, AttrValue, Builder, CaptionPlacement,
+    CaptionStyle, Color as LayoutColor, ColorSpace, Composition, Container as ComposeContainer,
+    Content, Document, Error as PdfError, ExtractedAttachment, ExtractedImage, Flow,
+    FontProgramFormat, FontReport, FormField, FormFieldSpec,
+    HorizontalAlign as LayoutHorizontalAlign, Image, ImageData, ImageSizing, Limits, LinkTarget,
+    ListStyle, OpenMode, OpenReport, OutlineItem, OutputIntentProfile, PageSpec, PageStyle,
+    PdfAConformance, PdfAError, PdfUaError, Permissions, RecoveryReason, RevocationSummary,
+    RewriteMode, Semantic, SignSettings, SignatureAppearance, SignatureEffect, SignatureStatus,
+    Size as LayoutSize, StdFont, StructElem, StructureEffect, Table, TextBlock, TextStyle,
+    TransformReport, TsaCredentials, VerticalAlign as LayoutVerticalAlign, XmpMetadata,
+    measure_text, wrap_text,
 };
 
 mod api;

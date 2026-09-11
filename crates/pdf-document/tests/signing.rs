@@ -11,8 +11,8 @@ use der::Encode;
 // certificate builders' `.build()` and keeps its name.
 use pdf_document::Builder as PdfBuilder;
 use pdf_document::{
-    DocError, Document, FormFieldSpec, ImageColorSpace, ImageXObject, PageSpec, SignSettings,
-    SignatureAppearance, TsaCredentials,
+    CaptionPlacement, CaptionStyle, DocError, Document, FormFieldSpec, ImageColorSpace,
+    ImageXObject, PageSpec, SignSettings, SignatureAppearance, TsaCredentials,
 };
 use rsa::pkcs1v15::SigningKey;
 use rsa::pkcs8::EncodePrivateKey;
@@ -147,6 +147,7 @@ fn visible_appearance_emits_form_xobject() {
             rect: [20.0, 20.0, 180.0, 70.0],
             text: None,
             image: None,
+            caption: CaptionStyle::default(),
         }),
         ..SignSettings::default()
     };
@@ -187,6 +188,7 @@ fn caption_is_encoded_to_winansi() {
             rect: [20.0, 20.0, 220.0, 80.0],
             text: Some("Firmato da Società Rossi".to_string()),
             image: None,
+            caption: CaptionStyle::default(),
         }),
         ..SignSettings::default()
     };
@@ -210,6 +212,227 @@ fn caption_is_encoded_to_winansi() {
     let reopened = Document::open(signed).unwrap();
     let signatures = reopened.verify_signatures().unwrap();
     assert!(signatures[0].valid, "encoded caption still verifies");
+}
+
+/// The operands of the appearance stream's one `cm` (how large the graphic was drawn and where)
+/// or its one `Td` (where the caption's first baseline starts).
+fn appearance_operands(signed: &[u8], operator: &str) -> Vec<f32> {
+    let suffix = format!(" {operator}");
+    String::from_utf8_lossy(signed)
+        .lines()
+        .find(|line| line.ends_with(&suffix))
+        .unwrap_or_else(|| panic!("the appearance emits a {operator}"))
+        .trim_end_matches(&suffix)
+        .split_whitespace()
+        .map(|n| n.parse().expect("numeric operand"))
+        .collect()
+}
+
+fn signed_with(caption: CaptionStyle, text: &str) -> Vec<u8> {
+    let (cert, key) = self_signed("Caption Signer");
+    let doc = Document::open(one_page_pdf()).unwrap();
+    // A 60×20 graphic in a 200×60 widget — the shape a handwriting capture has.
+    let stamp = ImageXObject {
+        width: 60,
+        height: 20,
+        color_space: ImageColorSpace::Gray,
+        bits_per_component: 8,
+        filter: None,
+        data: vec![0x40; 60 * 20],
+        smask: None,
+        mask: None,
+        image_mask: false,
+    };
+    let settings = SignSettings {
+        name: Some("Rossi".to_string()),
+        signing_time: Some(1_700_000_000),
+        appearance: Some(SignatureAppearance {
+            page_index: 0,
+            rect: [20.0, 20.0, 220.0, 80.0],
+            text: Some(text.to_string()),
+            image: Some(stamp),
+            caption,
+        }),
+        ..SignSettings::default()
+    };
+    doc.sign_with(&cert, &key, &settings).unwrap()
+}
+
+#[test]
+fn a_caption_below_the_graphic_gets_the_whole_widget_width() {
+    // Beside the graphic the caption has about 118 points of a 200-point widget, which is not
+    // enough for a fiscal code and an IP address; below it, it has the lot. The graphic stops
+    // being squeezed into 40% of the box at the same time, which is the other half of the
+    // complaint: as a raster, a long caption used to scale the signature itself down with it.
+    let metadata = "Firmato da RSSMRA80A01H501U con IP 192.168.100.200 alle 11/09/2026 07:47";
+    let beside = signed_with(CaptionStyle::default(), metadata);
+    let below = signed_with(
+        CaptionStyle {
+            placement: CaptionPlacement::Below,
+            ..CaptionStyle::default()
+        },
+        metadata,
+    );
+    // The caption starts at the left padding and owns the widget's width, instead of starting
+    // past a graphic that has taken the left 40%.
+    assert_eq!(appearance_operands(&beside, "Td")[0], 82.0);
+    assert_eq!(appearance_operands(&below, "Td")[0], 2.0);
+
+    // The graphic is no longer confined to 40% of the box either, which is the other half of the
+    // complaint: as a raster, a long caption used to scale the signature itself down with it.
+    let (beside_cm, below_cm) = (
+        appearance_operands(&beside, "cm"),
+        appearance_operands(&below, "cm"),
+    );
+    assert!(
+        below_cm[0] > beside_cm[0],
+        "the graphic is drawn larger, not smaller: {} vs {}",
+        below_cm[0],
+        beside_cm[0]
+    );
+    // And it never intrudes into the band the caption claimed: one line at the default 10-point
+    // leading, plus 2 points of padding, is 12 points off the bottom edge.
+    assert!(
+        below_cm[5] >= 12.0,
+        "the graphic clears the caption band: {}",
+        below_cm[5]
+    );
+}
+
+#[test]
+fn a_wrapped_caption_breaks_to_the_width_it_has() {
+    // Unwrapped, one long line runs off the box and the form's /BBox clips it. Wrapping measures
+    // in the caption's own face (§9.6.2.2) and breaks between words instead.
+    let metadata = "Firmato da RSSMRA80A01H501U con IP 192.168.100.200 alle 11/09/2026 07:47";
+    let unwrapped = signed_with(CaptionStyle::default(), metadata);
+    let wrapped = signed_with(
+        CaptionStyle {
+            wrap: true,
+            placement: CaptionPlacement::Below,
+            ..CaptionStyle::default()
+        },
+        metadata,
+    );
+    assert!(
+        find(&unwrapped, b"T*").is_none(),
+        "one line in, one line out"
+    );
+    let lines = String::from_utf8_lossy(&wrapped).matches("T*").count();
+    assert!(
+        lines >= 1,
+        "a line too wide for the box is broken, not clipped"
+    );
+}
+
+#[test]
+fn a_caption_carries_its_own_face_and_size() {
+    let signed = signed_with(
+        CaptionStyle {
+            font: pdf_document::StdFont::HelveticaBold,
+            size: 6.0,
+            leading: Some(7.0),
+            ..CaptionStyle::default()
+        },
+        "Firmato",
+    );
+    assert!(find(&signed, b"/BaseFont /Helvetica-Bold").is_some());
+    assert!(find(&signed, b"/Helv 6 Tf").is_some());
+    assert!(find(&signed, b"7 TL").is_some());
+}
+
+#[test]
+fn a_caption_size_that_is_not_a_number_still_draws() {
+    // `CaptionStyle` is public, and the clamp this used to rely on is no guard: `f32::max` returns
+    // the other operand for a NaN but hands an infinity straight back. `/Helv inf Tf` is not a
+    // number in PDF syntax, and a signed revision carrying one cannot be corrected in place —
+    // the byte range is what the signature covers.
+    for size in [f32::INFINITY, f32::NEG_INFINITY, f32::NAN, 0.0, -6.0] {
+        let signed = signed_with(
+            CaptionStyle {
+                size,
+                ..CaptionStyle::default()
+            },
+            "Firmato",
+        );
+        assert!(
+            find(&signed, b"/Helv 8 Tf").is_some(),
+            "a size of {size} falls back to the default"
+        );
+        for token in [b"inf".as_slice(), b"NaN".as_slice()] {
+            assert!(
+                find(&signed, token).is_none(),
+                "a size of {size} reached the content stream"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_caption_leading_that_is_not_a_number_follows_the_size() {
+    let signed = signed_with(
+        CaptionStyle {
+            size: 6.0,
+            leading: Some(f32::INFINITY),
+            ..CaptionStyle::default()
+        },
+        "Firmato",
+    );
+    assert!(find(&signed, b"7.5 TL").is_some(), "6 at 1.25x");
+}
+
+#[test]
+fn a_caption_can_be_declined_without_the_empty_string() {
+    // `text: Some("")` has always meant "no caption", which is not something a caller guesses —
+    // and `None` means "draw the default", so getting it wrong put a raw PDF date in front of a
+    // reader. Saying so outright is the point of this flag.
+    let signed = signed_with(
+        CaptionStyle {
+            draw: false,
+            ..CaptionStyle::default()
+        },
+        "Firmato da Rossi",
+    );
+    assert!(
+        find(&signed, b"Firmato da Rossi").is_none(),
+        "the caption was declined"
+    );
+    assert!(
+        find(&signed, b"/Im0 Do").is_some(),
+        "the graphic still draws, and now over the whole widget"
+    );
+}
+
+#[test]
+fn the_default_caption_shows_a_date_a_person_can_read() {
+    // The same string goes into the signature dictionary's `/M`, where the wire form is required,
+    // and it used to be reused verbatim in the caption — so an untouched default appearance put
+    // `Date: D:20231114221320Z` in front of whoever the document was for.
+    let (cert, key) = self_signed("Dated Signer");
+    let doc = Document::open(one_page_pdf()).unwrap();
+    let settings = SignSettings {
+        name: Some("Rossi".to_string()),
+        signing_time: Some(1_700_000_000),
+        appearance: Some(SignatureAppearance {
+            page_index: 0,
+            rect: [20.0, 20.0, 220.0, 80.0],
+            text: None,
+            image: None,
+            caption: CaptionStyle::default(),
+        }),
+        ..SignSettings::default()
+    };
+    let signed = doc.sign_with(&cert, &key, &settings).unwrap();
+
+    assert!(
+        find(&signed, b"(Date: 2023-11-14 22:13:20 UTC)").is_some(),
+        "the caption reads as a date"
+    );
+    assert!(
+        find(&signed, b"(Date: D:").is_none(),
+        "and not as a PDF date string"
+    );
+    // `/M` still carries the wire form, which §12.8.1 requires.
+    assert!(find(&signed, b"/M (D:20231114221320Z)").is_some());
 }
 
 #[test]
@@ -245,6 +468,7 @@ fn visible_appearance_can_carry_an_image() {
             rect: [20.0, 20.0, 220.0, 80.0],
             text: None,
             image: Some(stamp),
+            caption: CaptionStyle::default(),
         }),
         ..SignSettings::default()
     };

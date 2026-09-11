@@ -205,25 +205,6 @@ typedef enum {
 } PrismPdfImageKind;
 
 /**
- * Whether a signed document's certificate chain revocation state could be established (§12.8.4).
- */
-typedef enum {
-    /**
-     * Every non-anchor link is covered by verified material and none is revoked.
-     */
-    PrismPdfRevocation_Good = 0,
-    /**
-     * At least one link is revoked.
-     */
-    PrismPdfRevocation_Revoked = 1,
-    /**
-     * No link is revoked, but at least one has no usable material — the long-term claim is
-     * incomplete.
-     */
-    PrismPdfRevocation_Incomplete = 2,
-} PrismPdfRevocation;
-
-/**
  * One of the 14 Standard-14 fonts (§9.6.2.2), which need no embedding.
  */
 typedef enum {
@@ -284,6 +265,40 @@ typedef enum {
      */
     PrismPdfStdFont_ZapfDingbats = 13,
 } PrismPdfStdFont;
+
+/**
+ * Where a caption sits relative to the graphic it accompanies.
+ */
+typedef enum {
+    /**
+     * To the right of the graphic, which takes the left 40% of the widget. The historical layout.
+     */
+    PrismPdfCaptionPlacement_Beside = 0,
+    /**
+     * Beneath the graphic, which then spans the full width of the widget — the placement that
+     * gives a long caption enough width to exist.
+     */
+    PrismPdfCaptionPlacement_Below = 1,
+} PrismPdfCaptionPlacement;
+
+/**
+ * Whether a signed document's certificate chain revocation state could be established (§12.8.4).
+ */
+typedef enum {
+    /**
+     * Every non-anchor link is covered by verified material and none is revoked.
+     */
+    PrismPdfRevocation_Good = 0,
+    /**
+     * At least one link is revoked.
+     */
+    PrismPdfRevocation_Revoked = 1,
+    /**
+     * No link is revoked, but at least one has no usable material — the long-term claim is
+     * incomplete.
+     */
+    PrismPdfRevocation_Incomplete = 2,
+} PrismPdfRevocation;
 
 /**
  * A PDF/A conformance level (§14, ISO 19005). Part and level together: `A2u` is part 2, level U.
@@ -492,6 +507,14 @@ typedef struct PrismPdfAttachmentList PrismPdfAttachmentList;
  * [`prismpdf_builder_free`].
  */
 typedef struct PrismPdfBuilder PrismPdfBuilder;
+
+/**
+ * Owned, reusable typography for a visible signature's caption (§12.5.5).
+ *
+ * An opaque handle rather than a `repr(C)` struct on purpose, as `PrismPdfOpenOptions` is: a
+ * later option can be added without changing any layout that compiled code already depends on.
+ */
+typedef struct PrismPdfCaptionStyle PrismPdfCaptionStyle;
 
 /**
  * Opaque declarative-composition handle. Build is one-way finalisation.
@@ -2263,6 +2286,98 @@ PrismPdfStatus prismpdf_sign_settings_set_field_name(PrismPdfSignSettings *setti
                                                      const char *name);
 
 /**
+ * Create a caption style holding the historical defaults: Helvetica at 8pt beside the graphic,
+ * one line per newline in the text, no wrapping.
+ */
+PrismPdfCaptionStyle *prismpdf_caption_style_new(void);
+
+/**
+ * Whether a caption is drawn at all. `false` gives the graphic the whole widget — the intent that
+ * an empty caption string used to be the only way to express.
+ *
+ * # Safety
+ * `style` must be a live caption-style handle.
+ */
+PrismPdfStatus prismpdf_caption_style_set_enabled(PrismPdfCaptionStyle *style, bool enabled);
+
+/**
+ * Set the Standard-14 face the caption is drawn in (§9.6.2.2).
+ *
+ * # Safety
+ * `style` must be a live caption-style handle.
+ */
+PrismPdfStatus prismpdf_caption_style_set_font(PrismPdfCaptionStyle *style, PrismPdfStdFont font);
+
+/**
+ * Set the caption's size in points. `size` must be finite and above zero; anything else is
+ * rejected with `NullArgument`, as `prismpdf_object_new_real` rejects a non-finite real. A size
+ * that is not a number cannot be written to a content stream, and a signed revision carrying one
+ * cannot be corrected without signing again.
+ *
+ * # Safety
+ * `style` must be a live caption-style handle.
+ */
+PrismPdfStatus prismpdf_caption_style_set_size(PrismPdfCaptionStyle *style, double size);
+
+/**
+ * Set the caption's baseline-to-baseline spacing in points. A value at or below zero follows the
+ * size at 1.25×, which is what a fresh style does. A non-finite value is rejected with
+ * `NullArgument` rather than treated as unset: it is a caller's mistake, not a request.
+ *
+ * # Safety
+ * `style` must be a live caption-style handle.
+ */
+PrismPdfStatus prismpdf_caption_style_set_leading(PrismPdfCaptionStyle *style, double leading);
+
+/**
+ * Whether the caption wraps to the width it has instead of running past the edge of the widget
+ * and being clipped by the appearance's `/BBox`.
+ *
+ * # Safety
+ * `style` must be a live caption-style handle.
+ */
+PrismPdfStatus prismpdf_caption_style_set_wrap(PrismPdfCaptionStyle *style, bool wrap);
+
+/**
+ * Set where the caption sits relative to the graphic.
+ *
+ * # Safety
+ * `style` must be a live caption-style handle.
+ */
+PrismPdfStatus prismpdf_caption_style_set_placement(PrismPdfCaptionStyle *style,
+                                                    PrismPdfCaptionPlacement placement);
+
+/**
+ * Release a caption style. The style is copied into the settings when it is applied, so it may be
+ * freed immediately afterwards and reused for several signatures before that.
+ *
+ * # Safety
+ * `style` must be null or a live handle from [`prismpdf_caption_style_new`].
+ */
+void prismpdf_caption_style_free(PrismPdfCaptionStyle *style);
+
+/**
+ * Give the signature a visible appearance whose caption carries its own typography — the complete
+ * form of [`prismpdf_sign_settings_set_appearance`] and
+ * [`prismpdf_sign_settings_set_appearance_image`], which both draw the historical caption.
+ *
+ * `image` may be null for a caption-only widget; when given it is copied, and the caller keeps
+ * ownership. A null `text` draws the default caption of signer name and date, as elsewhere — to
+ * draw none, set the style's `enabled` to false, which says so rather than relying on an empty
+ * string. A null `style` uses the historical defaults.
+ *
+ * # Safety
+ * `settings` must be live, `rect` must point to 4 readable `float`s, `text` must be a
+ * NUL-terminated UTF-8 C string or null, and `image`/`style` must be live handles or null.
+ */
+PrismPdfStatus prismpdf_sign_settings_set_appearance_image_styled(PrismPdfSignSettings *settings,
+                                                                  uintptr_t page_index,
+                                                                  const float *rect,
+                                                                  const PrismPdfImageSource *image,
+                                                                  const char *text,
+                                                                  const PrismPdfCaptionStyle *style);
+
+/**
  * Give the signature a visible appearance: a widget on page `page_index` (0-based) at `rect`
  * (`[llx lly urx ury]`, four floats), optionally captioned with `text`.
  *
@@ -3964,7 +4079,8 @@ PrismPdfImageSource *prismpdf_image_source_from_rgba(uint32_t width,
  * # Safety
  * `data` must point to `len` readable bytes.
  */
-PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data, uintptr_t len);
+PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data,
+                                                    uintptr_t len);
 
 /**
  * The image's pixel dimensions.

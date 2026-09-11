@@ -5336,6 +5336,150 @@ fn signature_appearance_carries_an_image() {
 }
 
 #[test]
+fn a_caption_size_that_is_not_a_number_is_refused() {
+    // A caption size reaches a content stream as a literal, so `inf` or `NaN` is a syntactically
+    // broken appearance — and inside a signed revision the byte range covers it, so it cannot be
+    // corrected afterwards. `prismpdf_object_new_real` already refuses a non-finite real; these
+    // setters follow it rather than defaulting quietly.
+    let style = prismpdf_caption_style_new();
+    assert!(!style.is_null());
+    for size in [f64::INFINITY, f64::NEG_INFINITY, f64::NAN, 0.0, -6.0] {
+        assert_eq!(
+            unsafe { prismpdf_caption_style_set_size(style, size) },
+            PrismPdfStatus::NullArgument,
+            "a size of {size} is refused"
+        );
+    }
+    assert_eq!(
+        unsafe { prismpdf_caption_style_set_size(style, 6.0) },
+        PrismPdfStatus::Ok
+    );
+    for leading in [f64::INFINITY, f64::NAN] {
+        assert_eq!(
+            unsafe { prismpdf_caption_style_set_leading(style, leading) },
+            PrismPdfStatus::NullArgument,
+            "a leading of {leading} is refused"
+        );
+    }
+    // Zero keeps its documented meaning: follow the size, rather than being an error.
+    assert_eq!(
+        unsafe { prismpdf_caption_style_set_leading(style, 0.0) },
+        PrismPdfStatus::Ok
+    );
+    unsafe { prismpdf_caption_style_free(style) };
+}
+
+#[test]
+fn a_styled_caption_reaches_the_appearance_stream() {
+    // The historical caption is Helvetica 8 beside the graphic on one unwrapped line, which in a
+    // 200-point widget leaves it about 118 points — not enough for a fiscal code and an IP
+    // address, so integrators rasterised the metadata into the graphic instead. The style handle
+    // is how that stops being necessary.
+    let doc = open(&sample_pdf());
+    let settings = prismpdf_sign_settings_new();
+    let style = prismpdf_caption_style_new();
+    assert!(!style.is_null());
+    unsafe {
+        assert_eq!(
+            prismpdf_caption_style_set_font(style, PrismPdfStdFont::HelveticaBold),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_caption_style_set_size(style, 6.0),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_caption_style_set_leading(style, 7.0),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_caption_style_set_wrap(style, true),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_caption_style_set_placement(style, PrismPdfCaptionPlacement::Below),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_caption_style_set_enabled(style, true),
+            PrismPdfStatus::Ok
+        );
+    }
+
+    let rgb = [255u8, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255];
+    let image = unsafe { prismpdf_image_source_from_rgb(2, 2, rgb.as_ptr(), rgb.len()) };
+    let rect = [10.0f32, 10.0, 210.0, 70.0];
+    let caption =
+        CString::new("Firmato da RSSMRA80A01H501U con IP 192.168.100.200 alle 11/09/2026").unwrap();
+    assert_eq!(
+        unsafe {
+            prismpdf_sign_settings_set_appearance_image_styled(
+                settings,
+                0,
+                rect.as_ptr(),
+                image,
+                caption.as_ptr(),
+                style,
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    // Both the image source and the style are copied into the settings.
+    unsafe {
+        prismpdf_image_source_free(image);
+        prismpdf_caption_style_free(style);
+    }
+
+    let (mut data, mut len) = (std::ptr::null_mut(), 0usize);
+    assert_eq!(
+        unsafe {
+            prismpdf_document_sign_with(
+                doc,
+                TEST_CERT.as_ptr(),
+                TEST_CERT.len(),
+                TEST_KEY.as_ptr(),
+                TEST_KEY.len(),
+                settings,
+                &mut data,
+                &mut len,
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+    let signed = unsafe { std::slice::from_raw_parts(data, len) }.to_vec();
+    unsafe {
+        prismpdf_bytes_free(data, len);
+        prismpdf_sign_settings_free(settings);
+        prismpdf_document_free(doc);
+    }
+
+    let text = String::from_utf8_lossy(&signed);
+    assert!(text.contains("/BaseFont /Helvetica-Bold"), "the named face");
+    assert!(text.contains("/Helv 6 Tf"), "the named size");
+    assert!(text.contains("7 TL"), "the named leading");
+    assert!(
+        text.contains("T*"),
+        "a line too wide for the widget wrapped instead of being clipped"
+    );
+    assert!(text.contains("/Im0 Do"), "the graphic still draws");
+
+    // A style is reusable and copied on use, so declining the caption on a fresh one leaves the
+    // signature that already took a copy untouched.
+    let declined = prismpdf_caption_style_new();
+    assert_eq!(
+        unsafe { prismpdf_caption_style_set_enabled(declined, false) },
+        PrismPdfStatus::Ok
+    );
+    unsafe { prismpdf_caption_style_free(declined) };
+    // Freeing null is a no-op, as everywhere else in this ABI.
+    unsafe { prismpdf_caption_style_free(std::ptr::null_mut()) };
+    assert_eq!(
+        unsafe { prismpdf_caption_style_set_size(std::ptr::null_mut(), 8.0) },
+        PrismPdfStatus::NullArgument
+    );
+}
+
+#[test]
 fn signing_into_a_named_field_fills_the_template() {
     // A template with one empty signature field, authored through the builder.
     let builder = prismpdf_builder_new();

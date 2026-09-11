@@ -9,6 +9,55 @@ Each released version needs a `## [x.y.z] - YYYY-MM-DD` heading before it can be
 
 ## [Unreleased]
 
+### Added
+
+- **A visible signature's caption carries its own typography.** `appearance_xobject` hardcoded
+  `/Helv 8 Tf` with a fixed 10-unit leading, split lines on `\n` and nothing else, and gave the
+  graphic the left 40% of the widget whenever there was a caption at all. In a 200×60 signature
+  widget that leaves the caption about 118 points — enough for a name, and not enough for the line
+  an Italian e-signature workflow has to show, which carries a fiscal code and an IP address and
+  measures nearer 290. There was no way to ask for a smaller face, for wrapping, or for the
+  caption to sit anywhere else, so integrators rasterised the metadata into the signature graphic
+  instead: text that cannot be selected, searched or read by assistive technology, goes soft at
+  print zoom, and — because the raster is then scaled to fit the widget — quietly shrinks the
+  signature itself in proportion to how long the address was.
+
+  `SignatureAppearance` now carries a `CaptionStyle`: the face, size, leading, whether to wrap,
+  whether to draw a caption at all, and `CaptionPlacement` — `Beside` the graphic as before, or
+  `Below` it, where the graphic spans the widget and the caption gets its full width. Wrapping
+  measures in the caption's own Standard-14 face and breaks between words; a word wider than the
+  box keeps its line rather than being split, because a fiscal code broken in half reads worse
+  than one that overhangs. The default reproduces the historical appearance exactly.
+
+  Over the C ABI this is `prismpdf_caption_style_new` with one setter per aspect and
+  `prismpdf_sign_settings_set_appearance_image_styled`, whose `image` may be null for a
+  caption-only widget. `_size` takes a finite size above zero and `_leading` a finite one, and
+  reject anything else with `NullArgument`, as `prismpdf_object_new_real` rejects a non-finite
+  real; a size that is not a number cannot be written to a content stream, and a signed revision
+  carrying one cannot be corrected in place. `CaptionStyle` resolves the same way in Rust, where
+  the fields are public and clamping with `max` is no guard: `f32::max` returns the other operand
+  for a NaN but hands an infinity straight back. The style is an opaque handle rather than a
+  `repr(C)` struct, following
+  `PrismPdfOpenOptions`, so a later option does not change a layout that compiled code already
+  depends on; the two existing appearance exports are untouched and keep drawing the historical
+  caption.
+
+- **Declining a caption no longer means passing an empty string.** `text: None` draws the default
+  caption and `text: Some("")` draws none, which is not a distinction anyone guesses — and getting
+  it the wrong way round puts the default in front of a reader. `CaptionStyle::draw`, and
+  `prismpdf_caption_style_set_enabled` over the ABI, says so outright. The empty string keeps
+  working.
+
+### Changed
+
+- **The default signature caption shows a date a person can read.** The caption's second line was
+  `format!("Date: {date}")` over the PDF date string (§7.9.4) that the signature dictionary's `/M`
+  takes — so an appearance left at its default put `Date: D:20260911074751Z` in front of whoever
+  the document was for. It now reads `Date: 2023-11-14 22:13:20 UTC`, with the declared UTC offset
+  when the string carries one, and passes an unparseable value through unchanged rather than
+  guessing at it. `/M` is untouched and keeps the wire form §12.8.1 requires. This changes the
+  bytes of every default appearance, which is why it is here and not under Fixed.
+
 ### Fixed
 
 - **A visible signature's caption now survives a non-ASCII character.** The appearance stream

@@ -12,8 +12,9 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::StdFont;
 use pdf_cos::syntax::escape_literal_string;
-use pdf_cos::{Array, Dictionary, Name, Object, ObjectId, PdfString, Stream};
+use pdf_cos::{Array, Dictionary, Name, Object, ObjectId, PdfDate, PdfString, Stream};
 pub use pdf_crypto::TsaCredentials;
 use pdf_crypto::{
     SignOptions, VerifyOptions, attach_pdf_mac_to_signature, make_timestamp_token, pdf_date,
@@ -70,19 +71,109 @@ pub struct SignSettings {
     pub field_name: Option<String>,
 }
 
-/// A visible signature appearance: where on the page it sits and what it shows.
+/// Where a caption sits relative to the graphic it accompanies.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum CaptionPlacement {
+    /// To the right of the graphic, which takes the left 40% of the widget.
+    ///
+    /// The caption gets what is left, so in a 200×60 widget it has about 118 points to work in —
+    /// enough for a name, and not enough for a line carrying a fiscal code and an IP address.
+    #[default]
+    Beside,
+    /// Beneath the graphic, which then spans the full width of the widget.
+    ///
+    /// This is the placement that gives a long caption enough width to exist: the line gets the
+    /// whole widget rather than the 60% left over beside a graphic.
+    Below,
+}
+
+/// How a visible signature's caption is drawn (§12.5.5).
+///
+/// The default reproduces what a signature appearance has always looked like: Helvetica at 8pt
+/// beside the graphic, one line per `\n` in the text, no wrapping.
 #[derive(Clone, Debug)]
+pub struct CaptionStyle {
+    /// Whether to draw a caption at all. `false` gives the graphic the whole widget — the intent
+    /// that an empty [`SignatureAppearance::text`] used to be the only way to express.
+    pub draw: bool,
+    /// The Standard-14 face to draw in. A face with no metrics here — `Symbol`, `ZapfDingbats` —
+    /// disables [`wrap`](Self::wrap), since nothing can measure it.
+    pub font: StdFont,
+    /// Size in points.
+    pub size: f32,
+    /// Baseline-to-baseline spacing in points; `None` follows the size at 1.25×.
+    pub leading: Option<f32>,
+    /// Wrap each line to the width the caption actually has, instead of letting it run past the
+    /// edge of the widget and be clipped by the form's `/BBox`.
+    pub wrap: bool,
+    /// Where the caption sits relative to the graphic.
+    pub placement: CaptionPlacement,
+}
+
+impl Default for CaptionStyle {
+    fn default() -> Self {
+        Self {
+            draw: true,
+            font: StdFont::Helvetica,
+            size: Self::DEFAULT_SIZE,
+            leading: None,
+            wrap: false,
+            placement: CaptionPlacement::Beside,
+        }
+    }
+}
+
+impl CaptionStyle {
+    /// The size a caption draws at when it is not told otherwise.
+    const DEFAULT_SIZE: f32 = 8.0;
+
+    /// The size to draw at, in points.
+    ///
+    /// This struct's fields are public, so nothing stops a caller storing a size no content stream
+    /// can carry, and clamping with `max` is no guard: `f32::max` returns the other operand for a
+    /// NaN but passes an infinity straight through. `Tf` would then be written `inf`, which is not
+    /// a content stream a viewer will accept — and written into a signed revision it cannot be
+    /// repaired without signing again. Anything that is not a finite positive size falls back to
+    /// the default rather than reaching the stream.
+    pub(super) fn resolved_size(&self) -> f32 {
+        if self.size.is_finite() && self.size > 0.0 {
+            self.size
+        } else {
+            Self::DEFAULT_SIZE
+        }
+    }
+
+    /// The baseline-to-baseline spacing to draw with, resolving `leading: None`.
+    pub(super) fn resolved_leading(&self) -> f32 {
+        let size = self.resolved_size();
+        let leading = self.leading.unwrap_or(size * 1.25);
+        if leading.is_finite() {
+            leading.max(1.0)
+        } else {
+            size * 1.25
+        }
+    }
+}
+
+/// A visible signature appearance: where on the page it sits and what it shows.
+#[derive(Clone, Debug, Default)]
 pub struct SignatureAppearance {
     /// Zero-based page index the signature appears on.
     pub page_index: usize,
     /// The widget rectangle `[x0 y0 x1 y1]` in default user space (§12.5.2).
     pub rect: [f32; 4],
     /// The text to draw; `None` derives a two-line label from the signer name and signing time.
+    ///
+    /// An empty string draws no caption, which is historical: say so with
+    /// [`CaptionStyle::draw`] instead.
     pub text: Option<String>,
     /// An image to draw in the widget — a rendered signature graphic, an organisation's stamp
-    /// (§8.9.5). Fitted into the whole box when there is no text, else into its left part with the
-    /// text beside it; a soft mask or stencil mask on the image is carried along (§11.6.5).
+    /// (§8.9.5). Fitted into the whole box when there is no caption, and otherwise into the part
+    /// of it that [`CaptionStyle::placement`] leaves; a soft mask or stencil mask on the image is
+    /// carried along (§11.6.5).
     pub image: Option<ImageXObject>,
+    /// How the caption is drawn.
+    pub caption: CaptionStyle,
 }
 
 /// Everything `apply_signature_revision` needs to lay out one signature revision, other than the
@@ -322,10 +413,8 @@ impl Document {
                 ..ap.clone()
             }),
             (Some(target), None) => Some(SignatureAppearance {
-                page_index: 0,
                 rect: target.rect,
-                text: None,
-                image: None,
+                ..SignatureAppearance::default()
             }),
             (None, ap) => ap.cloned(),
         };
@@ -369,10 +458,15 @@ impl Document {
                 changed.push((
                     xobject_id,
                     Object::Stream(appearance_xobject(
-                        width, height, font_id, &lines, image_ref,
+                        width,
+                        height,
+                        font_id,
+                        &lines,
+                        &ap.caption,
+                        image_ref,
                     )),
                 ));
-                changed.push((font_id, Object::Dictionary(helvetica_font())));
+                changed.push((font_id, Object::Dictionary(caption_font(ap.caption.font))));
                 (ap.rect, Some(xobject_id))
             }
             None => {
