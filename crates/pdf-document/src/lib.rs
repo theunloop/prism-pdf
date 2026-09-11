@@ -135,7 +135,10 @@ pub use extensions::DeveloperExtension;
 pub use forms::FormField;
 pub use names::{ExtractedAttachment, decode_text_string};
 pub use outlines::OutlineItem;
-pub use signing::{SignSettings, SignatureAppearance, SignatureStatus, TsaCredentials};
+pub use signing::{
+    CaptionPlacement, CaptionStyle, SignSettings, SignatureAppearance, SignatureStatus,
+    TsaCredentials,
+};
 pub use wrapper::EncryptedPayload;
 
 /// Maximum length of an indirect-reference chain before it is treated as a cycle (§7.3.10).

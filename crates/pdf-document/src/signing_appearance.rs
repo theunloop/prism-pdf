@@ -58,6 +58,9 @@ pub(super) fn appearance_lines(
     name: Option<&str>,
     date: &str,
 ) -> Vec<String> {
+    if !ap.caption.draw {
+        return Vec::new();
+    }
     match &ap.text {
         Some(text) => text.lines().map(str::to_string).collect(),
         None => vec![
@@ -85,14 +88,69 @@ pub(super) fn empty_appearance_xobject() -> Stream {
     Stream::new(dict, Vec::new())
 }
 
+/// Format a coordinate for a content stream: two decimals, without the trailing zeros that make
+/// an appearance stream tedious to read against a specification.
+fn num(value: f32) -> String {
+    let text = format!("{value:.2}");
+    let text = text.trim_end_matches('0').trim_end_matches('.');
+    if text.is_empty() || text == "-" {
+        "0".to_string()
+    } else {
+        text.to_string()
+    }
+}
+
+/// Greedy-wrap one caption line to `max_width` points, measured in the caption's own Standard-14
+/// face (§9.6.2.2 metrics).
+///
+/// A single word wider than the box keeps its own line rather than being broken mid-word: the box
+/// is a signature widget a few hundred points wide, and a fiscal code split across two lines is
+/// harder to read than one that overhangs. A face with no metrics table — `Symbol`,
+/// `ZapfDingbats` — measures as zero, so everything fits and nothing wraps.
+fn wrap_caption_line(line: &str, style: &CaptionStyle, max_width: f64) -> Vec<String> {
+    let base = style.font.base_name();
+    let size = f64::from(style.size);
+    let measure = |text: &str| pdf_fonts::standard_text_width(base, text, size).unwrap_or(0.0);
+    if max_width <= 0.0 || measure(line) <= max_width {
+        return vec![line.to_string()];
+    }
+    let mut wrapped = Vec::new();
+    let mut current = String::new();
+    for word in line.split_whitespace() {
+        if current.is_empty() {
+            current.push_str(word);
+            continue;
+        }
+        let candidate = format!("{current} {word}");
+        if measure(&candidate) <= max_width {
+            current = candidate;
+        } else {
+            wrapped.push(std::mem::take(&mut current));
+            current.push_str(word);
+        }
+    }
+    if !current.is_empty() {
+        wrapped.push(current);
+    }
+    if wrapped.is_empty() {
+        wrapped.push(line.to_string());
+    }
+    wrapped
+}
+
 /// Build the appearance Form XObject (§12.5.5 / §8.10): a `/BBox`-bounded box drawing `lines` in
-/// Helvetica and, when given, `image` — `(object id, width, height)` of an image XObject — fitted
-/// into the box. The widget maps this BBox onto its `/Rect`.
+/// the caption's face and, when given, `image` — `(object id, width, height)` of an image XObject
+/// — fitted into whatever the caption leaves. The widget maps this BBox onto its `/Rect`.
+///
+/// The three decisions run in order, because each depends on the one before:
+/// [`CaptionPlacement`] decides how wide the caption is, that width decides how it wraps, and the
+/// wrapped line count decides how much height the caption claims back from the graphic.
 pub(super) fn appearance_xobject(
     width: f32,
     height: f32,
     font_id: ObjectId,
     lines: &[String],
+    style: &CaptionStyle,
     image: Option<(ObjectId, u32, u32)>,
 ) -> Stream {
     let mut dict = Dictionary::new();
@@ -119,35 +177,87 @@ pub(super) fn appearance_xobject(
     }
     dict.insert(Name::from("Resources"), Object::Dictionary(resources));
 
+    let pad = 2.0f32;
+    let leading = style.resolved_leading();
+    let beside = image.is_some() && style.placement == CaptionPlacement::Beside;
+    // The graphic keeps the left 40% when the caption sits beside it; otherwise the caption has
+    // the full width, less the padding on each side.
+    let image_slot = if beside { width * 0.4 } else { 0.0 };
+    let caption_width = (width - image_slot - pad - pad).max(1.0);
+
+    let drawn: Vec<String> = if lines.is_empty() {
+        Vec::new()
+    } else if style.wrap {
+        lines
+            .iter()
+            .flat_map(|line| wrap_caption_line(line, style, f64::from(caption_width)))
+            .collect()
+    } else {
+        lines.to_vec()
+    };
+
     let mut content = Vec::new();
-    // The image takes the whole box when it is alone and the left 40% when text sits beside it,
-    // scaled to fit and centred in its slot. Image space is the unit square (§8.9.4), so the `cm`
-    // carries both the size and the position.
-    let mut text_x = 2.0f32;
+    // The band the caption claims off the bottom, which only `Below` takes out of the graphic.
+    let caption_band = if drawn.is_empty() || beside {
+        0.0
+    } else {
+        drawn.len() as f32 * leading + pad
+    };
+    let (mut text_x, mut text_top) = (pad, height);
     if let Some((_, image_width, image_height)) = image {
-        let pad = 2.0f32;
-        let slot = if lines.is_empty() { width } else { width * 0.4 };
-        let (avail_w, avail_h) = ((slot - 2.0 * pad).max(1.0), (height - 2.0 * pad).max(1.0));
+        let (slot_x, slot_w, slot_y, slot_h) = if drawn.is_empty() {
+            (0.0, width, 0.0, height)
+        } else if beside {
+            (0.0, image_slot, 0.0, height)
+        } else {
+            (0.0, width, caption_band, height - caption_band)
+        };
+        let (avail_w, avail_h) = ((slot_w - 2.0 * pad).max(1.0), (slot_h - 2.0 * pad).max(1.0));
         let scale = (avail_w / image_width.max(1) as f32).min(avail_h / image_height.max(1) as f32);
         let (drawn_w, drawn_h) = (image_width as f32 * scale, image_height as f32 * scale);
+        // Image space is the unit square (§8.9.4), so the `cm` carries both size and position.
         let (x, y) = (
-            pad + (avail_w - drawn_w) / 2.0,
-            pad + (avail_h - drawn_h) / 2.0,
+            slot_x + pad + (avail_w - drawn_w) / 2.0,
+            slot_y + pad + (avail_h - drawn_h) / 2.0,
         );
         content.extend_from_slice(
-            format!("q\n{drawn_w:.2} 0 0 {drawn_h:.2} {x:.2} {y:.2} cm\n/Im0 Do\nQ\n").as_bytes(),
+            format!(
+                "q\n{} 0 0 {} {} {} cm\n/Im0 Do\nQ\n",
+                num(drawn_w),
+                num(drawn_h),
+                num(x),
+                num(y)
+            )
+            .as_bytes(),
         );
-        text_x = slot + pad;
+        if beside {
+            text_x = image_slot + pad;
+        } else if !drawn.is_empty() {
+            text_top = caption_band;
+        }
     }
-    if lines.is_empty() {
+    if drawn.is_empty() {
         return Stream::new(dict, content);
     }
 
-    // Draw each line top-to-bottom with a fixed 10-unit leading (§9.4 text operators).
-    content.extend_from_slice(b"BT\n/Helv 8 Tf\n10 TL\n");
-    content
-        .extend_from_slice(format!("{text_x:.2} {:.2} Td\n", (height - 10.0).max(0.0)).as_bytes());
-    for (i, line) in lines.iter().enumerate() {
+    // Draw each line top-to-bottom from the top of the caption's own band (§9.4 text operators).
+    content.extend_from_slice(
+        format!(
+            "BT\n/Helv {} Tf\n{} TL\n",
+            num(style.size.max(1.0)),
+            num(leading)
+        )
+        .as_bytes(),
+    );
+    content.extend_from_slice(
+        format!(
+            "{} {} Td\n",
+            num(text_x),
+            num((text_top - leading).max(0.0))
+        )
+        .as_bytes(),
+    );
+    for (i, line) in drawn.iter().enumerate() {
         if i > 0 {
             content.extend_from_slice(b"T*\n");
         }
@@ -162,22 +272,25 @@ pub(super) fn appearance_xobject(
     Stream::new(dict, content)
 }
 
-/// The standard-14 Helvetica font object (§9.6.2.2), referenced by the appearance stream.
+/// The standard-14 font object the caption is drawn with (§9.6.2.2).
 ///
 /// `/WinAnsiEncoding` (§9.6.6.1) is what makes the caption's bytes legible: without the entry a
 /// viewer falls back to the font's built-in StandardEncoding, and a caption carrying anything
-/// outside ASCII is shown as the wrong glyphs.
-pub(super) fn helvetica_font() -> Dictionary {
-    let mut font = Dictionary::new();
-    font.insert(Name::from("Type"), Object::Name(Name::from("Font")));
-    font.insert(Name::from("Subtype"), Object::Name(Name::from("Type1")));
-    font.insert(
+/// outside ASCII is shown as the wrong glyphs. `Symbol` and `ZapfDingbats` keep their built-in
+/// encodings and must not be re-encoded, so they do not get the entry.
+pub(super) fn caption_font(font: StdFont) -> Dictionary {
+    let mut dict = Dictionary::new();
+    dict.insert(Name::from("Type"), Object::Name(Name::from("Font")));
+    dict.insert(Name::from("Subtype"), Object::Name(Name::from("Type1")));
+    dict.insert(
         Name::from("BaseFont"),
-        Object::Name(Name::from("Helvetica")),
+        Object::Name(Name::from(font.base_name())),
     );
-    font.insert(
-        Name::from("Encoding"),
-        Object::Name(Name::from("WinAnsiEncoding")),
-    );
-    font
+    if !matches!(font, StdFont::Symbol | StdFont::ZapfDingbats) {
+        dict.insert(
+            Name::from("Encoding"),
+            Object::Name(Name::from("WinAnsiEncoding")),
+        );
+    }
+    dict
 }

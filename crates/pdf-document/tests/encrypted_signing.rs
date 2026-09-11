@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use der::Encode;
 use pdf_cos::{Name as CosName, Object, ObjectId};
-use pdf_document::{Algorithm, Document, SignSettings, SignatureAppearance};
+use pdf_document::{Algorithm, CaptionStyle, Document, SignSettings, SignatureAppearance};
 use rsa::pkcs1v15::SigningKey;
 use rsa::pkcs8::EncodePrivateKey;
 use rsa::{RsaPrivateKey, RsaPublicKey};
@@ -121,6 +121,7 @@ fn check(algorithm: Algorithm) {
             rect: [10.0, 10.0, 190.0, 60.0],
             text: None,
             image: None,
+            caption: CaptionStyle::default(),
         }),
         ..Default::default()
     };

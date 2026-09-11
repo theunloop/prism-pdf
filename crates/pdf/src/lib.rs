@@ -43,11 +43,11 @@ pub mod cos {
 /// [`merge`]; split/rotate via [`Document`] methods). [`Document::names`] walks a name tree
 /// (§7.7.4) and [`Document::attachments`] reads embedded files (§7.11) as [`ExtractedAttachment`]s.
 pub use pdf_document::{
-    Annotation, DeveloperExtension, DocError, Document, DocumentPartInfo, EncryptedPayload,
-    ExtractedAttachment, FormField, Limits, OpenDiagnostic, OpenMode, OpenReport, OutlineItem,
-    RecoveryReason, RewriteMode, SignSettings, SignatureAppearance, SignatureEffect,
-    SignatureStatus, StructureEffect, TransformReport, TsaCredentials, decode_text_string, merge,
-    merge_with_report,
+    Annotation, CaptionPlacement, CaptionStyle, DeveloperExtension, DocError, Document,
+    DocumentPartInfo, EncryptedPayload, ExtractedAttachment, FormField, Limits, OpenDiagnostic,
+    OpenMode, OpenReport, OutlineItem, RecoveryReason, RewriteMode, SignSettings,
+    SignatureAppearance, SignatureEffect, SignatureStatus, StructureEffect, TransformReport,
+    TsaCredentials, decode_text_string, merge, merge_with_report,
 };
 
 /// Precision authoring from scratch (§7.7, Milestone M6): draw an exact operator stream with

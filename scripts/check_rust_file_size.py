@@ -75,14 +75,18 @@ EXCEPTIONS = {
         "the PNG size bound its contract has to state.",
     ),
     "crates/pdf-ffi/src/api/security.rs": (
-        1_140,
+        1_357,
         "C ABI encryption, signing, and verification surface, +105 on 2026-09-09 for three "
         "signing-settings exports and their contracts: sign_settings_add_certificate (chain "
         "certificates in the CMS), sign_settings_set_field_name (sign into an existing /Sig "
-        "field) and sign_settings_set_appearance_image.",
+        "field) and sign_settings_set_appearance_image. +217 on 2026-09-11 for the caption "
+        "style: an opaque handle with one setter per aspect, matching open_options, plus the "
+        "styled appearance export that applies it. The historical caption was Helvetica 8pt on "
+        "one unwrapped line beside the graphic, which integrators worked around by rasterising "
+        "their metadata into the graphic itself.",
     ),
     "crates/pdf-ffi/src/api/tests.rs": (
-        5_468,
+        5_578,
         "cross-capability ABI and standalone C acceptance tests, +39 on 2026-08-27: 4 lines "
         "predate the rename (this budget was already stale at 4_861); 35 are reflow "
         "at the 100-col limit. No logic added. +496 on 2026-09-09 covering the eight exports "
@@ -91,7 +95,10 @@ EXCEPTIONS = {
         "a named field. This is the one exception here that a split would genuinely improve: "
         "the module is tests, so `api/tests/` per capability costs nothing but the move. "
         "+76 on 2026-09-10 for composition_layout_failures_report_their_cause, which drives "
-        "both finalising calls into a failure and asserts the diagnostic carries the cause.",
+        "both finalising calls into a failure and asserts the diagnostic carries the cause. "
+        "+110 on 2026-09-11 for a_styled_caption_reaches_the_appearance_stream, which drives "
+        "every caption setter through to the emitted appearance stream and checks the "
+        "null-handle paths.",
     ),
     "crates/pdf-fonts/src/standard_metrics.rs": (
         1_993,

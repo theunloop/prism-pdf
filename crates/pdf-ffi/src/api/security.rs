@@ -499,6 +499,221 @@ fn signing_status(error: prismpdf::DocError) -> PrismPdfStatus {
     status
 }
 
+/// Where a caption sits relative to the graphic it accompanies.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub enum PrismPdfCaptionPlacement {
+    /// To the right of the graphic, which takes the left 40% of the widget. The historical layout.
+    Beside = 0,
+    /// Beneath the graphic, which then spans the full width of the widget — the placement that
+    /// gives a long caption enough width to exist.
+    Below = 1,
+}
+
+impl From<PrismPdfCaptionPlacement> for CaptionPlacement {
+    fn from(placement: PrismPdfCaptionPlacement) -> Self {
+        match placement {
+            PrismPdfCaptionPlacement::Beside => CaptionPlacement::Beside,
+            PrismPdfCaptionPlacement::Below => CaptionPlacement::Below,
+        }
+    }
+}
+
+/// Owned, reusable typography for a visible signature's caption (§12.5.5).
+///
+/// An opaque handle rather than a `repr(C)` struct on purpose, as `PrismPdfOpenOptions` is: a
+/// later option can be added without changing any layout that compiled code already depends on.
+pub struct PrismPdfCaptionStyle(CaptionStyle);
+
+/// Create a caption style holding the historical defaults: Helvetica at 8pt beside the graphic,
+/// one line per newline in the text, no wrapping.
+#[unsafe(no_mangle)]
+pub extern "C" fn prismpdf_caption_style_new() -> *mut PrismPdfCaptionStyle {
+    guard_ptr(|| Box::into_raw(Box::new(PrismPdfCaptionStyle(CaptionStyle::default()))))
+}
+
+/// Whether a caption is drawn at all. `false` gives the graphic the whole widget — the intent that
+/// an empty caption string used to be the only way to express.
+///
+/// # Safety
+/// `style` must be a live caption-style handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_set_enabled(
+    style: *mut PrismPdfCaptionStyle,
+    enabled: bool,
+) -> PrismPdfStatus {
+    if style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        unsafe { (*style).0.draw = enabled };
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Set the Standard-14 face the caption is drawn in (§9.6.2.2).
+///
+/// # Safety
+/// `style` must be a live caption-style handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_set_font(
+    style: *mut PrismPdfCaptionStyle,
+    font: PrismPdfStdFont,
+) -> PrismPdfStatus {
+    if style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        unsafe { (*style).0.font = font.into() };
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Set the caption's size in points.
+///
+/// # Safety
+/// `style` must be a live caption-style handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_set_size(
+    style: *mut PrismPdfCaptionStyle,
+    size: f64,
+) -> PrismPdfStatus {
+    if style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        unsafe { (*style).0.size = size as f32 };
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Set the caption's baseline-to-baseline spacing in points. A value at or below zero follows the
+/// size at 1.25×, which is what a fresh style does.
+///
+/// # Safety
+/// `style` must be a live caption-style handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_set_leading(
+    style: *mut PrismPdfCaptionStyle,
+    leading: f64,
+) -> PrismPdfStatus {
+    if style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        unsafe {
+            (*style).0.leading = if leading > 0.0 {
+                Some(leading as f32)
+            } else {
+                None
+            };
+        }
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Whether the caption wraps to the width it has instead of running past the edge of the widget
+/// and being clipped by the appearance's `/BBox`.
+///
+/// # Safety
+/// `style` must be a live caption-style handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_set_wrap(
+    style: *mut PrismPdfCaptionStyle,
+    wrap: bool,
+) -> PrismPdfStatus {
+    if style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        unsafe { (*style).0.wrap = wrap };
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Set where the caption sits relative to the graphic.
+///
+/// # Safety
+/// `style` must be a live caption-style handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_set_placement(
+    style: *mut PrismPdfCaptionStyle,
+    placement: PrismPdfCaptionPlacement,
+) -> PrismPdfStatus {
+    if style.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        unsafe { (*style).0.placement = placement.into() };
+        PrismPdfStatus::Ok
+    })
+}
+
+/// Release a caption style. The style is copied into the settings when it is applied, so it may be
+/// freed immediately afterwards and reused for several signatures before that.
+///
+/// # Safety
+/// `style` must be null or a live handle from [`prismpdf_caption_style_new`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_caption_style_free(style: *mut PrismPdfCaptionStyle) {
+    if !style.is_null() {
+        drop(unsafe { Box::from_raw(style) });
+    }
+}
+
+/// Give the signature a visible appearance whose caption carries its own typography — the complete
+/// form of [`prismpdf_sign_settings_set_appearance`] and
+/// [`prismpdf_sign_settings_set_appearance_image`], which both draw the historical caption.
+///
+/// `image` may be null for a caption-only widget; when given it is copied, and the caller keeps
+/// ownership. A null `text` draws the default caption of signer name and date, as elsewhere — to
+/// draw none, set the style's `enabled` to false, which says so rather than relying on an empty
+/// string. A null `style` uses the historical defaults.
+///
+/// # Safety
+/// `settings` must be live, `rect` must point to 4 readable `float`s, `text` must be a
+/// NUL-terminated UTF-8 C string or null, and `image`/`style` must be live handles or null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn prismpdf_sign_settings_set_appearance_image_styled(
+    settings: *mut PrismPdfSignSettings,
+    page_index: usize,
+    rect: *const f32,
+    image: *const PrismPdfImageSource,
+    text: *const c_char,
+    style: *const PrismPdfCaptionStyle,
+) -> PrismPdfStatus {
+    if settings.is_null() || rect.is_null() {
+        return PrismPdfStatus::NullArgument;
+    }
+    guard(|| {
+        let mut bounds = [0.0f32; 4];
+        unsafe { std::ptr::copy_nonoverlapping(rect, bounds.as_mut_ptr(), 4) };
+        let Ok(caption_text) = (unsafe { read_opt_str(text) }) else {
+            return PrismPdfStatus::NullArgument;
+        };
+        let xobject = if image.is_null() {
+            None
+        } else {
+            Some(unsafe { (*image).0.xobject().clone() })
+        };
+        let caption = if style.is_null() {
+            CaptionStyle::default()
+        } else {
+            unsafe { (*style).0.clone() }
+        };
+        unsafe {
+            (*settings).0.appearance = Some(SignatureAppearance {
+                page_index,
+                rect: bounds,
+                text: caption_text,
+                image: xobject,
+                caption,
+            });
+        }
+        PrismPdfStatus::Ok
+    })
+}
+
 /// Give the signature a visible appearance: a widget on page `page_index` (0-based) at `rect`
 /// (`[llx lly urx ury]`, four floats), optionally captioned with `text`.
 ///
@@ -529,6 +744,7 @@ pub unsafe extern "C" fn prismpdf_sign_settings_set_appearance(
                 rect: bounds,
                 text: caption,
                 image: None,
+                caption: CaptionStyle::default(),
             });
         }
         PrismPdfStatus::Ok
@@ -569,6 +785,7 @@ pub unsafe extern "C" fn prismpdf_sign_settings_set_appearance_image(
                 rect: bounds,
                 text: caption,
                 image: Some(xobject),
+                caption: CaptionStyle::default(),
             });
         }
         PrismPdfStatus::Ok
