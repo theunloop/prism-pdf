@@ -3964,7 +3964,8 @@ PrismPdfImageSource *prismpdf_image_source_from_rgba(uint32_t width,
  * # Safety
  * `data` must point to `len` readable bytes.
  */
-PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data, uintptr_t len);
+PrismPdfImageSource *prismpdf_image_source_from_png(const uint8_t *data,
+                                                    uintptr_t len);
 
 /**
  * The image's pixel dimensions.
@@ -4411,6 +4412,38 @@ void prismpdf_composition_free(PrismPdfComposition *composition);
 void prismpdf_composition_container_free(PrismPdfCompositionContainer *container);
 
 /**
+ * Register a Standard-14 font resource, available to every text leaf that names it (§9.6.2.2).
+ *
+ * Registering a name twice keeps the last registration, and `F1` — the resource a composition
+ * starts with and the one plain `prismpdf_composition_container_set_text` draws in — may be
+ * replaced like any other.
+ *
+ * # Safety
+ * `composition` must be live and `resource` a valid NUL-terminated UTF-8 string.
+ */
+PrismPdfStatus prismpdf_composition_set_standard_font(PrismPdfComposition *composition,
+                                                      const char *resource,
+                                                      PrismPdfStdFont font);
+
+/**
+ * Register a TrueType/OpenType program as a composite embedded font resource (§9.7/§9.9) — the
+ * registration that makes composed text PDF/A-conformant and lets it carry glyphs outside the
+ * Standard-14 faces.
+ *
+ * Returns [`PrismPdfStatus::Parse`] when the program is not a supported sfnt face. The check runs
+ * here, against the same call that will consume the bytes at build, so a bad program is reported
+ * where the caller supplied it rather than as one `Layout` status over the whole tree.
+ *
+ * # Safety
+ * `composition` must be live, `resource` a valid NUL-terminated UTF-8 string, and `program` must
+ * point to `len` readable bytes.
+ */
+PrismPdfStatus prismpdf_composition_set_embedded_font(PrismPdfComposition *composition,
+                                                      const char *resource,
+                                                      const uint8_t *program,
+                                                      uintptr_t len);
+
+/**
  * Add a page and return its empty content slot.
  *
  * # Safety
@@ -4708,6 +4741,27 @@ PrismPdfStatus prismpdf_composition_container_set_background(PrismPdfComposition
 PrismPdfStatus prismpdf_composition_container_set_text(PrismPdfCompositionContainer *container,
                                                        const char *text,
                                                        const PrismPdfCompositionTextStyle *style);
+
+/**
+ * Fill an empty slot with wrapping text drawn in a registered font resource.
+ *
+ * `font` names a resource registered with [`prismpdf_composition_set_standard_font`] or
+ * [`prismpdf_composition_set_embedded_font`], or the built-in `F1` (Helvetica) that every
+ * composition starts with. An unregistered name returns [`PrismPdfStatus::InvalidUse`] here
+ * rather than failing the whole tree at build.
+ *
+ * This is the sibling of [`prismpdf_composition_container_set_text`] rather than a new argument
+ * on it: `PrismPdfCompositionTextStyle` is a `repr(C)` struct callers pass by pointer, so a new
+ * field would change its layout under code compiled against an older header.
+ *
+ * # Safety
+ * `container` must be live; `text` and `font` must be valid NUL-terminated UTF-8 strings;
+ * `style` readable.
+ */
+PrismPdfStatus prismpdf_composition_container_set_text_with_font(PrismPdfCompositionContainer *container,
+                                                                 const char *text,
+                                                                 const char *font,
+                                                                 const PrismPdfCompositionTextStyle *style);
 
 /**
  * Fill an empty slot with an explicit page break.

@@ -37,6 +37,9 @@ void prismpdf_header_surface(void) {
     (void)&prismpdf_form_field_rect;
     (void)&prismpdf_form_field_page_index;
     (void)&prismpdf_composition_into_builder;
+    (void)&prismpdf_composition_set_standard_font;
+    (void)&prismpdf_composition_set_embedded_font;
+    (void)&prismpdf_composition_container_set_text_with_font;
     (void)&prismpdf_sign_settings_add_certificate;
     (void)&prismpdf_image_source_from_png;
     (void)&prismpdf_sign_settings_set_appearance_image;

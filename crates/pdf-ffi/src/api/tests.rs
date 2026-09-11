@@ -4887,6 +4887,203 @@ fn composition_tables_repeat_headers_across_fragments() {
 }
 
 #[test]
+fn composition_text_draws_in_a_registered_font_resource() {
+    // Before this surface existed the declarative API could only draw Helvetica regular: the
+    // engine's `TextStyle::font` was reachable from Rust and from nowhere else. Registration plus
+    // a leaf that names a resource is what closes that.
+    let composition = prismpdf_composition_new();
+    let bold = CString::new("F-Bold").unwrap();
+    let missing = CString::new("F-Nope").unwrap();
+    unsafe {
+        assert_eq!(
+            prismpdf_composition_set_standard_font(
+                composition,
+                bold.as_ptr(),
+                PrismPdfStdFont::HelveticaBold,
+            ),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_composition_set_embedded_font(composition, bold.as_ptr(), b"junk".as_ptr(), 4,),
+            PrismPdfStatus::Parse,
+            "a program that is not an sfnt is rejected where it is supplied"
+        );
+    }
+
+    let page_style = PrismPdfCompositionPageStyle {
+        width: 300.0,
+        height: 200.0,
+        margin_left: 10.0,
+        margin_right: 10.0,
+        margin_top: 10.0,
+        margin_bottom: 10.0,
+    };
+    let text_style = PrismPdfCompositionTextStyle {
+        size: 12.0,
+        leading: 14.0,
+    };
+    let mut content = std::ptr::null_mut();
+    let mut column = std::ptr::null_mut();
+    unsafe {
+        assert_eq!(
+            prismpdf_composition_add_page(composition, &page_style, &mut content),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_composition_container_set_column(content, 4.0, &mut column),
+            PrismPdfStatus::Ok
+        );
+    }
+
+    let item = |text: &str, font: Option<&CString>| {
+        let mut child = std::ptr::null_mut();
+        let text = CString::new(text).unwrap();
+        unsafe {
+            assert_eq!(
+                prismpdf_composition_column_add_item(column, &mut child),
+                PrismPdfStatus::Ok
+            );
+            match font {
+                Some(font) => prismpdf_composition_container_set_text_with_font(
+                    child,
+                    text.as_ptr(),
+                    font.as_ptr(),
+                    &text_style,
+                ),
+                None => prismpdf_composition_container_set_text(child, text.as_ptr(), &text_style),
+            }
+        }
+    };
+
+    assert_eq!(item("Bold heading", Some(&bold)), PrismPdfStatus::Ok);
+    assert_eq!(
+        item("Unregistered", Some(&missing)),
+        PrismPdfStatus::InvalidUse,
+        "an unknown resource fails at the leaf that names it, not at build"
+    );
+    assert_eq!(
+        item("Body text", None),
+        PrismPdfStatus::Ok,
+        "the plain call still draws the default resource"
+    );
+    // `F1` is registered by construction, so a caller may name the default explicitly.
+    let default = CString::new("F1").unwrap();
+    assert_eq!(item("Named default", Some(&default)), PrismPdfStatus::Ok);
+
+    let (mut data, mut len) = (std::ptr::null_mut(), 0usize);
+    assert_eq!(
+        unsafe { prismpdf_composition_build(composition, &mut data, &mut len) },
+        PrismPdfStatus::Ok
+    );
+    let bytes = unsafe { take_bytes(data, len) };
+    assert!(
+        bytes
+            .windows(b"/Helvetica-Bold".len())
+            .any(|w| w == b"/Helvetica-Bold"),
+        "the registered face reached the page resources"
+    );
+    let document = Document::open(bytes).unwrap();
+    let text = prismpdf::page_text(&document, 0).unwrap().unwrap();
+    assert!(text.contains("Bold heading") && text.contains("Body text"));
+
+    // Registration is a mutation, so it closes with the rest of the arena.
+    assert_eq!(
+        unsafe {
+            prismpdf_composition_set_standard_font(
+                composition,
+                bold.as_ptr(),
+                PrismPdfStdFont::TimesBold,
+            )
+        },
+        PrismPdfStatus::InvalidUse
+    );
+    unsafe { prismpdf_composition_free(composition) };
+}
+
+#[test]
+fn composition_embeds_a_font_program() {
+    // The sfnt the CI images and the devcontainer carry; without it there is nothing to embed.
+    let Ok(program) = std::fs::read("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") else {
+        return;
+    };
+    let composition = prismpdf_composition_new();
+    let resource = CString::new("F-Emb").unwrap();
+    assert_eq!(
+        unsafe {
+            prismpdf_composition_set_embedded_font(
+                composition,
+                resource.as_ptr(),
+                program.as_ptr(),
+                program.len(),
+            )
+        },
+        PrismPdfStatus::Ok
+    );
+
+    let page_style = PrismPdfCompositionPageStyle {
+        width: 300.0,
+        height: 200.0,
+        margin_left: 10.0,
+        margin_right: 10.0,
+        margin_top: 10.0,
+        margin_bottom: 10.0,
+    };
+    let text_style = PrismPdfCompositionTextStyle {
+        size: 12.0,
+        leading: 14.0,
+    };
+    let text = CString::new("Embedded composition text").unwrap();
+    let (mut content, mut column, mut child) = (
+        std::ptr::null_mut(),
+        std::ptr::null_mut(),
+        std::ptr::null_mut(),
+    );
+    let (mut data, mut len) = (std::ptr::null_mut(), 0usize);
+    unsafe {
+        assert_eq!(
+            prismpdf_composition_add_page(composition, &page_style, &mut content),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_composition_container_set_column(content, 4.0, &mut column),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_composition_column_add_item(column, &mut child),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_composition_container_set_text_with_font(
+                child,
+                text.as_ptr(),
+                resource.as_ptr(),
+                &text_style,
+            ),
+            PrismPdfStatus::Ok
+        );
+        assert_eq!(
+            prismpdf_composition_build(composition, &mut data, &mut len),
+            PrismPdfStatus::Ok
+        );
+        prismpdf_composition_free(composition);
+    }
+    let bytes = unsafe { take_bytes(data, len) };
+    assert!(
+        bytes
+            .windows(b"/FontFile2".len())
+            .any(|w| w == b"/FontFile2"),
+        "the program was embedded, not merely named"
+    );
+    let document = Document::open(bytes).unwrap();
+    assert!(
+        prismpdf::page_text(&document, 0)
+            .unwrap()
+            .unwrap()
+            .contains("Embedded composition text")
+    );
+}
+
+#[test]
 fn composition_images_clone_sources_and_support_every_sizing_policy() {
     unsafe {
         let composition = prismpdf_composition_new();
